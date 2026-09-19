@@ -14,7 +14,8 @@ async function connectDB() {
     console.log(`Connected to database: ${connection.connection.name}`);
   } catch (err) {
     console.error(
-      'Database connection failed. Check MONGODB_URI, the database user password and Atlas Network Access.'
+      err.name,
+      '- check MONGODB_URI, the database user password and Atlas Network Access'
     );
     process.exit(1);
   }
