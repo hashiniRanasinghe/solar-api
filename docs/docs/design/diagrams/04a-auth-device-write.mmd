@@ -1,0 +1,24 @@
+%% 04a-auth-device-write.mmd - Authentication and authorization: device write path
+%% Basis: BRIEF §2, §5 (device authenticates as its installation); WP §9 (401 / 403); LEC S7, S8
+%% Decisions: my-decisions §9 (401 vs 403 confirmed by you, OQ-10). Key-hash lookup mechanism is a PROPOSAL.
+sequenceDiagram
+  autonumber
+  participant D as Device
+  participant A as API - authApiKey
+  participant DB as MongoDB
+  D->>A: POST /solar/v1.0/installations/{installation-id}/readings with X-API-Key
+  alt X-API-Key header missing
+    A-->>D: 401 + WWW-Authenticate ApiKey realm solar
+  else header present
+    A->>A: SHA-256 hash of the presented key
+    A->>DB: find installation where api_key_hash equals the hash
+    alt no installation matches (unknown or invalid key)
+      A-->>D: 401 + WWW-Authenticate
+    else key belongs to a different installation than the path
+      A-->>D: 403 (understood but refused)
+    else key belongs to the installation in the path
+      A->>A: continue to validation and insert (diagram 05)
+    end
+  end
+  Note over D,A: A JWT sent to this route is not a valid credential, so 401 (PROPOSAL)
+  Note over D,A: installation_id is taken from the path only, never from the body

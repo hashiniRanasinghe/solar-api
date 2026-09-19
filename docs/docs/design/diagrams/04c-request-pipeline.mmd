@@ -1,0 +1,33 @@
+%% 04c-request-pipeline.mmd - Order of checks and where each status code comes from
+%% Basis: WP §9 (status codes), §10.1 (406), §10.4 (304), §10.5 (412), §11 (error body); my-decisions §8-§12
+%% Status: the ORDER of checks is a PROPOSAL. 404 on POST readings is OPEN (see note in diagram 05).
+flowchart TD
+  R["Incoming request"] --> RT{"Route and method known?"}
+  RT -- "no route" --> E404["404 + error body"]
+  RT -- "method not allowed on this path" --> E405["405 + Allow (PROPOSAL)"]
+  RT -- yes --> AC{"Accept allows application/json?"}
+  AC -- no --> E406["406"]
+  AC -- yes --> AU{"Credential present and accepted?<br/>API key on device route, JWT elsewhere"}
+  AU -- no --> E401["401 + WWW-Authenticate"]
+  AU -- yes --> CT{"Write request: Content-Type is JSON?"}
+  CT -- no --> E415["415"]
+  CT -- yes --> EX{"Resource exists?"}
+  EX -- no --> E404b["404"]
+  EX -- yes --> SC{"Inside scope?<br/>device: own installation<br/>user: path parent (installation, substation, district, province)<br/>write: needs solar:write"}
+  SC -- no --> E403["403"]
+  SC -- yes --> VA{"Query and body valid?"}
+  VA -- no --> E400["400 + error[] per field"]
+  VA -- yes --> BR{"Business rule ok?<br/>duplicate reading, stale If-Match"}
+  BR -- "duplicate reading" --> E409["409 (PROPOSAL)"]
+  BR -- "stale If-Match" --> E412["412"]
+  BR -- ok --> DO["Run the operation"]
+  DO --> WR{"Write?"}
+  WR -- yes --> OK201["201 or 200 + headers"]
+  WR -- "no (GET)" --> CG{"If-None-Match / If-Modified-Since matches?"}
+  CG -- yes --> OK304["304, empty body"]
+  CG -- no --> OK200["200 + ETag + Last-Modified"]
+
+  classDef err fill:#fdecea,stroke:#c0392b
+  classDef ok fill:#e9f7ef,stroke:#2e7d4f
+  class E404,E405,E406,E401,E415,E404b,E403,E400,E409,E412 err
+  class OK201,OK304,OK200 ok

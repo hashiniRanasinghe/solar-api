@@ -1,0 +1,31 @@
+%% 05-flow-ingest-reading.mmd - Request/response flow: device pushes a reading
+%% Basis: BRIEF §5 (ingestion, correct method, 201 + where it now lives); WP §7.3, §9; LEC S7, S8
+%% Decisions: my-decisions §4, §8, §9.
+%% OPEN: (a) OQ-26 is 404 kept in the contract for this route, (b) OQ-27 is a lower cumulative energy_kwh rejected. Both decided in Phase 4.
+%% No timestamp tolerance / future-time rule is applied (no supporting evidence in coursework or reference material).
+sequenceDiagram
+  autonumber
+  participant D as Device
+  participant M as Middleware
+  participant S as Service
+  participant DB as MongoDB
+  D->>M: POST /solar/v1.0/installations/INS-0001/readings, X-API-Key, JSON body
+  M->>M: authenticate the device (diagram 04a)
+  alt Content-Type is not JSON
+    M-->>D: 415
+  else body invalid (missing or non-numeric field, bad timestamp, value out of range)
+    M-->>D: 400 + error[] per field
+  else valid
+    M->>S: create reading for the installation in the PATH
+    S->>DB: insert reading (unique on installation_id + timestamp)
+    alt same installation and timestamp already stored
+      DB-->>S: duplicate key
+      S-->>D: 409 + error body
+    else inserted
+      DB-->>S: stored reading (reading_id, received_at set by server)
+      S-->>D: 201 Created + Location + Content-Location + ETag + Last-Modified + reading JSON
+    end
+  end
+  Note over D,DB: 404 for an unknown installation cannot occur here: unknown key gives 401, another installation key gives 403 (OPEN, OQ-26)
+  Note over D,DB: energy_kwh is cumulative. Rejecting a value lower than the previous reading is OPEN (OQ-27)
+  Note over D,DB: The Location URI must resolve with GET /installations/{id}/readings/{reading-id} by a user with a JWT

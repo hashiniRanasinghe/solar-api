@@ -1,0 +1,27 @@
+%% 01-context.mmd - System / context architecture
+%% Basis: BRIEF §2 (write-read split), §7 (public HTTPS deploy, live Swagger), §1 (dashboards out of scope)
+%% Decisions: my-decisions §1, §6, §10. PLAN §6.
+%% Status: no OPEN dependency. Admin actor: DECIDED (OQ-03, one national-level admin role).
+flowchart LR
+  DEV["Metering device<br/>one per installation<br/>WRITE client"]
+  USR["SLSEA user<br/>national / provincial / district<br/>READ client"]
+  ADM["Admin user (national)<br/>installation create / replace / delete<br/>DECIDED - OQ-03"]
+  MKR["Marker / lecturer<br/>reads /docs and the Git repo"]
+  BI["Downstream dashboards / BI<br/>OUT OF SCOPE (BRIEF §1)"]
+
+  subgraph RENDER["Render web service - HTTPS"]
+    API["SLSEA Solar Generation API<br/>Node / Express<br/>base path /solar/v1.0"]
+    DOCS["Swagger UI<br/>/docs and /docs.json"]
+  end
+
+  DB[("MongoDB Atlas<br/>provinces, districts, substations,<br/>installations, generation_readings, users")]
+
+  DEV -- "POST readings<br/>X-API-Key" --> API
+  USR -- "POST /login, then GET<br/>Bearer JWT" --> API
+  ADM -- "Bearer JWT<br/>scope solar:write" --> API
+  API --> DB
+  MKR --> DOCS
+  BI -. "would consume the read path<br/>(not built)" .-> API
+
+  classDef out fill:#f5f5f5,stroke:#999,stroke-dasharray:4 3,color:#555
+  class BI out

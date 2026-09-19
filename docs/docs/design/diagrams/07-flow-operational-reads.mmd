@@ -1,0 +1,38 @@
+%% 07-flow-operational-reads.mmd - Request/response flows: composite, last-reading, district summary (stretch)
+%% Basis: BRIEF §5, §6 (composite, last-known-reading as derived resource, district summary stretch); LEC S5, S6
+%% Decisions: my-decisions §5. Lecturer-form noun sub-resources confirmed by you (OQ-21, deviation from WP §5.1).
+%% The summary uses a cumulative-energy DELTA (energy_kwh is cumulative). Local-day boundary Asia/Colombo is a PROPOSAL.
+%% Response field names of the summary are NOT decided yet.
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant A as API (auth + scope as in 04b)
+  participant S as Service
+  participant DB as MongoDB
+  rect rgb(233, 247, 239)
+    Note over U,DB: Composite - GET /installations/{installation-id}
+    U->>A: GET installation
+    A->>S: load installation
+    S->>DB: installation + newest reading (index installation_id, timestamp desc)
+    S-->>U: 200 installation with last_reading object, or null when no reading. Never the history
+  end
+  rect rgb(253, 240, 227)
+    Note over U,DB: Processing function - GET /installations/{installation-id}/last-reading
+    U->>A: GET last-reading
+    A->>S: same newest-reading helper as the composite
+    alt no reading stored
+      S-->>U: 404
+    else reading found
+      S-->>U: 200 the newest reading only
+    end
+  end
+  rect rgb(253, 240, 227)
+    Note over U,DB: Stretch - GET /districts/{district-id}/generation-summary
+    U->>A: GET generation-summary
+    A->>S: district must exist and be in scope
+    S->>DB: newest reading of every installation in the district
+    S->>DB: cumulative energy at the last reading before local midnight, per installation
+    S->>S: total current power = sum of newest power_kw
+    S->>S: energy today = sum of (newest energy_kwh minus energy_kwh at local midnight)
+    S-->>U: 200 totals (shape not decided yet)
+  end

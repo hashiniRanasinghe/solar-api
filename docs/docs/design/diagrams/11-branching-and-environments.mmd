@@ -1,0 +1,35 @@
+%% 11-branching-and-environments.mmd - Branching strategy and deployment path
+%% Basis: BRIEF §7.3, §13 (incremental history, shared repo); PLAN §12.
+%% DECIDED (YOU): branches dev_hashini and dev; qa kept as a best-practice marker and NOT deployed; main never used;
+%% the only deployment is Dev, from dev, and it is the submitted URL. PROPOSAL: PR gates, tags, freeze rule.
+flowchart LR
+  subgraph WORK["Work"]
+    HB["dev_hashini<br/>my working branch<br/>small commits, ai-log.md in the same commit"]
+  end
+
+  subgraph CENTRAL["Central - GitHub default branch"]
+    DV["dev<br/>no direct commits<br/>tags p1 to p8 and submission"]
+  end
+
+  DENV["deployment_dev (only deployment)<br/>Render service solar-api-dev<br/>database slsea_dev<br/>auto-deploy from dev<br/>URL to submit"]
+
+  QAB["qa branch = marker of deployment_qa<br/>deployment_qa is NOT created<br/>no QA service, no QA database"]
+  NOMAIN["main<br/>never used"]
+
+  HB -- "PR after each build step<br/>merge commit, no squash" --> DV
+  DV -- "auto-deploy" --> DENV
+  DENV -- "BASE_URL=dev npm test" --> G1{"Checks pass on the Dev URL?"}
+  G1 -- "yes, end of phase" --> TAG["Tag pN on the dev tip<br/>after the last phase: tag submission and freeze"]
+  G1 -- "no" --> FIX["Fix on dev_hashini"]
+  FIX --> HB
+  DV -. "git pull origin dev<br/>keeps dev_hashini in sync" .-> HB
+  DV -. "created at setup, then left alone" .-> QAB
+
+  classDef branch fill:#e8f1fb,stroke:#3b6ea5
+  classDef env fill:#e9f7ef,stroke:#2e7d4f
+  classDef gate fill:#fff8e1,stroke:#c9a227
+  classDef unused fill:#f5f5f5,stroke:#999,stroke-dasharray:4 3,color:#666
+  class HB,DV branch
+  class DENV env
+  class G1 gate
+  class QAB,NOMAIN unused
