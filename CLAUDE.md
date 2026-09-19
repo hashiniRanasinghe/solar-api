@@ -40,6 +40,13 @@
 - Never force-push, squash or rewrite pushed history.
 - One deployment: deployment_dev (Render service solar-api-dev tracks branch deployment_dev, database slsea_dev). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
 
+## AI log (ai-log.md)
+- When a task finishes (the step's done-when check has run), append ONE entry to ai-log.md before I commit. Write nothing to it during the task. Do not commit.
+- Entry fields: date and time; step id (for example D2); tool and model; branch; Prompt (my prompt(s) for the task, verbatim, secrets redacted); files created or changed (paths); checks run with the result (command and pass/fail, no secrets); requirement IDs served; Outcome (done / partial / failed) with one factual line on anything that failed or was corrected during the task.
+- End every entry with these two lines exactly, for me to fill: `Reviewed by me: (student to fill)` and `Accepted / changed / rejected: (student to fill)`. Never fill them and never invent my review.
+- Facts only. No claims about tests that were not run. Never include passwords, URIs, keys or anything from .env.
+- Append only. Never edit or delete earlier entries. Log a prompt from another tool or the Claude chat only when I ask.
+
 ## Local course reference library
 - The course reference library is available locally at `refs/course-library/` (a git-ignored symlink to my course folder outside this repo).
 - It holds the current coursework brief, lecture materials, student notes, demonstrations, REST API design guidance, and reference Git repository information.
