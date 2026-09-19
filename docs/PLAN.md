@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status:** Phase 0 (planning) done. **No application code yet.** Updated 2026-09-19 (rev 9: branches `dev_hashini` → `dev`, plus a kept-but-undeployed `qa` branch; `main` never used; one deployment, Dev, from `dev`; 13 diagrams).
+> **Status:** Phase 0 (planning) done. **No application code yet.** Updated 2026-09-19 (rev 10: branches `dev_hashini` → `dev` → `deployment_dev` (deploy branch); `deployment_qa` kept as an undeployed marker; `main` never used; 14 diagrams).
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback exist. Brief §14 ("make good the original submission") therefore does not apply; nothing to remediate. Treat the brief, white paper and lectures as the only sources.
 
@@ -113,7 +113,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Noun sub-resources for derived resources (`last-reading`, `generation-summary`); the words "processing function" never appear in a URI | `[YOU]` (OQ-21) |
 | Hierarchy top-level with query filters; `/substations`; string IDs (`INS-0001`), Mongo `_id` hidden; Mongoose | `[YOU]` (OQ-05, 06, 07, 19) |
 | Seed: 9 / 25 / **40 substations / 240 installations**, 15-minute readings for 7 days (≈161,000); derived `district_id`/`province_id` stored read-only, proven by a seed integrity check | `[YOU]` |
-| **Branches:** `dev_hashini` (my working branch), `dev` (central), `qa` (**kept as a best-practice marker, never deployed**). **`main` is never touched.** **One deployment: Dev, from `dev`** (this is the URL that gets submitted) | `[YOU]` |
+| **Branches:** `dev_hashini` (my working branch) → `dev` (central) → **`deployment_dev`** (deploy branch, updated by merge request from `dev`); **`deployment_qa`** kept as a best-practice marker, **never deployed**. **`main` is never touched.** **One deployment, from `deployment_dev`; it is the URL that gets submitted** | `[YOU]` |
 | Deadline **Sun 4 Oct 2026** | `[YOU]` (OQ-17) |
 | `energy_kwh` is a **cumulative** running total (not per interval) | `[BRIEF §3]` confirmed by you |
 | Hierarchy is **derived from `substation_id`**: `district_id`/`province_id` are server-derived, read-only, never client-supplied | `[YOU]` |
@@ -173,7 +173,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
 | Device auth | `X-API-Key`, stored as SHA-256 hash, timing-safe compare | `[YOU]` header / `[PROPOSAL]` hashing | Random high-entropy keys don't need bcrypt |
 | Docs | `swagger-ui-express` + `yaml`, spec in `docs/design/openapi.yaml` | `[YOU]` Swagger / `[PROPOSAL]` libs | |
-| Hosting | **One** Render free Web Service, **`solar-api-dev`**, tracking branch `dev`, auto-deploy on every push. This is the submitted URL | `[YOU]` | Free services sleep when idle (first hit can take ~30 s `[LEC S2]`) |
+| Hosting | **One** Render free Web Service, **`solar-api-dev`**, tracking branch **`deployment_dev`**, auto-deploy on every push to that branch (i.e. on each release merge). This is the submitted URL | `[YOU]` | Free services sleep when idle (first hit can take ~30 s `[LEC S2]`) |
 | Tests | Node built-in `node --test` + global `fetch` against `BASE_URL` | `[PROPOSAL]` | Zero extra deps; same suite runs against the live URL |
 | Dev reload | `node --watch` | `[PROPOSAL]` | No nodemon |
 | **Not used** | TypeScript, Docker, GraphQL, Redis, rate-limit libs, GitHub Actions | `[PROPOSAL]` | Render auto-deploy is enough |
@@ -345,41 +345,42 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 
 ## 12. Git, branching and environments
 
-**Branches `[YOU]`** — `main` is **never used**. Do not create, commit to, merge into or delete it. If GitHub shows one, ignore it.
+**Branches `[YOU]`** — `main` is **never used**. Do not create, commit to, merge into or delete it.
 
 | Branch | Role | Who commits | Deployed? |
 |---|---|---|---|
-| `dev_hashini` | My working branch: all daily commits happen here (Claude Code works here too, under my review) | Me | No; runs locally against `slsea_dev` |
-| `dev` | Central integration branch and the **default branch on GitHub** (what the marker sees). Receives my work only by merge request (a pull request on GitHub). The one direct commit is a **root commit containing just `.gitignore`**, so that a merge request has a base to merge into. Tags live here | Nobody directly, except that root commit | **Yes: Dev environment, automatically on every push** |
-| `qa` | Created from `dev` at setup and **kept as a marker of best practice** (a QA stage exists in the process). **Not deployed**, no QA environment, no QA database | Nobody | **No** |
+| `dev_hashini` | My working branch: all daily commits happen here (Claude Code works here too, under my review) | Me | No; runs locally against `slsea_local` |
+| `dev` | Central integration branch and the **default branch on GitHub** `[PROPOSAL]`. Receives my work only by merge request (a pull request on GitHub) | Nobody directly | No |
+| `deployment_dev` | **Deploy branch.** Receives `dev` by merge request at release points only. The Render service tracks it. Tags `pN` and `submission` live here | Nobody directly | **Yes: the only deployment, automatically on every push to this branch** |
+| `deployment_qa` | Kept as a marker of best practice (a QA stage exists in the process). **Never deployed**, no QA service, no QA database | Nobody | **No** |
 
-**Flow:** `dev_hashini` → PR → `dev` → Dev environment (automatic). `qa` is left where it is. Optional, not part of the routine and only if you decide so later: fast-forward `dev` into `qa` at phase ends as a "verified" marker.
+**Flow:** `dev_hashini` → MR → `dev` → (release MR, phase end only) → `deployment_dev` → Render. `deployment_qa` is left where it is.
 
-**Environment `[YOU]`** (OQ-30: one deployment, Dev)
+**Deployment `[YOU]`** (OQ-30: one deployment, from `deployment_dev`)
 
-| Env | Branch | Render service | Deploys | Atlas database | Env vars | Purpose |
+| Stage | Branch | Render service | Deploys | Atlas database | Env vars | Purpose |
 |---|---|---|---|---|---|---|
-| Dev | `dev` | `solar-api-dev` | automatically on every push to `dev` | `slsea_dev` | `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `APP_ENV=dev` | Integration checks **and the submitted URL** |
+| `deployment_dev` | `deployment_dev` | `solar-api-dev` (underscores are not valid in URLs) | automatically on every push to `deployment_dev` (only release merges land there) | `slsea_dev` | `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `APP_ENV=dev` | **The submitted URL** |
+| `deployment_qa` | `deployment_qa` | none | never | none | none | Marker only |
 
-**Stage names `[YOU]`:** `deployment_dev` = the Dev environment and the **only real deployment** (branch `dev`, database `slsea_dev`; the Render service is `solar-api-dev` because a service name becomes part of its URL and URLs cannot contain underscores). `deployment_qa` = the name of the QA stage, **defined but not created**: no service, no database; the `qa` branch is its marker.
-
-Consequence to manage `[PROPOSAL]`: because the submitted URL auto-deploys, every merge to `dev` changes it. So: run the step tests locally **before** the pull request; check the Dev URL right after each merge; after the final check tag `submission` and **stop merging into `dev`** (optionally switch Render's auto-deploy off) until marking and the viva are done.
+**Local database `[PROPOSAL]`:** local runs and tests use a separate database `slsea_local` (same Atlas cluster, set in the local `.env`), so test writes and seed experiments never touch the data behind the submitted URL.
 
 **Rules `[PROPOSAL]`**
 
 | Step | When | Gate |
 |---|---|---|
-| `dev_hashini` → `dev` | After each build step (D1, D2, …) | Runs locally, step tests pass, explain-back done, `ai-log.md` updated in the same commit. Merge the PR with **"Create a merge commit"** (no squash) |
-| Check Dev | After every merge to `dev` (wait for the Render deploy) | `BASE_URL=<dev url> npm test` |
-| Phase end | When the phase exit test in §13 passes on the Dev URL | Tag `pN` on the `dev` tip |
-| Broken deploy | — | Fix on `dev_hashini` → `dev`. Never move or delete a pushed tag; tag again (`pNb`) |
-| Keep in sync | After each PR merged into `dev` | `git switch dev_hashini && git pull origin dev` |
-| Freeze | After the last check | Tag `submission`; merge nothing more into `dev` until marking and the viva are done, or the deployed code and the repo stop matching |
+| `dev_hashini` → `dev` | After each build step (D1, D2, …) | Runs locally, step tests pass, explain-back done, `ai-log.md` updated in the same commit. Merge the MR with **"Create a merge commit"** (no squash) |
+| Keep in sync | After each MR merged into `dev` | `git switch dev_hashini && git pull origin dev` |
+| Release `dev` → `deployment_dev` | End of a phase only | On a clean, up-to-date `dev`: full `npm test` and the phase exit test (§13) pass locally. Then merge request `dev` → `deployment_dev` (merge commit). Render deploys |
+| Check live | After every release | `BASE_URL=<deployment url> npm test` smoke; then tag `pN` on the `deployment_dev` tip |
+| Broken release | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag |
+| Freeze | After the last live check | Tag `submission` on `deployment_dev`. Merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done, so the repo the marker sees matches the deployed code |
 
-- One database (`slsea_dev`) in the Atlas M0 cluster. The demo credentials in the README belong to this deployment. Re-seed and top-up shortly before submission and before the viva.
+- One deployed database (`slsea_dev`). Demo credentials in the README belong to it. Re-seed and top-up shortly before submission and before the viva, from the Mac with the deployed URI (check the database name the script prints).
 - OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`.
 - `GET /` also returns `environment` (from `APP_ENV`) `[PROPOSAL]`.
-- No GitHub Actions: Render's auto-deploy is enough.
+- No GitHub Actions: Render's auto-deploy on `deployment_dev` is enough.
+- Branch names are spelled `deployment_dev` and `deployment_qa`. Rename any misspelled branch on GitHub (Branches page → rename) before use.
 
 **Other rules**
 
@@ -387,14 +388,15 @@ Consequence to manage `[PROPOSAL]`: because the submitted URL auto-deploys, ever
 |---|---|
 | History | Small commits, one logical step each. **No squash, no rebase of pushed history, no force-push.** Merge commits keep the incremental history the brief asks for `[BRIEF §7.3, §13]` |
 | Format | `type(scope): summary` — `feat`, `fix`, `docs`, `test`, `chore`, `refactor` |
-| Tags | `p1`…`p8` and `submission`, on `dev` |
-| Protection | If your GitHub plan allows it for a private repo, protect `dev` (pull request required). Otherwise the rule is discipline: never commit directly to it |
+| Tags | `p1`…`p8` and `submission`, on `deployment_dev` |
+| Protection | If your GitHub plan allows it for a private repo, protect `dev` and `deployment_dev` (merge request required). Otherwise the rule is discipline: never commit directly to them |
+| Common history | A merge request needs shared history. If GitHub says "no history in common" for `dev` → `deployment_dev`, delete that branch and recreate it from `dev` |
 | Secrets | `.env`, `node_modules/`, `refs/`, `seed-keys.txt` git-ignored; `.env.example` committed; rotate anything ever committed |
 | Reference repos | Cloned into `refs/` only. **Never copy code from the classmate repos** |
-| Collaborator | Add lecturer on GitHub: **`nirangadh`** (https://github.com/nirangadh), in Phase 1. Check that the GitHub default branch is `dev` |
+| Collaborator | Lecturer **`nirangadh`** (https://github.com/nirangadh): invitation sent, **must be accepted by him**; screenshot the list after acceptance. Default branch `dev` |
 | AI log | Append to `ai-log.md` in the same commit as the change |
 
-**Risks to know `[PROPOSAL]`:** a marker who looks for `main` will find nothing, so the default branch must be `dev`; a `qa` branch with no QA deployment may prompt a viva question, and the answer must be yours ("kept as a marker of a QA stage; this assignment deploys one environment"); the submitted URL is the auto-deploying one, hence the freeze rule.
+**Risks to know `[PROPOSAL]`:** a marker looking for `main` finds nothing, so the default branch must be `dev`; a `deployment_qa` branch with no QA deployment may prompt a viva question, and the answer must be yours ("kept as a marker of a QA stage; this assignment deploys one environment"); the release merge is a manual step, so forgetting it leaves the live URL behind `dev`. Check before submission that `dev` and `deployment_dev` are identical.
 
 ---
 
@@ -404,7 +406,7 @@ Consequence to manage `[PROPOSAL]`: because the submitted URL auto-deploys, ever
 |---|---|---|---|---|
 | **0** | Plan; `my-decisions.md` written by hand; OQ-01…OQ-05 answered | You confirm the plan | B | Coach |
 | **0b** | **Design & diagrams:** 14 diagram sources in `docs/design/diagrams/`, decisions relabelled, OQ-03/04/21 closed. No code | You review decisions + diagrams and say GO | C4 | Coach |
-| **1** | Walking skeleton: repo structure, Express `GET /`, env config, Atlas connect; branches `dev`, `qa` (kept, undeployed) and `dev_hashini` created (no `main`); the **Dev** service deployed from `dev`; lecturer added | `curl -i` on the Dev URL → 200 over HTTPS with `environment: dev`; tag `p1` on `dev` | A, D1–D3 | Sonnet 5 |
+| **1** | Walking skeleton: repo structure, Express `GET /`, env config, Atlas connect (local `slsea_local`); branches `dev`, `deployment_dev`, `deployment_qa` (marker) and `dev_hashini` exist (no `main`); the Render service is created on branch `deployment_dev` and the first release merge `dev` → `deployment_dev` deploys it; lecturer added and has accepted | `curl -i` on the deployed URL → 200 over HTTPS with `environment: dev`; tag `p1` on `deployment_dev` | A, D1–D3 | Sonnet 5 |
 | **2** | `data-model.md`; models; **full-scale seed**; error contract; hierarchy reads (provinces/districts/substations) with envelope + pagination util | Counts match brief; 404 vs empty collection correct | C1, D4–D6 | Sonnet 5 |
 | **3** | Installations (composite), `last-reading`, per-installation readings history + by-id (no auth yet); shared "readings under a parent" service written so Phase 6 only adds routes | Composite has `last_reading`; history is path-scoped | D7–D8 | Sonnet 5 |
 | **4** | Device write path: `POST readings`, API key auth, 201 + headers, 409 duplicate, 401/403 | Wrong-installation key → 403; `Location` resolves via GET | D9–D10 | Sonnet 5 (auth on Opus 5) |
@@ -506,7 +508,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-28 | **OPEN.** How does a newly created installation get a device key? | Return the plain key once in the 201 body (differs from GET) or seed-only keys | P7 |
 | OQ-29 | **OPEN (technical).** ETag construction (Express default vs explicit; strong ETag needed for `If-Match`) | Decide in Phase 6 | P6 |
 | OQ-24 | Should PUT require `If-Match`? WP §9 gives "request must be conditional but no condition specified" as a 403 example | Optional `If-Match` (simpler); if present and stale → 412 | P7 |
-| OQ-30 | **DECIDED `[YOU]`:** `main` never touched; branches `dev_hashini` → `dev`, plus `qa` **kept but not deployed** (best-practice marker); **only the Dev deployment (from `dev`) exists and is the submitted URL** | Freeze rule protects the submitted URL. No QA service, no QA database | P1 |
+| OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR at release points); `deployment_qa` **kept as a marker, never deployed**; **only one deployment, from `deployment_dev`, is the submitted URL** | Release step is manual, so check `dev` = `deployment_dev` before submission. No QA service, no QA database | P1 |
 | OQ-25 | **PENDING:** viva date/format not confirmed | Non-blocking. Ask as soon as it is announced; reserve 3–4 Oct for smoke test/submit regardless | P8 |
 
 **Assumptions:** Render provides HTTPS · Atlas Network Access set to allow Render (`0.0.0.0/0` for coursework) · use the `mongodb+srv://` URI (classmate's history shows TLS failures on Render with the legacy shard URI) · timestamps UTC · no Device entity, so no device CRUD · demo credentials are intentionally public.
@@ -515,7 +517,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 
 ## 16. Working rules
 
-- Small diffs; commit after every step on `dev_hashini`; PR to `dev`; check the Dev URL; tag `pN` at phase end. Never touch `main`; `qa` is kept but not deployed.
+- Small diffs; commit after every step on `dev_hashini`; MR to `dev`; release `dev` → `deployment_dev` only at phase end; tag `pN` on `deployment_dev`. Never touch `main`; `deployment_qa` is a marker and is not deployed.
 - Log every AI prompt in `ai-log.md` (chat prompts count).
 - I write all report text; the AI only flags missing evidence, contradictions with code, and rubric gaps.
 - Never copy code from the classmate repo. Reference repos are for understanding only.
@@ -532,7 +534,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 |---|---|---|
 | Top API-design level mentions filtering, sorting, conditional GET, "full range of request and response headers"; mid level mentions authentication and useful response codes/messages | Yes (§5, App. A) | No change |
 | Code: modular structure, annotations/comments explaining code, exception handling, **no linting errors/warnings** | Partly (brief §11 "Implementation with generated code") | Layering, one central error handler, short comments are already planned. A linter is **not** added; **OPEN idea** only if you want it |
-| Separate **version control** dimension: regular commits over time; top level mentions branching and merging | Partly (brief §7.3/§13 incremental history, weak evidence if a single upload) | Already planned: `dev_hashini` → `dev` with merge commits, tags, small commits |
+| Separate **version control** dimension: regular commits over time; top level mentions branching and merging | Partly (brief §7.3/§13 incremental history, weak evidence if a single upload) | Already planned: `dev_hashini` → `dev` → `deployment_dev` with merge commits, tags, small commits |
 | Functionality: top level says "adequately tested" | Brief §11: "Functionality against seed data" | Planned `node --test` suite supports it |
 | Architecture: documentation, scalability, reliability, security consideration; top level mentions metrics/monitoring | Brief §11: "Architecture and data model" | **Not** adding monitoring; diagrams and decisions cover documentation. Mention scale/reliability/security honestly in the critical evaluation |
 | Deployment: "all required considerations and suitable technologies" | Brief §11: "Deployment and operation" | Live Render URL, seed, `/docs`, smoke test |

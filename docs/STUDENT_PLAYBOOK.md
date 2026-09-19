@@ -1,6 +1,6 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
-> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. Do steps in order. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central). `qa` is kept but **not deployed**. **`main` is never used.** One deployment: Dev, from `dev`.
+> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. Do steps in order. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch). `deployment_qa` is a marker, never deployed. **`main` is never used.** One deployment: from `deployment_dev`.
 > Tags: `[YOU]` your decision · `[PROPOSAL]` suggestion until you confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper (now in the project; also put the PDF in `refs/whitepaper/`).
 
 ---
@@ -32,7 +32,7 @@
 7. Append the entry to ai-log.md
 8. git add -p && git commit -m "type(scope): summary"
 9. git push origin dev_hashini → open PR into dev ("Create a merge commit") → Dev redeploys → BASE_URL=<dev url> npm test
-10. Phase end only: tag pN on dev (see "Release routine" below)
+10. Phase end only: release dev → deployment_dev by MR, then tag pN (see "Release routine" below)
 ```
 
 Commands can change between Claude Code versions; confirm with `/help`.
@@ -53,7 +53,8 @@ Done when: [exit test from PLAN.md §13].
 # CLAUDE.md — SLSEA Solar Generation API (NB6007CEM CW1)
 
 ## Sources and rules
-- Read PLAN.md and docs/design/my-decisions.md before any task. The brief and white paper outrank them.
+- Read PLAN.md and docs/design/my-decisions.md before any task.
+- Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
 - NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
 - OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
 - Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
@@ -84,10 +85,26 @@ Done when: [exit test from PLAN.md §13].
 - Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope solar:write, national). Everything else is read-only.
 
 ## Git and environment
-- Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev; I open the pull requests.
-- NEVER create, use, merge into or touch main. The qa branch is kept but never deployed and never used: do not touch it.
+- Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
+- Flow: dev_hashini -> MR -> dev -> release MR at phase end -> deployment_dev (Render tracks it; this is the submitted URL).
+- NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
 - Never force-push, squash or rewrite pushed history.
-- One deployment: Dev (Render tracks dev, auto-deploys, database slsea_dev). It is the submitted URL. No QA service or database. GET / also returns environment from APP_ENV.
+- One deployment: deployment_dev (Render service solar-api-dev tracks branch deployment_dev, database slsea_dev). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
+
+## Local course reference library
+- The course reference library is available locally at `refs/course-library/` (a git-ignored symlink to my course folder outside this repo).
+- It holds the current coursework brief, lecture materials, student notes, demonstrations, REST API design guidance, and reference Git repository information.
+- **The WSO2 REST API Design Guidelines v1 white paper is a key reference for this coursework.** Before making REST/API design decisions, consult `wso2_rest_api_design_guidelines-v1.pdf` in that folder.
+- Use the white paper particularly for: URI/resource design, collection and member resources, HTTP methods, status codes, pagination, filtering, sorting, conditional requests, headers, content negotiation, error responses, authentication/authorization, and other REST conventions covered by the coursework.
+- The coursework brief defines what the assignment requires. The white paper and the relevant lecture materials give the technical/design guidance for implementing those requirements.
+- Use the S1-S8 lecture PDFs and student notes to understand the concepts and approaches taught in the module.
+- `ref gits.rtf` describes the provided reference Git repositories. Use those repositories for learning and comparison where relevant.
+- The marking rubric in that folder is OUTDATED (module NIB304CEM, batch 24.1P). Use it only as a hint about possible assessment areas. Never use its marks, criteria or wording as current requirements. The current brief and its section 11 weights rule.
+- Do NOT copy code, report text, diagrams, documentation or other submitted content from the reference repositories or course materials.
+- Do NOT copy a reference implementation just because it uses a particular approach. Adapt the concepts to this project's requirements and documented decisions.
+- If sources appear to conflict, follow the priority list in Sources and rules, name the conflict, and do not silently make a major design decision.
+- The reference library is read-only. Do not modify, rename, delete or generate files inside it.
+- If the reference library cannot be accessed, say so clearly before starting a task that depends on it.
 ```
 
 ---
@@ -95,9 +112,9 @@ Done when: [exit test from PLAN.md §13].
 ## Release routine (branches → deployment)
 
 ```text
-dev_hashini  →  dev  →  Dev deployment   (automatic; the submitted URL)
-qa   kept as a best-practice marker, not deployed
-main never used
+dev_hashini  →(MR)→  dev  →(release MR, phase end only)→  deployment_dev  →  Render  (the submitted URL)
+deployment_qa   kept as a best-practice marker, never deployed
+main            never used
 ```
 
 **After each build step (`dev_hashini` → `dev`)**
@@ -105,22 +122,24 @@ main never used
 ```bash
 git add -p && git commit -m "feat(scope): summary"      # ai-log.md entry in the same commit
 git push origin dev_hashini
-# GitHub: Pull request  base: dev  ←  compare: dev_hashini  → "Create a merge commit" (no squash) → merge
+# GitHub: Merge request (pull request)  base: dev  ←  compare: dev_hashini  → "Create a merge commit" (no squash) → merge
 git switch dev_hashini && git pull origin dev
-BASE_URL=https://<solar-api-dev>.onrender.com npm test      # Dev redeploys automatically; wait for it
 ```
 
-Run the step's tests locally **before** the pull request: the submitted URL auto-deploys on every merge.
+Run the step's tests locally **before** the merge request. Nothing deploys yet: your local `.env` points at `slsea_local`.
 
-**At the end of a phase** — when the phase exit test in `PLAN.md` §13 passes on the Dev URL:
+**At the end of a phase (release `dev` → `deployment_dev`)** — when on an up-to-date `dev`, the full `npm test` and the phase exit test in `PLAN.md` §13 pass locally:
 
 ```bash
-git fetch origin && git tag p2 origin/dev && git push origin p2      # p1…p8
+# GitHub: Merge request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
+# Render deploys automatically (the service tracks deployment_dev). Wait for "Live".
+BASE_URL=https://<solar-api-dev>.onrender.com npm test          # live smoke test
+git fetch origin && git tag p2 origin/deployment_dev && git push origin p2      # p1…p8
 ```
 
-If a deploy breaks: fix on `dev_hashini`, PR into `dev`, tag again (`p2b`). Never move or delete a pushed tag. No squash, no rebase of pushed history, no force-push.
+If GitHub says "no history in common", delete `deployment_dev` and recreate it from `dev`. If a release breaks: fix on `dev_hashini`, MR into `dev`, release again, tag `p2b`. Never move or delete a pushed tag. No squash, no rebase of pushed history, no force-push.
 
-**Freeze:** after the last check, tag `submission` and merge nothing more into `dev` until marking and the viva are done (optionally switch Render's auto-deploy off), otherwise the deployed code and the repo stop matching.
+**Freeze:** after the last live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check that `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev` shows no differences).
 
 ---
 
@@ -142,41 +161,26 @@ VS Code: open the project folder (`code .`), use the integrated terminal (Ctrl+`
 
 GitHub, MongoDB Atlas, Render (sign in with GitHub), Claude Pro.
 
-### A3. Local repo and branches (yours exists and is **empty**: `hashiniRanasinghe/solar-api`)
+### A3. Local repo and branches (your GitHub repo is `hashiniRanasinghe/solar-api`)
 
-Workflow: **work on `dev_hashini`, merge into `dev` by merge request** (GitHub calls it a pull request). A merge request needs a base, so `dev` gets one tiny root commit (`.gitignore` only) first. Everything else, including these docs, goes through the merge request.
+Workflow: **work on `dev_hashini`, merge into `dev` by merge request** (GitHub calls it a pull request); release `dev` → `deployment_dev` by merge request at phase ends.
 
-Extract `solar-api-docs.zip` into the repo root first (overwrite). Then:
+Where you are: `dev` already holds your docs commit. The branches `deployement_dev` and `deployemeny_qa` exist but are **misspelled**, and the default branch is still `dev_hashini`.
+
+1. **Rename the branches on GitHub** (Code → branches → ⋯ → Rename branch): `deployement_dev` → `deployment_dev`, `deployemeny_qa` → `deployment_qa`.
+2. **Check they share history with `dev`:** GitHub → Compare `dev...deployment_dev`. If it says "no history in common", delete the branch and recreate it from `dev` (branch dropdown → type the name → "Create branch from dev").
+3. **Default branch:** Settings → General → Default branch → `dev`.
+4. **Local clean-up and sync:**
 
 ```bash
-git status --short -uall                  # check: no .env, no zip, no __MACOSX
-git log --oneline                         # "does not have any commits yet" = expected in an empty repo
-
-# 1. root commit on dev: .gitignore only
-git symbolic-ref HEAD refs/heads/dev      # names the unborn branch dev (safe on any git version)
-git add .gitignore
-git commit -m "chore: initial commit (.gitignore)"
-git push -u origin dev
-
-# 2. qa: kept as a best-practice marker, never deployed, never used
-git switch -c qa && git push -u origin qa
-
-# 3. my working branch, from dev
-git switch dev
-git switch -c dev_hashini
-
-# 4. commit everything else on dev_hashini
-git add .
-git status                                # last look before committing
-git commit -m "docs: add plan, playbook, decisions, diagrams"
-git push -u origin dev_hashini
-
-git branch -a                             # expect dev, dev_hashini, qa (+ remotes); no main
+git fetch --prune
+git switch dev_hashini
+git pull origin dev
+git branch -a          # expect dev, dev_hashini, deployment_dev, deployment_qa (+ remotes); no main
 ```
 
-If `dev_hashini` already has a commit and `dev` does not exist yet: `git branch dev $(git rev-list --max-parents=0 dev_hashini) && git push -u origin dev`, then continue at step 2 (the `qa` branch).
-
-Then on GitHub: open the merge request (**base `dev` ← compare `dev_hashini`**, "Create a merge commit", no squash) and merge it. Set the **default branch to `dev`** under Settings → Branches so the lecturer sees the real code. If your plan allows branch protection for a private repo, protect `dev` (merge request required); otherwise it is discipline. If GitHub shows a `main` branch, leave it alone.
+5. **Collaborator:** `nirangadh` has a pending invitation. He must accept it. Copy the invite link (copy icon next to "Pending Invite") and send it to him. Screenshot the collaborator list after he accepts.
+6. If your plan allows branch protection for a private repo, protect `dev` and `deployment_dev` (merge request required); otherwise it is discipline. If GitHub shows a `main` branch, leave it alone.
 
 `ai-log.md` entry format:
 
@@ -312,23 +316,25 @@ Update .env.example. Targeted diff.
 
 Atlas: create free M0 cluster → Database Access user → Network Access allow `0.0.0.0/0` (coursework) → copy the **SRV** connection string into `.env`.
 
-**D3. Deploy Dev (do it now, not at the end)**
+**D3. Deploy (do it now, not at the end)**
 
-Atlas: one M0 cluster (you create it). The database name comes from the URI: `slsea_dev`. Use the `mongodb+srv://` string; Network Access allows Render.
+Atlas: one M0 cluster (you create it). Two databases, named by the URI: **`slsea_local`** for your local `.env` and **`slsea_dev`** for the deployed service. Use the `mongodb+srv://` string; Network Access allows Render.
 
 ```text
-Render service - solar-api-dev:  New → Web Service → connect the GitHub repo → Branch: dev → Auto-Deploy: on
+Render service - solar-api-dev:  New → Web Service → connect the GitHub repo → Branch: deployment_dev → Auto-Deploy: on
   Build: npm install   Start: npm start
   Env vars: MONGODB_URI (…/slsea_dev), JWT_SECRET (long random, unique), NODE_ENV=production, APP_ENV=dev
 ```
 
-This is the only deployment (`deployment_dev`) and the URL you submit. `deployment_qa` exists only as a stage name: no QA service, no QA database, and the `qa` branch is its marker.
+`deployment_dev` must contain the app first: finish D1 and D2 on `dev_hashini`, merge into `dev`, then do the first release merge `dev` → `deployment_dev` (see "Release routine"), and create the service after that.
+
+This is the only deployment and the URL you submit. `deployment_qa` is a marker branch only: no service, no database.
 
 ```bash
 curl -i https://<solar-api-dev>.onrender.com/     # 200, "environment":"dev"
 ```
 
-Exit Phase 1: the Dev URL returns 200 over HTTPS, lecturer added, tag `p1` on `dev`.
+Exit Phase 1: the deployed URL returns 200 over HTTPS, lecturer added and accepted, tag `p1` on `deployment_dev`.
 
 ### Phase 2 — Model, seed, hierarchy reads
 
@@ -542,9 +548,9 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 ```
 
 **G2. Final checklist**
-- [ ] The Dev URL (the one submitted) is running the commit tagged `submission`, works and `environment` says `dev` (warm it up 2 minutes before)
+- [ ] The deployed URL (the one submitted) is running the commit tagged `submission` on `deployment_dev`, works and `environment` says `dev` (warm it up 2 minutes before)
 - [ ] The database was re-seeded and topped up shortly before submission and before the viva
-- [ ] Nothing merged into `dev` after the `submission` tag
+- [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev` (Compare shows no differences)
 - [ ] `/docs` loads; demo credentials work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
 - [ ] I can explain every file in `src/`, `scripts/`, `test/`

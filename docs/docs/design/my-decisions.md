@@ -194,7 +194,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - Cite carefully: WP §1 says "Level 1" but describes Level 2 features, and §2 says "Level 2".
 
 ## 16. Open items and limits
-- **Delivery process (`DECIDED · YOU`):** branches `dev_hashini` (mine) and `dev` (central, default branch); `qa` kept as a best-practice marker and **not deployed**; **`main` never touched**; **one deployment, Dev, from `dev`, which is the submitted URL**. `PROPOSAL`: merge-commit PRs, tag `pN` per phase, `submission` tag and freeze; gates in `PLAN.md` §12; diagram `11`.
+- **Delivery process (`DECIDED · YOU`):** branches `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, by merge request at phase ends); `deployment_qa` kept as a best-practice marker and **not deployed**; **`main` never touched**; **one deployment, from `deployment_dev`, which is the submitted URL**. `PROPOSAL`: default GitHub branch `dev`, merge-commit MRs, tag `pN` and `submission` on `deployment_dev`, freeze rule, local database `slsea_local`; gates in `PLAN.md` §12; diagram `11`.
 - **Genuinely OPEN:**
   - OQ-26: 404 on `POST …/readings` (unreachable after the key lookup).
   - OQ-27: is a lower cumulative `energy_kwh` rejected?

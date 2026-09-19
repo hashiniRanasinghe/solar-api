@@ -15,11 +15,11 @@ Conventions: dashed node/edge = not built, out of scope, or refused; a note cont
 | `05-flow-ingest-reading.mmd` | Device pushes a reading: 415 / 400 / 409 / 201 + headers | R2 | **OPEN:** OQ-26, OQ-27 |
 | `06-flow-readings-history.mmd` | Readings history under installation / substation / district / province: 404, 403, 400, 304, 200 | R2 | OQ-04 **DECIDED**; **OPEN:** ETag build (OQ-29) |
 | `07-flow-operational-reads.mmd` | Composite, last-reading, district summary (stretch) | R2 | Summary shape and midnight baseline are proposals |
-| `08-deployment.mmd` | The single Dev deployment (Render from `dev`), Atlas database, seed jobs, env vars, cold start; `qa` shown as not deployed | R4 | Environment and branches **DECIDED**; network rule, top-up script are proposals |
+| `08-deployment.mmd` | The single deployment (Render tracking `deployment_dev`), Atlas databases `slsea_dev` / `slsea_local`, seed jobs, env vars, cold start; `deployment_qa` shown as not deployed | R4 | Branches and deployment **DECIDED**; local DB, network rule, top-up script are proposals |
 | `09-layered-architecture.mmd` | routes → middleware → controllers → services → repositories → MongoDB | R1 | Layering is a proposal |
 | `10-roles-and-permissions.mmd` | Device / reader / admin: allowed, refused (401, 403, 405) | R3 | OQ-03 **DECIDED** |
 | `12-roadmap.mmd` | Start-to-submission roadmap with a "you are here" marker; update the `now` / `done` classes as steps finish | all | Dates are targets; viva date unknown (OQ-25) |
-| `11-branching-and-environments.mmd` | `dev_hashini` → `dev`, auto-deploy to Dev, tags and freeze; `qa` kept undeployed; `main` unused | R4 | Branches and environment **DECIDED**; gates are proposals |
+| `11-branching-and-environments.mmd` | `dev_hashini` → `dev` → `deployment_dev`, release gate at phase end, tags and freeze; `deployment_qa` undeployed marker; `main` unused | R4 | Branches and deployment **DECIDED**; gates are proposals |
 
 ## Additional diagrams considered
 

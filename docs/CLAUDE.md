@@ -1,7 +1,8 @@
 # CLAUDE.md — SLSEA Solar Generation API (NB6007CEM CW1)
 
 ## Sources and rules
-- Read PLAN.md and docs/design/my-decisions.md before any task. The brief and white paper outrank them.
+- Read PLAN.md and docs/design/my-decisions.md before any task.
+- Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
 - NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
 - OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
 - Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
@@ -32,24 +33,23 @@
 - Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope solar:write, national). Everything else is read-only.
 
 ## Git and environment
-- Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev; I open the pull requests.
-- NEVER create, use, merge into or touch main. The qa branch is kept but never deployed and never used: do not touch it.
+- Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
+- Flow: dev_hashini -> MR -> dev -> release MR at phase end -> deployment_dev (Render tracks it; this is the submitted URL).
+- NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
 - Never force-push, squash or rewrite pushed history.
-- One deployment: Dev (Render tracks dev, auto-deploys, database slsea_dev). It is the submitted URL. No QA service or database. GET / also returns environment from APP_ENV.
+- One deployment: deployment_dev (Render service solar-api-dev tracks branch deployment_dev, database slsea_dev). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
 
-**## Local course reference library**
-
-* The complete course reference library is available locally on this development machine at:
-  `/Users/hashiniranasinghe/NIBM/NIBM 4/Web API/Ended with a pass/Ended with a pass/referances`
-* This folder contains the current coursework brief, lecture materials, student notes, demonstrations, REST API design guidance, and reference Git repository information.
-* **The WSO2 REST API Design Guidelines v1 white paper is a key reference for this coursework.** Before making REST/API design decisions, consult:
-  `wso2_rest_api_design_guidelines-v1.pdf`
-* Use the white paper particularly when deciding URI/resource design, collection and member resources, HTTP methods, status codes, pagination, filtering, sorting, conditional requests, headers, content negotiation, error responses, authentication/authorization, and other REST API conventions covered by the coursework.
-* The coursework brief defines what the assignment requires. The white paper and relevant lecture materials provide the technical/design guidance for implementing those requirements.
-* Use the S1–S8 lecture PDFs and student notes to understand the concepts and approaches taught in the module.
-* `ref gits.rtf` contains information about the provided reference Git repositories. Use those repositories for learning and comparison where relevant.
-* Do **not** copy code, report text, diagrams, documentation, or other submitted content directly from the reference repositories or course materials.
-* Do **not** copy a reference implementation simply because it uses a particular approach. Adapt the concepts to this project's requirements and documented decisions.
-* If the coursework brief, white paper, lecture material, and project decisions appear to conflict, identify the conflict and follow the priority defined in the **Sources and rules** section. Do not silently make a major design decision.
-* The reference library is read-only. Do not modify, rename, delete, or generate files inside this folder.
-* If the reference library cannot be accessed, clearly report that before proceeding with a task that depends on it.
+## Local course reference library
+- The course reference library is available locally at `refs/course-library/` (a git-ignored symlink to my course folder outside this repo).
+- It holds the current coursework brief, lecture materials, student notes, demonstrations, REST API design guidance, and reference Git repository information.
+- **The WSO2 REST API Design Guidelines v1 white paper is a key reference for this coursework.** Before making REST/API design decisions, consult `wso2_rest_api_design_guidelines-v1.pdf` in that folder.
+- Use the white paper particularly for: URI/resource design, collection and member resources, HTTP methods, status codes, pagination, filtering, sorting, conditional requests, headers, content negotiation, error responses, authentication/authorization, and other REST conventions covered by the coursework.
+- The coursework brief defines what the assignment requires. The white paper and the relevant lecture materials give the technical/design guidance for implementing those requirements.
+- Use the S1-S8 lecture PDFs and student notes to understand the concepts and approaches taught in the module.
+- `ref gits.rtf` describes the provided reference Git repositories. Use those repositories for learning and comparison where relevant.
+- The marking rubric in that folder is OUTDATED (module NIB304CEM, batch 24.1P). Use it only as a hint about possible assessment areas. Never use its marks, criteria or wording as current requirements. The current brief and its section 11 weights rule.
+- Do NOT copy code, report text, diagrams, documentation or other submitted content from the reference repositories or course materials.
+- Do NOT copy a reference implementation just because it uses a particular approach. Adapt the concepts to this project's requirements and documented decisions.
+- If sources appear to conflict, follow the priority list in Sources and rules, name the conflict, and do not silently make a major design decision.
+- The reference library is read-only. Do not modify, rename, delete or generate files inside it.
+- If the reference library cannot be accessed, say so clearly before starting a task that depends on it.

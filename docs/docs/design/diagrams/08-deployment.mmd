@@ -1,34 +1,38 @@
-%% 08-deployment.mmd - Deployment architecture (one environment: Dev, from branch dev)
+%% 08-deployment.mmd - Deployment architecture (one deployment, from branch deployment_dev)
 %% Basis: BRIEF §7 (public HTTPS API, live Swagger, shared repo), §12 (deployed at submission); LEC S2 (Render, PORT, free-tier sleep); PLAN §5, §12
-%% DECIDED (YOU): branches dev_hashini and dev; qa branch kept but NOT deployed; main never used; the only deployment is Dev, from dev.
-%% Network rule, env var names and top-up script are PROPOSALS. Secret values are never shown or committed.
+%% DECIDED (YOU): branches dev_hashini -> dev -> deployment_dev; deployment_qa is a marker, NEVER deployed; main never used;
+%% the only deployment is Render tracking deployment_dev, and it is the submitted URL.
+%% PROPOSALS: default GitHub branch dev, local database slsea_local, network rule, env var names, top-up script. Secret values are never shown.
 flowchart LR
   subgraph DEVBOX["Developer machine - Mac, VS Code, Claude Code"]
-    CODE["Local repo on branch dev_hashini"]
+    CODE["Local repo on branch dev_hashini<br/>local .env uses slsea_local"]
     SEEDJOB["scripts/seed.js and top-up<br/>run manually before submission and viva"]
   end
 
-  GH["GitHub repo<br/>branches dev_hashini, dev, qa<br/>default branch dev, main unused<br/>lecturer nirangadh is a collaborator"]
+  GH["GitHub repo hashiniRanasinghe/solar-api<br/>dev_hashini, dev, deployment_dev, deployment_qa<br/>default branch dev, main unused<br/>lecturer nirangadh is a collaborator (invite must be accepted)"]
 
   subgraph RD["Render free web service - HTTPS"]
-    DAPP["deployment_dev = Render service solar-api-dev<br/>tracks branch dev<br/>AUTO-deploy on every push<br/>APP_ENV=dev, JWT_SECRET<br/>URL to submit"]
+    DAPP["deployment_dev = Render service solar-api-dev<br/>tracks branch deployment_dev<br/>deploys on each release merge<br/>APP_ENV=dev, JWT_SECRET<br/>URL to submit"]
   end
 
-  ATLAS[("MongoDB Atlas M0<br/>database slsea_dev<br/>mongodb+srv URI<br/>Network Access allows Render")]
+  subgraph ATLAS["MongoDB Atlas M0 cluster - mongodb+srv URI, Network Access allows Render"]
+    DDB[("database slsea_dev<br/>deployed data")]
+    LDB[("database slsea_local<br/>local runs and tests")]
+  end
 
   CLIENTS["Devices, users, marker<br/>HTTPS only"]
 
-  CODE -- "git push dev_hashini, then PR into dev" --> GH
-  GH -- "auto-deploy on push to dev" --> DAPP
-  DAPP -- "TLS" --> ATLAS
-  SEEDJOB -- "seed and recent readings" --> ATLAS
+  CODE -- "git push dev_hashini, MR into dev" --> GH
+  GH -- "release MR dev to deployment_dev triggers deploy" --> DAPP
+  DAPP -- "TLS" --> DDB
+  SEEDJOB -- "seed and recent readings" --> DDB
+  CODE -- "local run" --> LDB
   CLIENTS -- "HTTPS" --> DAPP
-  CODE -. "local run uses the same database" .-> ATLAS
 
-  NOQA["deployment_qa: defined, NOT created<br/>qa branch kept as its marker<br/>(no QA service, no QA database)"]
+  NOQA["deployment_qa: marker branch, NOT deployed<br/>(no QA service, no QA database)"]
   GH -.-> NOQA
 
-  NOTE["Free tier sleeps when idle:<br/>first request can take about 30 s (LEC S2).<br/>Warm the service before demos and the viva.<br/>Freeze merges into dev after the submission tag"]
+  NOTE["Free tier sleeps when idle:<br/>first request can take about 30 s (LEC S2).<br/>Warm the service before demos and the viva.<br/>Freeze dev and deployment_dev after the submission tag"]
   NOTE -.-> DAPP
 
   classDef note fill:#fff8e1,stroke:#c9a227,stroke-dasharray:4 3
