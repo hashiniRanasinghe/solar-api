@@ -1,0 +1,5 @@
+touch docs/design/.gitkeep
+touch docs/evidence/.gitkeep
+touch src/.gitkeep
+touch scripts/.gitkeep
+touch test/.gitkeep
