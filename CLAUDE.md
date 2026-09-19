@@ -5,6 +5,7 @@
 - Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
 - NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
 - OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
+- SECRETS: NEVER open, read, print, create, edit or copy .env, any *.env file, atlas-credentials* or any file that may hold a password, key or connection string. Not with Read, cat, awk, grep or any shell command. I create .env myself. To check that a variable is set, use a command that does not print it. If a secret was printed anywhere, say so immediately.
 - Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
 - After each change: state which requirement ID (PLAN.md section 2) it serves and how to test it.
 
