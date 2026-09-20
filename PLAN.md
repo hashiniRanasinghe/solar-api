@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status:** Phase 0 (planning) done. **No application code yet.** Updated 2026-09-19 (rev 10: branches `dev_hashini` → `dev` → `deployment_dev` (deploy branch); `deployment_qa` kept as an undeployed marker; `main` never used; 14 diagrams).
+> **Status:** Phase 1 nearly done (local skeleton: Express + Mongoose connection, pushed on `dev_hashini`). Updated 2026-09-20 (rev 12: **local-first** — all development, database work and tests run locally; Azure App Service is used only for a short smoke deploy (25–27 Sep, deleted afterwards) and the final deploy (1 Oct); Azure requirements are built in from the start; deployment by one GitHub Actions workflow).
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback exist. Brief §14 ("make good the original submission") therefore does not apply; nothing to remediate. Treat the brief, white paper and lectures as the only sources.
 
@@ -30,7 +30,7 @@
 | Lecturer repo `dev` | Lecture material only. No code, no white paper |
 | Reference 3: `gimnakatugampala/WebAPIDev-Test`, branch `dev/05-07-2026` | Early snapshot (taxi domain, ~Day 3): in-memory seed, no auth, no tests, Azure deploy, Express 5. **Learn from / avoid, not copy:** base path `/v1/api/` (not WP §5.4 form) and a **global `/pings` collection** (the trap in `[LEC S3/S4]`). Its `project.md` is a planning-doc example only. Later branches (`12-07-2026-dev`) add auth; not reviewed |
 | Reference 2: `PruthuviDe/WebAPIDev_Test` (classmate repo) | Taught system (police vehicles), MongoDB + JWT. No Swagger, no tests, error body is `{error}` only. Its README describes S9–S10 — **second-hand, unverified** |
-| Your repo `hashiniRanasinghe/solar-api` | **Not inspected** (not reachable from my side) |
+| Your repo `hashiniRanasinghe/solar-api` | **Reviewed 2026-09-20 from a ZIP.** Code as approved; `.env` untracked. Found and fixed: corrupted `.gitignore`, junk `.gitkeep`, nested `docs/docs/design`. `.env` was inside the shared ZIP, so the Atlas password was rotated. Docs still said Render until this revision |
 
 Remaining gaps: rubric bands, S3/S4 files, S9–S15 (OQ-01). Where a lecture note and the white paper disagree, the white paper is the design authority (brief cover) — see §4a.
 
@@ -40,7 +40,7 @@ Remaining gaps: rubric bands, S3/S4 files, S9–S15 (OQ-01). Where a lecture not
 
 | Hard gate `[BRIEF §12]` | Done? |
 |---|---|
-| Public HTTPS API on Render, seeded, operational at submission time | [ ] |
+| Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] |
 | Live OpenAPI/Swagger from the deployment (`/docs`) | [ ] |
 | Repo shared with module leader as collaborator; incremental commits | [ ] |
 | Report 2250–2750 words with the six required sections | [ ] |
@@ -55,7 +55,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 
 | ID | Requirement | Source | Rubric area | Done |
 |---|---|---|---|---|
-| G1 | Public HTTPS URL, populated with seed data, operational at submission | §7.1, §12, §13 | Deployment | [ ] |
+| G1 | Azure App Service web app (final deploy); GitHub Actions workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS (smoke and final deploys); T02 collections non-empty |
 | G2 | Live OpenAPI (Swagger) surface served from the deployment | §7.2 | Deployment / API design | [ ] |
 | G3 | Git repo shared with module leader; incremental commit history | §7.3, §12, §13 | Deployment | [ ] |
 | G4 | Report 2250–2750 words, 6 identifiable sections (see §11) | §8, §12 | Report | [ ] |
@@ -107,13 +107,17 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | URI path segments: lowercase, hyphens, no underscores/camelCase, plural collections, singular atomic | `[WP §5.1]` |
 | Readings only as a scoped collection; **no global `/readings`**, no `/devices` | `[WP §4.6, §5.6]` |
 | Data model before URLs | `[YOU]` `[BRIEF App. A]` |
-| Stack: Node ≥ 18, Express, MongoDB Atlas, Render (`process.env.PORT`), Swagger/OpenAPI | `[YOU]` |
+| Stack: Node ≥ 18, Express, MongoDB Atlas, **Azure App Service (Linux, Node)** (`process.env.PORT`), Swagger/OpenAPI | `[YOU]` (Render replaced on 2026-09-20, OQ-31) |
 | **Writable:** readings (POST, device only) and installations (POST/PUT/DELETE, admin only). **Read-only:** hierarchy, users, derived resources | `[YOU]` (OQ-03) |
 | **Readings by jurisdiction:** path-scoped collections under `/substations/{id}`, `/districts/{id}`, `/provinces/{id}` (GET only) plus under installations; jurisdiction in the path, time window/sort/pagination in the query | `[YOU]` (OQ-04) |
 | Noun sub-resources for derived resources (`last-reading`, `generation-summary`); the words "processing function" never appear in a URI | `[YOU]` (OQ-21) |
 | Hierarchy top-level with query filters; `/substations`; string IDs (`INS-0001`), Mongo `_id` hidden; Mongoose | `[YOU]` (OQ-05, 06, 07, 19) |
 | Seed: 9 / 25 / **40 substations / 240 installations**, 15-minute readings for 7 days (≈161,000); derived `district_id`/`province_id` stored read-only, proven by a seed integrity check | `[YOU]` |
-| **Branches:** `dev_hashini` (my working branch) → `dev` (central) → **`deployment_dev`** (deploy branch, updated by merge request from `dev`); **`deployment_qa`** kept as a best-practice marker, **never deployed**. **`main` is never touched.** **One deployment, from `deployment_dev`; it is the URL that gets submitted** | `[YOU]` |
+| **Branches:** `dev_hashini` (my working branch) → `dev` (central, default branch) → **`deployment_dev`** (deploy branch, updated by merge request from `dev` **only at the smoke deploy and the final deploy**); **`deployment_qa`** kept as a best-practice marker, **never deployed**. **`main` is never touched** | `[YOU]` |
+| **Local-first:** all development, server setup, database work and testing run locally (Mac, Node 22, Atlas database `slsea_local`). No Azure deployment during development. Azure requirements are kept in mind (§12a). Reason: limit Azure credit use | `[YOU]` (2026-09-20) |
+| Azure is used twice: a **smoke deploy** (about 25–27 Sep, deleted afterwards) and the **final deploy** (1 Oct, the submitted URL, kept until marking and the viva are done) | `[YOU]` |
+| Deployment by **one GitHub Actions workflow** on push to `deployment_dev` | `[YOU]` (OQ-31); authentication method decided at the smoke deploy (OQ-32) |
+| Local database: Atlas `slsea_local` from the Mac. Deployed database: `slsea_dev` | `[YOU]` (OQ-35) |
 | Deadline **Sun 4 Oct 2026** | `[YOU]` (OQ-17) |
 | `energy_kwh` is a **cumulative** running total (not per interval) | `[BRIEF §3]` confirmed by you |
 | Hierarchy is **derived from `substation_id`**: `district_id`/`province_id` are server-derived, read-only, never client-supplied | `[YOU]` |
@@ -173,10 +177,10 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
 | Device auth | `X-API-Key`, stored as SHA-256 hash, timing-safe compare | `[YOU]` header / `[PROPOSAL]` hashing | Random high-entropy keys don't need bcrypt |
 | Docs | `swagger-ui-express` + `yaml`, spec in `docs/design/openapi.yaml` | `[YOU]` Swagger / `[PROPOSAL]` libs | |
-| Hosting | **One** Render free Web Service, **`solar-api-dev`**, tracking branch **`deployment_dev`**, auto-deploy on every push to that branch (i.e. on each release merge). This is the submitted URL | `[YOU]` | Free services sleep when idle (first hit can take ~30 s `[LEC S2]`) |
-| Tests | Node built-in `node --test` + global `fetch` against `BASE_URL` | `[PROPOSAL]` | Zero extra deps; same suite runs against the live URL |
+| Hosting | **Azure App Service** (Linux, Node 22 LTS), used only for the smoke deploy (Free F1 first, Basic B1 if blocked) and the final deploy (**Basic B1**, paid from the Azure for Students credit, no card). Web app name `solar-api-dev` (add a suffix if taken). Deployed by **one GitHub Actions workflow** when `deployment_dev` is pushed. The final web app is the submitted URL | `[YOU]` Azure (OQ-31) / `[PROPOSAL]` plan sizes, publish-profile authentication (OQ-32) | Read the estimated price when creating the plan; budget alert; delete the smoke resources at once; delete the final plan only after marking and the viva. The F1 tier has a daily compute cap, so it is not used for the final |
+| Tests | Node built-in `node --test` + global `fetch` against `BASE_URL` (default: the local server) | `[PROPOSAL]` | Zero extra deps. Run with `TZ=UTC` to imitate Azure. The same suite runs against the deployed URL at the smoke and final deploys |
 | Dev reload | `node --watch` | `[PROPOSAL]` | No nodemon |
-| **Not used** | TypeScript, Docker, GraphQL, Redis, rate-limit libs, GitHub Actions | `[PROPOSAL]` | Render auto-deploy is enough |
+| **Not used** | TypeScript, Docker, GraphQL, Redis, rate-limit libs; GitHub Actions only for the one deploy workflow (no test or lint pipeline) | `[PROPOSAL]` | Keep the pipeline minimal |
 
 **Dependency set:** `express dotenv cors mongoose jsonwebtoken bcryptjs swagger-ui-express yaml`. No dev dependencies.
 
@@ -188,7 +192,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 flowchart LR
   D[Metering device<br/>X-API-Key] --> R
   U[SLSEA user<br/>JWT Bearer] --> R
-  subgraph API [Express app on Render]
+  subgraph API [Express app: local, then Azure App Service]
     R[routes] --> M[middleware<br/>negotiate · auth · scope · validate · conditional GET · errors]
     M --> C[controllers]
     C --> S[services<br/>scope rules · last reading · summary]
@@ -268,7 +272,7 @@ Fields snake_case, public IDs are string business IDs (`PV-01`, `DT-03`, `SS-001
 - Unique `(installation_id, timestamp)` makes device retries safe (duplicate → 409) — answers "idempotency" for the ingest path `[PROPOSAL]` OQ-09.
 - `capacity_kw` gives a realistic ceiling for seed and validation. Extra fields need one-line justification in the report `[BRIEF §3]`.
 
-**Seed (`scripts/seed.js`)** — minimum `[BRIEF §4]`: 9 provinces, 25 districts, ≥20 substations, ≥200 installations, ≥1 week of readings each. Chosen size `[YOU]`: 40 substations, 240 installations, 15-minute interval × 7 days ≈ 161,000 readings (fits Atlas M0 512 MB). Idempotent, deterministic RNG, batch `insertMany`. Half-sine diurnal curve 06:00–18:00 Asia/Colombo, stored UTC; `energy_kwh` cumulative and non-decreasing in the seed. **Freshness `[YOU]` (requirement) / mechanism `[PROPOSAL]`:** window ends at run time; `seed:top-up` appends readings from each installation's newest reading to "now" (safe to re-run via the unique installation+timestamp rule); run both before submission and before the viva; README states "data as of". No background generator on Render. Night-time readings are 0 kW by design, so current total power can legitimately be 0 outside daylight. Also seeds demo users and per-installation device keys (hashes only stored); demo credentials documented (OQ-15).
+**Seed (`scripts/seed.js`)** — minimum `[BRIEF §4]`: 9 provinces, 25 districts, ≥20 substations, ≥200 installations, ≥1 week of readings each. Chosen size `[YOU]`: 40 substations, 240 installations, 15-minute interval × 7 days ≈ 161,000 readings (fits Atlas M0 512 MB). Idempotent, deterministic RNG, batch `insertMany`. Half-sine diurnal curve 06:00–18:00 Asia/Colombo, stored UTC; `energy_kwh` cumulative and non-decreasing in the seed. **Freshness `[YOU]` (requirement) / mechanism `[PROPOSAL]`:** window ends at run time; `seed:top-up` appends readings from each installation's newest reading to "now" (safe to re-run via the unique installation+timestamp rule); run both before submission and before the viva; README states "data as of". No background generator on the server (Azure). Night-time readings are 0 kW by design, so current total power can legitimately be 0 outside daylight. Also seeds demo users and per-installation device keys (hashes only stored); demo credentials documented (OQ-15).
 
 Old plan's seed (76 installations, ~14,600 readings) is **below brief scale** (§4: 200+ installations) and must be regenerated.
 
@@ -292,7 +296,7 @@ Old plan's seed (76 installations, ~14,600 readings) is **below brief scale** (�
 | Secrets | `.env` git-ignored; `.env.example` committed; **no hard-coded fallback secrets** (classmate repo has one — don't repeat) | config | `[PROPOSAL]` |
 | Injection | Validate types on every query/body value; reject objects where strings expected (NoSQL operators) | `validate.js` | `[PROPOSAL]` |
 | Input limits | `limit` capped; body size limit; range checks on `power_kw`, `voltage`, `energy_kwh` | `validate.js` | `[PROPOSAL]` |
-| Transport | HTTPS via Render; JWT short expiry | deploy | `[LEC S7]` |
+| Transport | HTTPS via Azure App Service (HTTPS Only on); JWT short expiry | deploy | `[LEC S7]` |
 | Error leakage | Central handler; no stack traces to client | `errorHandler.js` | `[PROPOSAL]` |
 | CORS | `cors` enabled; backend-only API | `app.js` | `[PROPOSAL]` |
 
@@ -304,10 +308,11 @@ Brief mandates no automated tests. Tests are for **my confidence, viva evidence 
 
 | Level | What | How |
 |---|---|---|
-| Contract/behaviour | Status, headers, shapes per endpoint | `node --test test/` with `fetch`; `BASE_URL` env picks local or the live Render URL |
+| Contract/behaviour | Status, headers, shapes per endpoint | `node --test test/` with `fetch`; `BASE_URL` defaults to the local server and can point at the deployed URL |
 | Seed integrity | Counts, FK integrity, derived `district_id`/`province_id` match their parents, ≥1 week/installation, newest reading is recent after top-up | `test/seed.test.js` via API + one script check |
 | Security matrix | 401 vs 403 vs 200 per client type | `test/auth.test.js` (device key, wrong key, user in/out of scope, no creds) |
-| Live smoke | Same suite pointed at Render before every submission step | `BASE_URL=https://<app>.onrender.com npm test` |
+| Live smoke | Same suite against the deployed URL — **only at the smoke deploy and the final deploy** | `BASE_URL=https://<app-name>.azurewebsites.net npm test` (copy the real hostname from the portal) |
+| Production-mode rehearsal | Proves the app runs from repo contents only, as on Azure | Fresh clone in a temp folder, `npm ci --omit=dev`, then `TZ=UTC NODE_ENV=production PORT=8080 node --env-file=<a git-ignored env file> src/server.js`; run at the end of Phase 1, Phase 4 and Phase 8 |
 | Manual evidence | `curl -i` outputs and Swagger screenshots for the report | saved under `docs/evidence/` |
 
 Write-path tests leave data behind (append-only); they use future-unique timestamps so re-runs don't collide.
@@ -334,7 +339,7 @@ Write-path tests leave data behind (append-only); they use future-unique timesta
 | R1 Architecture & data model | ER diagram; entity table; sample installation JSON showing `meter_id` and no `last_*` fields; reading count via API (time series); snake_case, JSON media-type reason; layer diagram |
 | R2 API design | Resource map with type (atomic/collection/composite/processing) and trigger; §5.1/§5.6 check per URI; method table (safe/idempotent); `curl -i` for 200/201/304/400/404/406/412; pagination, filter, sort, conditional GET examples; error-schema sample |
 | R3 Security | Write-read split diagram; scheme table with reasons; 401/403 matrix transcripts; district-A user denied on district B; key hashing evidence |
-| R4 Deployment | Live URL (the submitted environment); Render services + env var names (no values); Atlas databases; `/docs` screenshot; seed counts; **branch/environment diagram (`11`) and PR/merge history**; `git log --oneline --graph`; cold-start note |
+| R4 Deployment | Final live URL; Azure web app and plan settings + app setting names (no values); the workflow file and a successful Actions run; Atlas databases; `/docs` screenshot; seed counts; smoke-deploy findings (region, auth method, timings, problems); `git log --oneline --graph`; branch/environment diagram (`11`); cost note (credit used, budget alert) |
 | R5 Richardson | Level 0/1/2 evidence per level; where and why it stops short of 3 (no hypermedia controls; pagination links are not HATEOAS); cite WP §1 carefully — it says "Level 1" but describes Level 2 |
 | R6 Critical evaluation | Test results; known limits (free-tier cold start, no rate limiting, etc.); "what I'd change" list |
 | Outside word count | Signed declaration; AI-disclosure appendix from `ai-log.md`; diagrams, tables, code listings, references `[BRIEF §8]` |
@@ -343,27 +348,28 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 
 ---
 
-## 12. Git, branching and environments
+## 12. Git, branching and environments (local-first)
+
+**Approach `[YOU]` (2026-09-20):** develop, run and test everything locally. Azure is used only for a short **smoke deploy** (about 25–27 Sep, deleted afterwards) and the **final deploy** (1 Oct), to limit credit use. Azure requirements are respected during development (§12a).
 
 **Branches `[YOU]`** — `main` is **never used**. Do not create, commit to, merge into or delete it.
 
 | Branch | Role | Who commits | Deployed? |
 |---|---|---|---|
 | `dev_hashini` | My working branch: all daily commits happen here (Claude Code works here too, under my review) | Me | No; runs locally against `slsea_local` |
-| `dev` | Central integration branch and the **default branch on GitHub** `[PROPOSAL]`. Receives my work only by merge request (a pull request on GitHub) | Nobody directly | No |
-| `deployment_dev` | **Deploy branch.** Receives `dev` by merge request at release points only. The Render service tracks it. Tags `pN` and `submission` live here | Nobody directly | **Yes: the only deployment, automatically on every push to this branch** |
-| `deployment_qa` | Kept as a marker of best practice (a QA stage exists in the process). **Never deployed**, no QA service, no QA database | Nobody | **No** |
+| `dev` | Central integration branch and the **default branch on GitHub**. Receives my work only by merge request. Tags `pN` live here `[PROPOSAL]` | Nobody directly | No |
+| `deployment_dev` | **Deploy branch.** Updated by merge request from `dev` **only at the smoke deploy and the final deploy**. Pushing to it triggers the GitHub Actions workflow. Tag `submission` lives here | Nobody directly | Only at those two moments |
+| `deployment_qa` | Kept as a marker of best practice. **Never deployed**, no QA service, no QA database | Nobody | **No** |
 
-**Flow:** `dev_hashini` → MR → `dev` → (release MR, phase end only) → `deployment_dev` → Render. `deployment_qa` is left where it is.
+**Flow:** `dev_hashini` → MR → `dev`. At the smoke deploy and the final deploy: `dev` → release MR → `deployment_dev` → GitHub Actions → Azure App Service.
 
-**Deployment `[YOU]`** (OQ-30: one deployment, from `deployment_dev`)
+**Where things run `[YOU]`**
 
-| Stage | Branch | Render service | Deploys | Atlas database | Env vars | Purpose |
-|---|---|---|---|---|---|---|
-| `deployment_dev` | `deployment_dev` | `solar-api-dev` (underscores are not valid in URLs) | automatically on every push to `deployment_dev` (only release merges land there) | `slsea_dev` | `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `APP_ENV=dev` | **The submitted URL** |
-| `deployment_qa` | `deployment_qa` | none | never | none | none | Marker only |
-
-**Local database `[PROPOSAL]`:** local runs and tests use a separate database `slsea_local` (same Atlas cluster, set in the local `.env`), so test writes and seed experiments never touch the data behind the submitted URL.
+| Where | Branch | Database | Purpose |
+|---|---|---|---|
+| Local (Mac, Node 22) | `dev_hashini` | Atlas `slsea_local` (free cloud database) | All development and tests |
+| Azure **smoke** deploy, Fri 25 Sep | `deployment_dev` | `slsea_dev` | Throwaway proof that deployment works. Delete the Azure resources afterwards |
+| Azure **final** deploy, Thu 1 Oct | `deployment_dev` | `slsea_dev` (top-up) | **The submitted URL.** Keep it until marking and the viva are done |
 
 **Rules `[PROPOSAL]`**
 
@@ -371,16 +377,17 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 |---|---|---|
 | `dev_hashini` → `dev` | After each build step (D1, D2, …) | Runs locally, step tests pass, explain-back done, `ai-log.md` updated in the same commit. Merge the MR with **"Create a merge commit"** (no squash) |
 | Keep in sync | After each MR merged into `dev` | `git switch dev_hashini && git pull origin dev` |
-| Release `dev` → `deployment_dev` | End of a phase only | On a clean, up-to-date `dev`: full `npm test` and the phase exit test (§13) pass locally. Then merge request `dev` → `deployment_dev` (merge commit). Render deploys |
-| Check live | After every release | `BASE_URL=<deployment url> npm test` smoke; then tag `pN` on the `deployment_dev` tip |
-| Broken release | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag |
-| Freeze | After the last live check | Tag `submission` on `deployment_dev`. Merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done, so the repo the marker sees matches the deployed code |
+| Tag a phase | End of each phase | Local tests and the phase exit test (§13) pass. Tag `pN` on the `dev` tip |
+| Smoke deploy | Fri 25 Sep, after Phase 4 | Runbook §12b. Release MR `dev` → `deployment_dev`; workflow deploys; seed `slsea_dev`; live tests; findings recorded; **delete the Azure resource group** |
+| Freeze | Wed 30 Sep, end of Phase 8 | Code frozen: full local tests green, rehearsal passes. Only fixes for real problems after this |
+| Final deploy | Thu 1 Oct | Runbook §12b. Release MR; tag `submission` on `deployment_dev`; create the app; deploy; top-up seed; live smoke tests; screenshots |
+| After the final deploy | Until marking and the viva are done | Merge nothing into `dev` or `deployment_dev`, so the repo the marker sees matches the deployed code. Check `dev` = `deployment_dev` |
+| Broken deploy | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag |
 
-- One deployed database (`slsea_dev`). Demo credentials in the README belong to it. Re-seed and top-up shortly before submission and before the viva, from the Mac with the deployed URI (check the database name the script prints).
-- OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`.
-- `GET /` also returns `environment` (from `APP_ENV`) `[PROPOSAL]`.
-- No GitHub Actions: Render's auto-deploy on `deployment_dev` is enough.
-- Branch names are spelled `deployment_dev` and `deployment_qa`. Rename any misspelled branch on GitHub (Branches page → rename) before use.
+- OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`. `GET /` also returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure) `[PROPOSAL]`.
+- **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually). It is written on `dev_hashini` and arrives through `dev` like any other file. Azure's Deployment Center must **not** commit it for us. Authentication method (publish profile with basic authentication, OIDC, or Azure CLI ZIP fallback) is decided at the smoke deploy (OQ-32).
+- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva.
+- Branch names are spelled `deployment_dev` and `deployment_qa`.
 
 **Other rules**
 
@@ -388,56 +395,97 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 |---|---|
 | History | Small commits, one logical step each. **No squash, no rebase of pushed history, no force-push.** Merge commits keep the incremental history the brief asks for `[BRIEF §7.3, §13]` |
 | Format | `type(scope): summary` — `feat`, `fix`, `docs`, `test`, `chore`, `refactor` |
-| Tags | `p1`…`p8` and `submission`, on `deployment_dev` |
-| Protection | If your GitHub plan allows it for a private repo, protect `dev` and `deployment_dev` (merge request required). Otherwise the rule is discipline: never commit directly to them |
+| Tags | `p1`…`p8` on `dev`; `submission` on `deployment_dev` |
+| Protection | If your GitHub plan allows it for a private repo (the Student Pack's GitHub Pro should), protect `dev` and `deployment_dev` (merge request required). Otherwise discipline: never commit directly to them |
 | Common history | A merge request needs shared history. If GitHub says "no history in common" for `dev` → `deployment_dev`, delete that branch and recreate it from `dev` |
-| Secrets | `.env`, `node_modules/`, `refs/`, `seed-keys.txt` git-ignored; `.env.example` committed; rotate anything ever committed |
+| Secrets | `.env`, `.env.*`, `refs/`, `*.zip`, `seed-keys.txt`, publish profiles are git-ignored; `.env.example` committed. Never share a ZIP that contains `.env`. Rotate anything exposed |
 | Reference repos | Cloned into `refs/` only. **Never copy code from the classmate repos** |
-| Collaborator | Lecturer **`nirangadh`** (https://github.com/nirangadh): invitation sent, **must be accepted by him**; screenshot the list after acceptance. Default branch `dev` |
-| AI log | Append to `ai-log.md` in the same commit as the change |
+| Collaborator | Lecturer **`nirangadh`** (https://github.com/nirangadh): invitation sent, **must be accepted by him**; screenshot the list after acceptance |
+| AI log | Claude Code appends factual entries (CLAUDE.md rule); I fill the review lines and add the chat sessions |
 
-**Risks to know `[PROPOSAL]`:** a marker looking for `main` finds nothing, so the default branch must be `dev`; a `deployment_qa` branch with no QA deployment may prompt a viva question, and the answer must be yours ("kept as a marker of a QA stage; this assignment deploys one environment"); the release merge is a manual step, so forgetting it leaves the live URL behind `dev`. Check before submission that `dev` and `deployment_dev` are identical.
+**Risks to know `[PROPOSAL]`:** a marker looking for `main` finds nothing, so the default branch must be `dev`; a `deployment_qa` branch with no QA deployment may prompt a viva question, and the answer must be yours ("kept as a marker of a QA stage; this assignment deploys one environment"); the release merge is manual, so forgetting it leaves the live URL behind `dev`; deferring deployment concentrates deployment risk into the last week, which the smoke deploy and the zero-cost validation are meant to reduce.
+
+---
+
+## 12a. Azure readiness (rules during development)
+
+| Area | Rule |
+|---|---|
+| Port and config | Listen only on `process.env.PORT`. All configuration is environment variables. There is no `.env` in production and `dotenv` never overrides existing variables |
+| Node version | Local Node 22 = Azure runtime Node 22 LTS. `engines` stays `>=18` |
+| Clean start | `npm ci --omit=dev && npm start` works from a fresh clone using only env vars. Keep `package-lock.json` in sync. Runtime packages belong in `dependencies` |
+| File-name case | Mac is case-insensitive, Linux is not: every `require` path must match exact case |
+| Timezone | Azure runs in UTC. Compute the Asia/Colombo "today" boundary explicitly; never rely on the server's local time. Run local tests with `TZ=UTC` |
+| Memory | Do aggregation (district summary) and paging in the database. Never load thousands of readings into Node |
+| Local state | Write nothing to disk. Log to stdout, never secrets |
+| HTTPS | Azure ends TLS. Keep links and `Location` headers relative; do not assume `http` |
+| Docs | Swagger UI served from the package (no CDN); OpenAPI `servers` is the relative `/solar/v1.0` |
+| Atlas | Network Access `0.0.0.0/0` (already set). Choose the Azure region nearest Mumbai that the student subscription allows (OQ-33) |
+| Errors | Malformed JSON fails inside `express.json()` before auth; the error handler must return the standard error body for it |
+
+---
+
+## 12b. Azure runbook
+
+**Step 0: zero-cost validation (Sun 20 Sep, about 10 minutes).** Azure portal → Create a resource → Web App. Subscription "Azure for Students", new resource group, name `solar-api-dev` (suffix if taken), Publish: Code, Runtime: Node 22 LTS, OS: Linux, try Central India, then South India, then Southeast Asia, plan: Basic B1 (read the estimated price). Deployment tab: note the "Basic authentication" option. Monitoring: Application Insights **No** (avoids cost). Press **Review + create** and stop when it says "Validation passed". **Do not click Create.** Record the region, the price estimate and any error (OQ-33). Also check GitHub → repo → Settings → Actions is allowed.
+
+**Step 1: smoke deploy (Fri 25 Sep).**
+
+1. Local: the production-mode rehearsal passes; the workflow file has reached `dev` by merge request.
+2. Azure: create the resource group and web app (F1 first, B1 if blocked). Node 22 LTS, Linux. Basic authentication **enabled** for the publish-profile method. App settings: `MONGODB_URI` (ending `/slsea_dev`), `JWT_SECRET` (new, `openssl rand -hex 32`), `NODE_ENV=production`, `APP_ENV=dev`. HTTPS Only **On**; Always On **On** (B1).
+3. GitHub: repository secret `AZURE_WEBAPP_PUBLISH_PROFILE` (paste the downloaded profile; delete the file afterwards; never commit it), repository variable `AZURE_WEBAPP_NAME`.
+4. Release merge request `dev` → `deployment_dev`. Watch the Actions run and the Azure log stream. Open the URL.
+5. Seed `slsea_dev` from the Mac with a git-ignored env file: `node --env-file=.env.deploy scripts/seed.js` (the script prints the database name first).
+6. `BASE_URL=https://<host> npm test`. Save `curl -i` output.
+7. Write findings (region, authentication method, timings, problems) to `docs/evidence/`.
+8. **Delete the resource group** (removes app and plan), remove the secret, and check Cost Management shows no running resources.
+
+**Step 2: final deploy (Thu 1 Oct).** Repeat steps 2–7 with Basic B1, tag `submission` on `deployment_dev` after the release merge, top-up the seed, take the report screenshots (env values hidden), set a budget alert, and **keep everything running** until marking and the viva are done.
+
+**Fallback.** If neither publish profile nor OIDC works in the university tenant: deploy a ZIP made from the `deployment_dev` tip with Azure CLI (`az webapp deploy`), or the VS Code Azure extension. If Azure is blocked altogether, the app is portable to another host.
 
 ---
 
 ## 13. Phased implementation plan
 
-| Phase | Deliverable | Exit test | Playbook | Model |
+| Phase | Deliverable | Exit test (local unless stated) | Playbook | Model |
 |---|---|---|---|---|
-| **0** | Plan; `my-decisions.md` written by hand; OQ-01…OQ-05 answered | You confirm the plan | B | Coach |
-| **0b** | **Design & diagrams:** 14 diagram sources in `docs/design/diagrams/`, decisions relabelled, OQ-03/04/21 closed. No code | You review decisions + diagrams and say GO | C4 | Coach |
-| **1** | Walking skeleton: repo structure, Express `GET /`, env config, Atlas connect (local `slsea_local`); branches `dev`, `deployment_dev`, `deployment_qa` (marker) and `dev_hashini` exist (no `main`); the Render service is created on branch `deployment_dev` and the first release merge `dev` → `deployment_dev` deploys it; lecturer added and has accepted | `curl -i` on the deployed URL → 200 over HTTPS with `environment: dev`; tag `p1` on `deployment_dev` | A, D1–D3 | Sonnet 5 |
-| **2** | `data-model.md`; models; **full-scale seed**; error contract; hierarchy reads (provinces/districts/substations) with envelope + pagination util | Counts match brief; 404 vs empty collection correct | C1, D4–D6 | Sonnet 5 |
-| **3** | Installations (composite), `last-reading`, per-installation readings history + by-id (no auth yet); shared "readings under a parent" service written so Phase 6 only adds routes | Composite has `last_reading`; history is path-scoped | D7–D8 | Sonnet 5 |
+| **0** | Plan; `my-decisions.md`; open questions answered | You confirm the plan | B | Coach |
+| **0b** | Design and diagrams (14 Mermaid sources), decisions relabelled | You review and say GO | C4 | Coach |
+| **1** | Walking skeleton (Express `GET /`, env config, Mongoose connection to `slsea_local`); repo hygiene done; plan and docs updated to local-first; Azure zero-cost validation; lecturer added | Fresh clone: `npm ci --omit=dev` then production-mode start works; validation screenshot saved | A, D1–D3 | Sonnet 5 |
+| **2** | `data-model.md`; models; **full-scale seed** (+ top-up script); error contract; hierarchy reads with envelope + pagination util | Counts match brief; derived ids correct; 404 vs empty collection correct | C1, D4–D6 | Sonnet 5 |
+| **3** | Installations (composite), `last-reading`, per-installation readings history + by-id; shared "readings under a parent" service | Composite has `last_reading`; history is path-scoped | D7–D8 | Sonnet 5 |
 | **4** | Device write path: `POST readings`, API key auth, 201 + headers, 409 duplicate, 401/403 | Wrong-installation key → 403; `Location` resolves via GET | D9–D10 | Sonnet 5 (auth on Opus 5) |
+| **4b** | **Smoke deploy** on Azure (runbook §12b): workflow, app, seed `slsea_dev`, live tests, findings; then delete the Azure resources | Live `GET /` 200 with `environment: dev`; live suite green; resources deleted | H | Manual |
 | **5** | Users, `POST /login`, JWT with scopes, jurisdiction scope on **all** reads | District user denied on other district; national reads all | D11 | **Opus 5** |
-| **6** | Query surface: `from`/`to`, sort with tie-break, pagination; **readings under substation, district, province** (OQ-04); catalogue filters on `/installations`, `/districts`, `/substations`; conditional GET everywhere; 406 | 304 with empty body proven with curl; jurisdiction histories page cleanly | D12–D14 | Sonnet 5 |
-| **7** | Admin CRUD on installations (roles per OQ-03; PUT + `If-Match` 412, DELETE); district summary (stretch); OpenAPI complete and served at `/docs` | Spec matches real routes | D15–D17 | Sonnet 5 / Opus 5 for spec |
-| **8** | Hardening: tests complete, security review, audit vs requirements, re-seed, live smoke, README, tag `submission` | Live suite green | E1–E3 | Opus 5 |
-| **9** | Report (I write it) + viva prep. Capture evidence from Phase 4 onward | Word count, Turnitin, mock viva | F, G | Coach only |
+| **6** | Query surface: `from`/`to`, sort with tie-break, pagination; readings under substation, district, province; catalogue filters; conditional GET; 406 | 304 with empty body; jurisdiction histories page cleanly | D12–D14 | Sonnet 5 |
+| **7** | Admin CRUD on installations; district summary (stretch); OpenAPI complete and served at `/docs` | Spec matches real routes | D15–D17 | Sonnet 5 / Opus 5 for spec |
+| **8** | Hardening: tests complete, security review, audit vs requirements, production-mode rehearsal, README; **code freeze** | Full local suite green; fresh-clone rehearsal passes | E1–E3 | Opus 5 |
+| **9** | **Final deploy** on Azure: release merge, tag `submission`, create app, deploy, top-up seed, live smoke tests, screenshots | Live suite green on the submitted URL | H | Manual |
+| **10** | Report (I write it) and viva prep; evidence captured from Phase 4 onward | Word count, Turnitin, mock viva | F, G | Coach only |
 
 ### Timeline (OQ-17)
 
-Deadline **Sun 4 Oct 2026** (`[YOU]`, OQ-17; time of day still to be read from the LMS). Today is Sat 19 Sep.
+Deadline **Sun 4 Oct 2026** (`[YOU]`; time of day still to be read from the LMS). Today is Sun 20 Sep.
 
 | Dates | Milestone |
 |---|---|
-| Sat 19 – Sun 20 Sep | Phases 0 and 0b: review decisions and diagrams, resolve blocking OPEN items, say GO |
-| Mon 21 Sep | Phase 1: skeleton live on Render + Atlas; lecturer added |
-| Tue 22 – Wed 23 Sep | Phase 2: data model, full seed, error contract, hierarchy reads |
-| Thu 24 Sep | Phase 3: installations composite, last-reading, history |
-| Fri 25 Sep | Phase 4: device write path |
-| Sat 26 – Sun 27 Sep | Phase 5: users, JWT, jurisdiction scope |
-| Mon 28 Sep | Phase 6: filter, sort, conditional GET, 406 |
-| Tue 29 Sep | Phase 7: admin CRUD, Swagger complete, (stretch summary only if ahead) |
-| Wed 30 Sep | Phase 8: tests, security review, audit, re-seed, **code freeze + tag** |
+| Sun 20 Sep | Phase 1 finish: repo hygiene, docs updated, Azure zero-cost validation, rehearsal |
+| Mon 21 – Tue 22 Sep | Phase 2: data model, full seed, error contract, hierarchy reads |
+| Wed 23 Sep | Phase 3: installations composite, last-reading, history |
+| Thu 24 Sep | Phase 4: device write path |
+| **Fri 25 Sep** | **Phase 4b: smoke deploy**, then delete the Azure resources (can slip to Sat 26 or Sun 27) |
+| Fri 25 – Sat 26 Sep | Phase 5: users, JWT, jurisdiction scope |
+| Sun 27 Sep | Phase 6: filter, sort, conditional GET, 406 |
+| Mon 28 Sep | Phase 7: admin CRUD, Swagger complete, (stretch summary only if ahead) |
+| Tue 29 – Wed 30 Sep | Phase 8: tests, security review, audit, rehearsal, **code freeze** |
 | Fri 25 Sep – Thu 1 Oct | Report evidence captured from Phase 4 onward; report drafted in parallel |
-| Thu 1 Oct | Report draft complete; contradiction check (F2) |
-| Fri 2 Oct | Report final; word count; Turnitin + AI score |
-| Sat 3 Oct | Live smoke test, declaration signed, submit (buffer day) |
+| **Thu 1 Oct** | **Phase 9: final deploy**; report draft complete |
+| Fri 2 Oct | Report final; word count; Turnitin + AI score; contradiction check |
+| Sat 3 Oct | Live smoke re-check, declaration signed, submit (buffer day) |
 | Sun 4 Oct | Deadline |
 
-**This is tight: nine phases in ~11 days.** Cut order if behind: (1) A8 district summary (stretch), (1b) `/provinces/{id}/readings` is the last of the OQ-04 routes to be built and the first of them to drop, because all four share one service, (2) Swagger polish, (3) merge Phases 3+4 and 6+7. Never cut: seed at full scale, device auth, jurisdiction scope, 201 + `Location`, pagination, conditional GET, error schema, live deployment, report evidence. Viva date pending (OQ-25).
+**This is tight.** Cut order if behind: (1) A8 district summary (stretch), (2) `/provinces/{id}/readings` (the last of the OQ-04 routes; all four share one service), (3) Swagger polish, (4) merge Phases 6+7. Never cut: seed at full scale, device auth, jurisdiction scope, 201 + `Location`, pagination, conditional GET, error schema, the final deployment, report evidence. If the smoke deploy slips past Sun 27 Sep, do the runbook's step 0 again and tell me: the buffer for the final deploy shrinks. Viva date pending (OQ-25).
 
 ---
 
@@ -447,7 +495,7 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 
 | Req | Implementation (planned) | Test |
 |---|---|---|
-| G1 | Render service; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS; T02 collections non-empty |
+| G1 | Azure App Service web app; deploy workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS; T02 collections non-empty |
 | G2 | `swagger-ui-express`, `docs/design/openapi.yaml` | T03 `/docs` 200; T04 `/docs.json` parses, lists all paths |
 | G3 | Git workflow §12 | Manual: `git log`, collaborator screenshot |
 | G4–G6 | Report, declaration, viva | Manual checklist |
@@ -508,16 +556,21 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-28 | **OPEN.** How does a newly created installation get a device key? | Return the plain key once in the 201 body (differs from GET) or seed-only keys | P7 |
 | OQ-29 | **OPEN (technical).** ETag construction (Express default vs explicit; strong ETag needed for `If-Match`) | Decide in Phase 6 | P6 |
 | OQ-24 | Should PUT require `If-Match`? WP §9 gives "request must be conditional but no condition specified" as a 403 example | Optional `If-Match` (simpler); if present and stale → 412 | P7 |
-| OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR at release points); `deployment_qa` **kept as a marker, never deployed**; **only one deployment, from `deployment_dev`, is the submitted URL** | Release step is manual, so check `dev` = `deployment_dev` before submission. No QA service, no QA database | P1 |
+| OQ-31 | **DECIDED `[YOU]` 2026-09-20:** host on **Azure App Service** (Azure for Students credit, no card) instead of Render. **Deployment by one GitHub Actions workflow** | Render asked for a card check; Azure credit (US$100, 365 days) needs none. Watch credit use; delete resources per §12b | P1 |
+| OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR **only at the smoke deploy and the final deploy**); `deployment_qa` **kept as a marker, never deployed** | The release step is manual; check `dev` = `deployment_dev` before submission | P1 |
+| OQ-32 | **OPEN until the smoke deploy.** Workflow authentication: publish profile (needs basic authentication on the app), OIDC (may be blocked in the university tenant), or Azure CLI ZIP fallback | Try the publish profile first; record the result in `docs/evidence/` | P4b |
+| OQ-33 | **OPEN until step 0 (zero-cost validation).** Azure region and quota: nearest allowed region to Atlas Mumbai (Central India, South India, Southeast Asia) and whether Basic B1 and Free F1 can be created | Record the result; blocks only the deployment phases | P1 |
+| OQ-34 | **OPEN (technical).** Express 4 (installed) or Express 5? Express 4 needs a small wrapper so async route errors reach the error handler | Decide at the start of Phase 2. Default: keep 4 with the wrapper | P2 |
+| OQ-35 | **DECIDED `[YOU]` 2026-09-20:** local development uses Atlas database `slsea_local` from the Mac; the deployed database is `slsea_dev` | Free cloud database, same driver path as production; no destructive scripts against `slsea_dev` | P1 |
 | OQ-25 | **PENDING:** viva date/format not confirmed | Non-blocking. Ask as soon as it is announced; reserve 3–4 Oct for smoke test/submit regardless | P8 |
 
-**Assumptions:** Render provides HTTPS · Atlas Network Access set to allow Render (`0.0.0.0/0` for coursework) · use the `mongodb+srv://` URI (classmate's history shows TLS failures on Render with the legacy shard URI) · timestamps UTC · no Device entity, so no device CRUD · demo credentials are intentionally public.
+**Assumptions:** Azure App Service provides HTTPS (turn on HTTPS Only) · the smoke deploy and the final deploy are the only Azure spend · Atlas Network Access set to allow Azure (`0.0.0.0/0` for coursework) · use the `mongodb+srv://` URI (the classmate repo's history shows TLS failures with the legacy shard URI on a cloud host) · the student subscription may restrict regions and quotas · timestamps UTC · no Device entity, so no device CRUD · demo credentials are intentionally public.
 
 ---
 
 ## 16. Working rules
 
-- Small diffs; commit after every step on `dev_hashini`; MR to `dev`; release `dev` → `deployment_dev` only at phase end; tag `pN` on `deployment_dev`. Never touch `main`; `deployment_qa` is a marker and is not deployed.
+- Small diffs; commit after every step on `dev_hashini`; MR to `dev`; tag `pN` on `dev` at phase end; release `dev` → `deployment_dev` only for the smoke deploy and the final deploy. Never touch `main`; `deployment_qa` is a marker and is not deployed. Everything else runs locally.
 - Log every AI prompt in `ai-log.md` (chat prompts count).
 - I write all report text; the AI only flags missing evidence, contradictions with code, and rubric gaps.
 - Never copy code from the classmate repo. Reference repos are for understanding only.
@@ -537,10 +590,10 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | Separate **version control** dimension: regular commits over time; top level mentions branching and merging | Partly (brief §7.3/§13 incremental history, weak evidence if a single upload) | Already planned: `dev_hashini` → `dev` → `deployment_dev` with merge commits, tags, small commits |
 | Functionality: top level says "adequately tested" | Brief §11: "Functionality against seed data" | Planned `node --test` suite supports it |
 | Architecture: documentation, scalability, reliability, security consideration; top level mentions metrics/monitoring | Brief §11: "Architecture and data model" | **Not** adding monitoring; diagrams and decisions cover documentation. Mention scale/reliability/security honestly in the critical evaluation |
-| Deployment: "all required considerations and suitable technologies" | Brief §11: "Deployment and operation" | Live Render URL, seed, `/docs`, smoke test |
+| Deployment: "all required considerations and suitable technologies" | Brief §11: "Deployment and operation" | Live deployed URL, seed, `/docs`, smoke test |
 | Report: structured, well referenced | Brief §8 sections | Evidence checklist in §11 |
 | AI-content threshold **5%** (report), code "simple, must explain at viva" | **Current brief: below 15%** (announcement sheet) | Follow **current** 15%. The 5% is outdated. Do not aim only for 15%; write your own prose |
 
 ## 18. Diagrams (Phase 0b)
 
-Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). Syntax-checked with the Mermaid parser; layout not yet viewed.
+Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). +Syntax-checked with the Mermaid parser; layout not yet viewed. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.

@@ -1,6 +1,6 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
-> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. Do steps in order. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch). `deployment_qa` is a marker, never deployed. **`main` is never used.** One deployment: from `deployment_dev`.
+> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. Do steps in order. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy ~25 Sep, final deploy 1 Oct).
 > Tags: `[YOU]` your decision · `[PROPOSAL]` suggestion until you confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper (now in the project; also put the PDF in `refs/whitepaper/`).
 
 ---
@@ -15,6 +15,9 @@
 | Explain-back before the next step | Unexplained artefact forfeits its marks at viva |
 | Never copy code from the classmate repo | Reference repos are for understanding only |
 | No secrets in git. Ever | `.env` ignored, `.env.example` committed |
+| Never keep credential files (for example Atlas's downloaded `.env`) in the repo folder, and never paste a password or connection string into a chat or a prompt | Claude Code once printed a password from such a file. Rotate anything exposed |
+| Local-first: develop, seed and test everything locally. No Azure resources during development except the planned smoke deploy and the final deploy | Limits Azure credit use; Azure readiness rules are in `PLAN.md` §12a |
+| Never share a ZIP that contains `.env`, and never upload one to a chat | The Atlas password had to be rotated after that happened |
 | Brief > white paper > lecture notes > `PLAN.md` | If a prompt result contradicts them, the prompt result is wrong |
 
 ---
@@ -29,10 +32,10 @@
 4. Approve → Claude edits. Read the diff:   git diff
 5. Run it + run the tests for this step:   npm run dev   /   npm test
 6. Explain-back: ask "Quiz me on <file>" (E1). If I can't answer, I don't commit.
-7. Append the entry to ai-log.md
+7. Claude Code appends the factual entry to ai-log.md (CLAUDE.md rule). You read it and fill the two review lines
 8. git add -p && git commit -m "type(scope): summary"
-9. git push origin dev_hashini → open PR into dev ("Create a merge commit") → Dev redeploys → BASE_URL=<dev url> npm test
-10. Phase end only: release dev → deployment_dev by MR, then tag pN (see "Release routine" below)
+9. git push origin dev_hashini → open MR into dev ("Create a merge commit"). Nothing deploys
+10. Phase end only: tag pN on dev (see "Tagging and deployment routine" below)
 ```
 
 Commands can change between Claude Code versions; confirm with `/help`.
@@ -57,16 +60,29 @@ Done when: [exit test from PLAN.md §13].
 - Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
 - NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
 - OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
+- SECRETS: NEVER open, read, print, create, edit or copy .env, any *.env file, atlas-credentials* or any file that may hold a password, key or connection string. Not with Read, cat, awk, grep or any shell command. I create .env myself. To check that a variable is set, use a command that does not print it. If a secret was printed anywhere, say so immediately.
 - Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
 - After each change: state which requirement ID (PLAN.md section 2) it serves and how to test it.
 
 ## Stack and model
-- Node/Express, Mongoose, MongoDB Atlas, Render, OpenAPI at /docs. Nothing else without asking.
+- Node/Express, Mongoose, MongoDB Atlas, OpenAPI at /docs. Final hosting: Azure App Service (Linux, Node 22 LTS), used only at the end. Exactly one GitHub Actions workflow (deploy only) is allowed, and only when I ask for it. Nothing else without asking.
 - Model: Province > District > Substation > Installation > Reading, plus User. NO Device entity (meter_id is an installation attribute).
 - Installation stores substation_id; district_id/province_id are server-derived, stored read-only, never taken from the client.
 - energy_kwh is CUMULATIVE (running total). String IDs (INS-0001); Mongo _id hidden.
 - No timestamp tolerance or future-time rule. Do not add one.
 - Seed: 9 provinces, 25 districts, 40 substations, 240 installations, 15-minute readings for 7 days, ending at run time; a top-up script appends up to now.
+
+## Local-first development and Azure readiness
+- Do ALL development, database work and testing locally: Node 22 on my Mac, Atlas database slsea_local, tests against the local server with TZ=UTC. Do not deploy, create Azure resources or run az commands unless I ask for that task.
+- Keep Azure App Service (Linux, Node 22 LTS) in mind so the final deployment has no surprises:
+  - Listen only on process.env.PORT. All config comes from environment variables; there is no .env in production and dotenv must not override existing variables.
+  - "npm ci --omit=dev && npm start" must work from a clean clone using only env vars. Keep package-lock.json in sync; runtime dependencies belong in dependencies.
+  - File names and require paths must match exact case (Mac is case-insensitive, Linux is not).
+  - Write nothing to local disk. Log to stdout, never secrets.
+  - Never depend on the server timezone (Azure runs in UTC). Compute Asia/Colombo day boundaries explicitly.
+  - Do aggregation and paging in the database. Never load large collections into memory.
+  - Keep links and Location headers relative; do not assume http. Serve Swagger UI from the package (no CDN); OpenAPI servers is the relative /solar/v1.0.
+  - Malformed JSON fails inside express.json() before auth: the error handler must return the standard error body for it.
 
 ## API
 - Base path /solar/v1.0 (GET /, /docs, /docs.json outside it). URIs: lowercase, hyphens, plural collections, nouns. JSON: snake_case, res.json().
@@ -86,10 +102,18 @@ Done when: [exit test from PLAN.md §13].
 
 ## Git and environment
 - Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
-- Flow: dev_hashini -> MR -> dev -> release MR at phase end -> deployment_dev (Render tracks it; this is the submitted URL).
+- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR at the planned smoke deploy (about 25-27 Sep) and at the final freeze (1 Oct). Azure deploys from it through a GitHub Actions workflow.
 - NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
 - Never force-push, squash or rewrite pushed history.
-- One deployment: deployment_dev (Render service solar-api-dev tracks branch deployment_dev, database slsea_dev). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
+- No deployment during development. Planned: a short throwaway smoke deploy (deleted afterwards) and the final deployment, both Azure App Service via GitHub Actions on push to deployment_dev, database slsea_dev (the final one is the submitted URL). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
+- Do not create or edit .github/workflows, Azure or deployment files, and never handle publish profiles or deployment credentials, unless I ask for that specific task.
+
+## AI log (ai-log.md)
+- When a task finishes (the step's done-when check has run), append ONE entry to ai-log.md before I commit. Write nothing to it during the task. Do not commit.
+- Entry fields: date and time; step id (for example D2); tool and model; branch; Prompt (my prompt(s) for the task, verbatim, secrets redacted); files created or changed (paths); checks run with the result (command and pass/fail, no secrets); requirement IDs served; Outcome (done / partial / failed) with one factual line on anything that failed or was corrected during the task.
+- End every entry with these two lines exactly, for me to fill: `Reviewed by me: (student to fill)` and `Accepted / changed / rejected: (student to fill)`. Never fill them and never invent my review.
+- Facts only. No claims about tests that were not run. Never include passwords, URIs, keys or anything from .env.
+- Append only. Never edit or delete earlier entries. Log a prompt from another tool or the Claude chat only when I ask.
 
 ## Local course reference library
 - The course reference library is available locally at `refs/course-library/` (a git-ignored symlink to my course folder outside this repo).
@@ -109,10 +133,11 @@ Done when: [exit test from PLAN.md §13].
 
 ---
 
-## Release routine (branches → deployment)
+## Tagging and deployment routine (local-first)
 
 ```text
-dev_hashini  →(MR)→  dev  →(release MR, phase end only)→  deployment_dev  →  Render  (the submitted URL)
+dev_hashini  →(MR after each step)→  dev            everything runs locally against slsea_local
+dev          →(release MR)→  deployment_dev  →  GitHub Actions  →  Azure    ONLY at the smoke deploy and the final deploy (Part H)
 deployment_qa   kept as a best-practice marker, never deployed
 main            never used
 ```
@@ -120,26 +145,30 @@ main            never used
 **After each build step (`dev_hashini` → `dev`)**
 
 ```bash
-git add -p && git commit -m "feat(scope): summary"      # ai-log.md entry in the same commit
+git add -p
+git commit -m "feat(scope): summary"
 git push origin dev_hashini
-# GitHub: Merge request (pull request)  base: dev  ←  compare: dev_hashini  → "Create a merge commit" (no squash) → merge
-git switch dev_hashini && git pull origin dev
+git switch dev_hashini
+git pull origin dev
 ```
 
-Run the step's tests locally **before** the merge request. Nothing deploys yet: your local `.env` points at `slsea_local`.
+Between the push and the pull: on GitHub open a merge request (pull request), base `dev`, compare `dev_hashini`, choose "Create a merge commit" (no squash), and merge. Run the step's tests locally **before** the merge request. Nothing deploys.
 
-**At the end of a phase (release `dev` → `deployment_dev`)** — when on an up-to-date `dev`, the full `npm test` and the phase exit test in `PLAN.md` §13 pass locally:
+**At the end of a phase:** when the full local `npm test` and the phase exit test in `PLAN.md` §13 pass:
 
 ```bash
-# GitHub: Merge request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
-# Render deploys automatically (the service tracks deployment_dev). Wait for "Live".
-BASE_URL=https://<solar-api-dev>.onrender.com npm test          # live smoke test
-git fetch origin && git tag p2 origin/deployment_dev && git push origin p2      # p1…p8
+git fetch origin
+git tag p2 origin/dev
+git push origin p2
 ```
 
-If GitHub says "no history in common", delete `deployment_dev` and recreate it from `dev`. If a release breaks: fix on `dev_hashini`, MR into `dev`, release again, tag `p2b`. Never move or delete a pushed tag. No squash, no rebase of pushed history, no force-push.
+Tags `p1`…`p8` go on `dev`. Never move or delete a pushed tag; if you must redo a phase, tag again (`p2b`).
 
-**Freeze:** after the last live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check that `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev` shows no differences).
+**Deployment** happens only twice, in Part H: the smoke deploy (about Fri 25 Sep, deleted afterwards) and the final deploy (Thu 1 Oct). Both use a release merge request `dev` → `deployment_dev`. If GitHub says "no history in common", delete `deployment_dev` and recreate it from `dev`.
+
+**Freeze:** after the final deploy and its live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check that `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev` shows no differences).
+
+No squash, no rebase of pushed history, no force-push.
 
 ---
 
@@ -159,37 +188,35 @@ VS Code: open the project folder (`code .`), use the integrated terminal (Ctrl+`
 
 ### A2. Accounts
 
-GitHub, MongoDB Atlas, Render (sign in with GitHub), Claude Pro.
+GitHub, MongoDB Atlas, Azure for Students (university email), Claude Pro.
 
 ### A3. Local repo and branches (your GitHub repo is `hashiniRanasinghe/solar-api`)
 
-Workflow: **work on `dev_hashini`, merge into `dev` by merge request** (GitHub calls it a pull request); release `dev` → `deployment_dev` by merge request at phase ends.
+Workflow: **work on `dev_hashini`, merge into `dev` by merge request** (GitHub calls it a pull request). `deployment_dev` is updated only for the smoke deploy and the final deploy.
 
-Where you are: `dev` already holds your docs commit. The branches `deployement_dev` and `deployemeny_qa` exist but are **misspelled**, and the default branch is still `dev_hashini`.
+Where you are (2026-09-20): the repo exists with `dev`, `dev_hashini`, `deployment_dev` and `deployment_qa`; the repo hygiene fixes are done. Still to check:
 
-1. **Rename the branches on GitHub** (Code → branches → ⋯ → Rename branch): `deployement_dev` → `deployment_dev`, `deployemeny_qa` → `deployment_qa`.
-2. **Check they share history with `dev`:** GitHub → Compare `dev...deployment_dev`. If it says "no history in common", delete the branch and recreate it from `dev` (branch dropdown → type the name → "Create branch from dev").
-3. **Default branch:** Settings → General → Default branch → `dev`.
-4. **Local clean-up and sync:**
+1. GitHub → Settings → General → **default branch is `dev`**.
+2. **Collaborator:** `nirangadh` must have accepted the invitation. Screenshot the list after he does.
+3. `git fetch --prune && git branch -vv` shows `dev_hashini` and `origin/dev` in step (merge requests merged).
+4. If your plan allows branch protection for a private repo (the Student Pack's GitHub Pro should), protect `dev` and `deployment_dev` (merge request required). If GitHub shows a `main` branch, leave it alone.
 
-```bash
-git fetch --prune
-git switch dev_hashini
-git pull origin dev
-git branch -a          # expect dev, dev_hashini, deployment_dev, deployment_qa (+ remotes); no main
-```
-
-5. **Collaborator:** `nirangadh` has a pending invitation. He must accept it. Copy the invite link (copy icon next to "Pending Invite") and send it to him. Screenshot the collaborator list after he accepts.
-6. If your plan allows branch protection for a private repo, protect `dev` and `deployment_dev` (merge request required); otherwise it is discipline. If GitHub shows a `main` branch, leave it alone.
-
-`ai-log.md` entry format:
+`ai-log.md` entry format (Claude Code writes the facts; you write the last two lines):
 
 ```text
-## YYYY-MM-DD — <step id>
-Tool/model:
-Prompt:
-Accepted / changed / rejected:
+## YYYY-MM-DD HH:MM - <step id>
+Tool/model: Claude Code, <model>
+Branch: dev_hashini
+Prompt: <verbatim, secrets redacted>
+Files: <paths created or changed>
+Checks: <command> -> pass/fail
+Requirement IDs: <from PLAN.md section 2>
+Outcome: done | partial | failed - <one factual line>
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
 ```
+
+Prompts you type in the Claude chat (planning, reviews, coaching) are not visible to Claude Code. Add those entries yourself, one per session, in the same format with `Tool/model: Claude chat`.
 
 ### A4. `CLAUDE.md` + reference repos (local only, git-ignored)
 
@@ -316,25 +343,25 @@ Update .env.example. Targeted diff.
 
 Atlas: create free M0 cluster → Database Access user → Network Access allow `0.0.0.0/0` (coursework) → copy the **SRV** connection string into `.env`.
 
-**D3. Deploy (do it now, not at the end)**
+**D3. Local production-mode rehearsal + Azure zero-cost validation (Phase 1 exit)**
 
-Atlas: one M0 cluster (you create it). Two databases, named by the URI: **`slsea_local`** for your local `.env` and **`slsea_dev`** for the deployed service. Use the `mongodb+srv://` string; Network Access allows Render.
+Atlas: one M0 cluster. Two databases, named by the URI: **`slsea_local`** (your `.env`, all development) and **`slsea_dev`** (created at the smoke deploy). Network Access is already `0.0.0.0/0`.
 
-```text
-Render service - solar-api-dev:  New → Web Service → connect the GitHub repo → Branch: deployment_dev → Auto-Deploy: on
-  Build: npm install   Start: npm start
-  Env vars: MONGODB_URI (…/slsea_dev), JWT_SECRET (long random, unique), NODE_ENV=production, APP_ENV=dev
-```
-
-`deployment_dev` must contain the app first: finish D1 and D2 on `dev_hashini`, merge into `dev`, then do the first release merge `dev` → `deployment_dev` (see "Release routine"), and create the service after that.
-
-This is the only deployment and the URL you submit. `deployment_qa` is a marker branch only: no service, no database.
+*Rehearsal — proves the app runs from repo contents only, as it will on Azure.* Create a git-ignored file outside the repo folder or named `.env.rehearsal` (it is covered by `.env.*`) with the same variables as `.env`, then:
 
 ```bash
-curl -i https://<solar-api-dev>.onrender.com/     # 200, "environment":"dev"
+rm -rf /tmp/rehearsal
+git clone --branch dev --single-branch https://github.com/hashiniRanasinghe/solar-api.git /tmp/rehearsal
+cd /tmp/rehearsal
+npm ci --omit=dev
+TZ=UTC NODE_ENV=production PORT=8080 node --env-file=/path/to/.env.rehearsal src/server.js
 ```
 
-Exit Phase 1: the deployed URL returns 200 over HTTPS, lecturer added and accepted, tag `p1` on `deployment_dev`.
+In another terminal: `curl -i http://localhost:8080/` → 200 and `"environment":"local"`. Stop the server. Repeat this rehearsal at the end of Phase 4 and Phase 8. (Never let Claude Code open the env file.)
+
+*Zero-cost Azure validation* — Part H, step H0. It creates nothing.
+
+Exit Phase 1: the rehearsal passes, the validation screenshot is saved in `docs/evidence/`, lecturer accepted the invite, tag `p1` on `dev`.
 
 ### Phase 2 — Model, seed, hierarchy reads
 
@@ -346,7 +373,7 @@ docs/design/data-model.md, then scripts/seed.js: idempotent, deterministic RNG, 
 9 provinces, 25 districts, 40 substations, 240 installations, 7 days x 15-minute readings per
 installation ending at run time, half-sine diurnal curve 06:00-18:00 Asia/Colombo stored in UTC,
 cumulative non-decreasing energy_kwh. derive district_id/province_id from the substation chain (never hand-typed). Also seed demo users and per-installation device keys
-(store only hashes; print the plain keys once to a git-ignored file). Log counts at the end. Print the target database name before it writes anything.
+(store only hashes; print the plain keys once to a git-ignored file). Log counts at the end. Print the target database name before it writes anything. It must work with plain .env and with `node --env-file=<file> scripts/seed.js`.
 ```
 
 Then add `scripts/seed-top-up.js` (append readings from each installation's newest reading up to now; safe to re-run; never wipes). Run against Atlas: `node scripts/seed.js`, later `node scripts/seed-top-up.js` before submission and before the viva. Check counts in the Atlas UI and that the newest reading per installation is recent.
@@ -488,7 +515,7 @@ credentials as demo-only. Check every real route against the spec; list mismatch
 
 ---
 
-## Part E — Review (Phase 8)
+## Part E — Review (Phase 8, all local)
 
 **E1. Explain-back (per module)**
 
@@ -512,7 +539,7 @@ Audit the repo against docs/requirements.md and PLAN.md §14. Table: requirement
 (file or endpoint) | gap. End with the top fixes ranked by marks gained.
 ```
 
-Then: re-run `node scripts/seed.js` against Atlas, run `BASE_URL=https://<app>.onrender.com npm test`, tag `submission`.
+Then: freeze the code, run the production-mode rehearsal (D3), tag `p8` on `dev`. Deployment is Part H.
 
 ---
 
@@ -548,8 +575,9 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 ```
 
 **G2. Final checklist**
-- [ ] The deployed URL (the one submitted) is running the commit tagged `submission` on `deployment_dev`, works and `environment` says `dev` (warm it up 2 minutes before)
-- [ ] The database was re-seeded and topped up shortly before submission and before the viva
+- [ ] The final Azure URL (the one submitted) is running the commit tagged `submission` on `deployment_dev`, works and `environment` says `dev` (warm it up 2 minutes before)
+- [ ] The final Azure app and plan are still running (keep them until marking and the viva are done); the smoke-deploy resources are deleted
+- [ ] `slsea_dev` was topped up shortly before submission and before the viva
 - [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev` (Compare shows no differences)
 - [ ] `/docs` loads; demo credentials work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
@@ -558,10 +586,109 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 
 ---
 
+## Part H — Azure deployment (smoke deploy ~Fri 25 Sep; final deploy Thu 1 Oct)
+
+Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) first.
+
+### H0. Zero-cost validation (Sun 20 Sep, ~10 min, creates nothing)
+
+```text
+Azure portal → Create a resource → Web App
+  Subscription: Azure for Students   Resource group: new (e.g. rg-solar-api)
+  Name: solar-api-dev (suffix if taken)   Publish: Code   Runtime stack: Node 22 LTS   Operating system: Linux
+  Region: try Central India, then South India, then Southeast Asia
+  Pricing plan: Basic B1 — READ the estimated monthly price
+Deployment tab: note the "Basic authentication" option.   Monitoring: Application Insights = No.
+Review + create → wait for "Validation passed" → STOP. Do NOT click Create.
+```
+
+Save a screenshot (hide your email) in `docs/evidence/`, and note the region, the price estimate and any error (OQ-33). Check GitHub → repo → Settings → Actions is allowed.
+
+### H1. Pre-flight (day before each deploy)
+
+- [ ] Production-mode rehearsal passes (D3)
+- [ ] Local suite green with `TZ=UTC`
+- [ ] `package.json` has a `start` script and `engines`; `package-lock.json` in sync
+- [ ] The deploy workflow (H2) is on `dev` by merge request
+- [ ] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code)
+
+### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`; write it on Thu 24 Sep)
+
+```text
+Task: add ONE GitHub Actions workflow that deploys to Azure App Service. Read CLAUDE.md first.
+File: .github/workflows/deploy-deployment-dev.yml. Trigger: push to branch deployment_dev, plus workflow_dispatch.
+permissions: contents read only. One job on ubuntu-latest: actions/checkout@v4, actions/setup-node@v4 with node 22,
+npm ci --omit=dev, then azure/webapps-deploy@v3 with app-name: ${{ vars.AZURE_WEBAPP_NAME }},
+publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: .
+No secret values anywhere in the file, no tests or lint steps, no other workflows. Do not read or create .env or the publish profile.
+Show the file and a plan first; wait for my OK.
+```
+
+Review, log, commit on `dev_hashini`, merge request into `dev`. Azure's Deployment Center must not commit its own workflow.
+
+### H3. Create the web app (Azure portal, ~20 min)
+
+```text
+Create a resource → Web App (same choices as H0). Smoke deploy: try the Free (F1) plan first; if it is blocked use Basic B1. Final: Basic B1.
+Deployment tab: continuous deployment OFF.   Basic authentication: Enable (for the publish-profile method).
+After creation:
+Settings → Environment variables: MONGODB_URI (…/slsea_dev), JWT_SECRET (a NEW value: openssl rand -hex 32), NODE_ENV=production, APP_ENV=dev
+Settings → Configuration → General settings: HTTPS Only = On.   Always on = On (Basic plan).
+Overview → Download publish profile (keep it OUT of the repo folder; delete it after the next step)
+GitHub repo → Settings → Secrets and variables → Actions:
+  new secret   AZURE_WEBAPP_PUBLISH_PROFILE   (paste the whole file content)
+  new variable AZURE_WEBAPP_NAME              (the web app name)
+Cost Management + Billing → Budgets: create a budget alert (for example US$20)
+```
+
+### H4. Release, verify, seed
+
+```bash
+# GitHub: merge request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
+# GitHub → Actions: wait for the run to turn green; Azure → Log stream: look for "Connected to database: slsea_dev"
+curl -i https://<app-name>.azurewebsites.net/
+node --env-file=.env.deploy scripts/seed.js
+BASE_URL=https://<app-name>.azurewebsites.net npm test
+```
+
+Copy the real hostname from the portal (it may carry a suffix). Save the `curl -i` output. The seed prints the database name first: check it says `slsea_dev`.
+
+### H5. Smoke deploy: record and delete
+
+1. Write findings (region, authentication method, timings, problems) to `docs/evidence/` (OQ-32, OQ-33).
+2. **Delete the resource group** (removes app and plan). Remove the GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE`. Check Cost Management shows no running resources.
+
+### H6. Final deploy (Thu 1 Oct)
+
+Repeat H3–H4 with Basic B1. After the release merge, tag `submission` on `deployment_dev`:
+
+```bash
+git fetch origin
+git tag submission origin/deployment_dev
+git push origin submission
+```
+
+Top-up the seed, take the report screenshots (env values hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
+
+### H7. Fallback if the workflow cannot authenticate
+
+```bash
+brew install azure-cli
+az login
+az webapp config appsettings set --resource-group <rg> --name <app-name> --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+git archive --format=zip -o /tmp/solar-api.zip origin/deployment_dev
+az webapp deploy --resource-group <rg> --name <app-name> --src-path /tmp/solar-api.zip --type zip
+```
+
+Check the Azure CLI docs for current option names before relying on this. If Azure is blocked altogether, the app is portable to another host.
+
+---
+
 ## Appendix — cheat sheet
 
 ```bash
-BASE=https://<solar-api-dev>.onrender.com
+BASE=http://localhost:3000/solar/v1.0        # while developing (the API path prefix is /solar/v1.0)
+# after a deploy: BASE=https://<app-name>.azurewebsites.net/solar/v1.0
 curl -i $BASE/installations                                            # 401 (no token)
 TOKEN=$(curl -s -X POST $BASE/login -H 'Content-Type: application/json' \
   -d '{"username":"<demo-user>","password":"<demo-pass>"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token')
@@ -572,13 +699,14 @@ curl -i -X POST $BASE/installations/INS-0001/readings -H "X-API-Key: <key>" \
 curl -i -H "If-None-Match: <etag>" -H "Authorization: Bearer $TOKEN" $BASE/installations/INS-0001   # 304
 ```
 
-(The response field carrying the token is `[PROPOSAL]` — adjust `access_token` to whatever `my-decisions.md` says. Prefix every API path with `/solar/v1.0` (`/`, `/docs` excepted).)
+(The response field carrying the token is `[PROPOSAL]` — adjust `access_token` to whatever `my-decisions.md` says. `/` and `/docs` are outside the `/solar/v1.0` prefix.)
 
 | Problem | Check |
 |---|---|
-| Render service fails to start | Start command is `npm start`; server uses `process.env.PORT` |
-| DB errors only on Render | Use the `mongodb+srv://` URI; Atlas Network Access allows Render |
-| First request very slow | Free tier cold start (up to ~30 s); warm before viva |
-| Seed looks stale ("last reading" is days old) | Re-run `node scripts/seed.js` against Atlas |
+| Azure app fails to start | Check Log stream. `package.json` has a `start` script and the server uses `process.env.PORT`; Node runtime version matches |
+| DB errors only on Azure | App settings hold the right `MONGODB_URI`; Atlas Network Access is `0.0.0.0/0`; use the `mongodb+srv://` URI |
+| First request very slow (deployed) | Free F1 plan sleeps; Basic with Always On does not. Warm the app 2 minutes before the viva |
+| Works on my Mac, fails on Azure | Case-sensitive file names (`require` paths), timezone (Azure is UTC), missing env var, wrong Node version. Re-run the production-mode rehearsal |
+| Seed looks stale ("last reading" is days old) | Run the top-up script against the right database (check the name it prints) |
 | 401 vs 403 confusion | 401 = credential missing or not accepted (+`WWW-Authenticate`) `[WP §9]`. 403 = understood but refused |
 | `git push` rejected | `git pull --rebase`, resolve, push. Never force-push shared history |

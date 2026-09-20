@@ -1,21 +1,19 @@
 # AI usage log
 
-Every prompt (Claude Code and chat) is logged here, in the same commit as the change it produced.
-It becomes the AI-disclosure appendix of the report.
+Entry format (Claude Code writes the facts; I fill the last two lines):
 
-Entry format:
-
-## YYYY-MM-DD - <step id>
+## YYYY-MM-DD HH:MM - <step id>
 Tool/model:
-Prompt:
-What I accepted / changed / rejected:
+Branch:
+Prompt: <verbatim, secrets redacted>
+Files:
+Checks:
+Requirement IDs:
+Outcome: done | partial | failed - <one factual line>
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
 
----
 
-## 2026-09-19 - planning (Claude chat)
-Tool/model: Claude (chat)
-Prompt: planning, decisions, diagrams and process design for the coursework (PLAN.md, STUDENT_PLAYBOOK.md, docs/design/my-decisions.md, docs/design/diagrams/*).
-What I accepted / changed / rejected: (fill in after my review)
 
 ---
 
