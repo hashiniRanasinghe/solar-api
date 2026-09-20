@@ -1,6 +1,6 @@
 # My decisions — SLSEA Solar Generation API
 
-Date: 2026-09-19 (rev 3) · Module: NB6007CEM CW1 · Attempt: fresh submission (no earlier submission, no marker feedback) · Repo: new and empty · Viva: date/format not known yet · Deadline: Sun 4 Oct 2026 (confirmed) · Stack: Node/Express, Mongoose, MongoDB Atlas, Render (`DECIDED · YOU`) · Diagrams: `docs/design/diagrams/` (13)
+Date: 2026-09-20 (rev 4) · Module: NB6007CEM CW1 · Attempt: fresh submission (no earlier submission, no marker feedback) · Repo: local skeleton pushed on `dev_hashini` · Viva: date/format not known yet · Deadline: Sun 4 Oct 2026 (confirmed) · Stack: Node/Express, Mongoose, MongoDB Atlas, Azure App Service (`DECIDED · YOU`, replaced Render on 2026-09-20) · **Local-first: everything is developed and tested locally; Azure only for a smoke deploy and the final deploy** (`DECIDED · YOU`, 2026-09-20) · Diagrams: `docs/design/diagrams/` (14)
 
 **Honest note.** Claude drafted this file from the current brief, white paper (WP), lecture notes (LEC S1–S8), `PLAN.md` and the 3 reference repos. I must read every line, change what I disagree with and be able to explain all of it at the viva. This is logged in `ai-log.md`. The report is written by me.
 
@@ -40,7 +40,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - `DECIDED · BRIEF §4` Seed minimum: 9 provinces, 25 districts, 20+ substations, 200+ installations, 1 week+ of readings per installation, foreign-key consistent, with pagination genuinely needed.
 - `DECIDED · YOU` Seed size: **40 substations, 240 installations, one reading every 15 minutes for 7 days** (about 161,000 readings). `PROPOSAL` Diurnal curve in Asia/Colombo time, stored in UTC.
 - `DECIDED · YOU` The seed must contain **recent/current readings** so every endpoint shows working data.
-- `PROPOSAL` How: the seed window ends at the time the seed is run; a second script tops up each installation from its newest reading to "now" without wiping anything (safe to re-run because of the unique installation+timestamp rule); both are run before submission and before the viva; the README states the "data as of" time. No background job generating fake device data on Render. Readings at night are 0 kW by design, so "current total power" can legitimately be 0 outside daylight.
+- `PROPOSAL` How: the seed window ends at the time the seed is run; a second script tops up each installation from its newest reading to "now" without wiping anything (safe to re-run because of the unique installation+timestamp rule); both are run before submission and before the viva; the README states the "data as of" time. No background job generating fake device data on the host. Readings at night are 0 kW by design, so "current total power" can legitimately be 0 outside daylight.
 
 ## 3. Why no Device entity
 - `DECIDED · BRIEF §3` `meter_id` is an attribute of the installation. One installation has one meter, so a Device entity adds a join and nothing else. The brief calls a needless Device entity a modelling flaw.
@@ -194,16 +194,19 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - Cite carefully: WP §1 says "Level 1" but describes Level 2 features, and §2 says "Level 2".
 
 ## 16. Open items and limits
-- **Delivery process (`DECIDED · YOU`):** branches `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, by merge request at phase ends); `deployment_qa` kept as a best-practice marker and **not deployed**; **`main` never touched**; **one deployment, from `deployment_dev`, which is the submitted URL**. `PROPOSAL`: default GitHub branch `dev`, merge-commit MRs, tag `pN` and `submission` on `deployment_dev`, freeze rule, local database `slsea_local`; gates in `PLAN.md` §12; diagram `11`.
+- **Delivery process (`DECIDED · YOU`):** all development, database work and testing run locally (Mac, Node 22, Atlas database `slsea_local`); branches `dev_hashini` (mine) → `dev` (central, default branch); `deployment_dev` is the deploy branch and is updated by merge request **only for the smoke deploy (about Fri 25 Sep, deleted afterwards) and the final deploy (Thu 1 Oct)**; a GitHub Actions workflow deploys it to Azure App Service; `deployment_qa` kept as a best-practice marker and **not deployed**; **`main` never touched**; the final Azure app is the submitted URL. `PROPOSAL`: merge-commit MRs, tag `pN` on `dev` at phase end, tag `submission` on `deployment_dev`, freeze rule, Azure readiness rules (`PLAN.md` §12a), runbook (`PLAN.md` §12b); diagram `11`.
 - **Genuinely OPEN:**
   - OQ-26: 404 on `POST …/readings` (unreachable after the key lookup).
   - OQ-27: is a lower cumulative `energy_kwh` rejected?
   - OQ-28: how a new installation gets a device key.
   - OQ-29: ETag construction.
+  - OQ-32: workflow authentication to Azure (publish profile, OIDC or CLI ZIP fallback) — decided at the smoke deploy.
+  - OQ-33: Azure region and quota for the student subscription — answered by the zero-cost validation.
+  - OQ-34: Express 4 (installed) or 5.
   - Validation limits (power vs `capacity_kw`, voltage range).
   - External: viva date and format (OQ-25); current-batch rubric not available.
+- **Closed 2026-09-20 (`DECIDED · YOU`):** OQ-31 (Azure App Service instead of Render), local-first development, deployment by one GitHub Actions workflow, OQ-35 (local database `slsea_local`, deployed database `slsea_dev`), a zero-cost Azure validation now and a throwaway smoke deploy around 25–27 Sep.
 - **Closed 2026-09-19 (`DECIDED · YOU`):** OQ-03, 04, 05, 06, 07, 14 (15-minute seed), 17 (deadline Sun 4 Oct 2026), 19 (Mongoose), 21, plus stored derived ids with seed integrity check and the seed size.
 - **Awaiting my yes (`PROPOSAL`, each needed by its phase):** OQ-08 (composite contents), 09 (device timestamp), 12 (403 for out-of-scope, narrowing), 13, 15, 20 (`from`/`to`), 24; tie-break rule; parent-record visibility; today's-energy baseline; top-up script.
 - **Sources not seen:** S3/S4 exist only in the lecturer's repo; S9–S15 are unavailable. WP covers the rules, but I cannot see how the lecturer applies them. Decisions above were made without lecturer confirmation.
-- **Known limits:** no correction of a wrong reading; no key rotation; no rate limiting; Render free tier sleeps; no old-version redirect; no country-wide readings list; one national admin role only; a wrong device clock can store odd timestamps.
-
+- **Known limits:** deployment risk is concentrated in the last week (mitigated by the zero-cost validation, the production-mode rehearsals and the smoke deploy); no correction of a wrong reading; no key rotation; no rate limiting; the Azure credit is finite (delete the plan after marking); no old-version redirect; no country-wide readings list; one national admin role only; a wrong device clock can store odd timestamps.

@@ -9,7 +9,7 @@ flowchart LR
   MKR["Marker / lecturer<br/>reads /docs and the Git repo"]
   BI["Downstream dashboards / BI<br/>OUT OF SCOPE (BRIEF §1)"]
 
-  subgraph RENDER["Render web service - HTTPS"]
+  subgraph HOST["Azure App Service web app - HTTPS (final deploy; development runs locally)"]
     API["SLSEA Solar Generation API<br/>Node / Express<br/>base path /solar/v1.0"]
     DOCS["Swagger UI<br/>/docs and /docs.json"]
   end
