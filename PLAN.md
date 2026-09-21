@@ -55,7 +55,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 
 | ID | Requirement | Source | Rubric area | Done |
 |---|---|---|---|---|
-| G1 | Azure App Service web app (final deploy); GitHub Actions workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS (smoke and final deploys); T02 collections non-empty |
+| G1 | Public HTTPS API on Azure App Service, populated with seed data and operational at submission time (deployed by one GitHub Actions workflow) | §7.1, §12, §13 | Deployment | [ ] |
 | G2 | Live OpenAPI (Swagger) surface served from the deployment | §7.2 | Deployment / API design | [ ] |
 | G3 | Git repo shared with module leader; incremental commit history | §7.3, §12, §13 | Deployment | [ ] |
 | G4 | Report 2250–2750 words, 6 identifiable sections (see §11) | §8, §12 | Report | [ ] |
@@ -386,7 +386,7 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 
 - OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`. `GET /` also returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure) `[PROPOSAL]`.
 - **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually). It is written on `dev_hashini` and arrives through `dev` like any other file. Azure's Deployment Center must **not** commit it for us. Authentication method (publish profile with basic authentication, OIDC, or Azure CLI ZIP fallback) is decided at the smoke deploy (OQ-32).
-- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva.Never upgrade the subscription to Pay-As-You-Go or remove the spending limit, and attach no card: when the credit ends Azure disables the subscription instead of billing.
+- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva. Never upgrade the subscription to Pay-As-You-Go or remove the spending limit, and attach no card: when the credit ends Azure disables the subscription instead of billing.
 - Branch names are spelled `deployment_dev` and `deployment_qa`.
 
 **Other rules**
@@ -559,7 +559,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-31 | **DECIDED `[YOU]` 2026-09-20:** host on **Azure App Service** (Azure for Students credit, no card) instead of Render. **Deployment by one GitHub Actions workflow** | Render asked for a card check; Azure credit (US$100, 365 days) needs none. Watch credit use; delete resources per §12b | P1 |
 | OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR **only at the smoke deploy and the final deploy**); `deployment_qa` **kept as a marker, never deployed** | The release step is manual; check `dev` = `deployment_dev` before submission | P1 |
 | OQ-32 | **OPEN until the smoke deploy.** Workflow authentication: publish profile (needs basic authentication on the app), OIDC (may be blocked in the university tenant), or Azure CLI ZIP fallback | Try the publish profile first; record the result in `docs/evidence/` | P4b |
-| OQ-33 | **OPEN until step 0 (zero-cost validation).** Azure region and quota: nearest allowed region to Atlas Mumbai (Central India, South India, Southeast Asia) and whether Basic B1 and Free F1 can be created | Record the result; blocks only the deployment phases | P1 |
+| OQ-33 | **DECIDED 2026-09-21** (zero-cost validation passed): Azure region **India South Central**; Basic B1 (1 vCPU, 1.75 GB) about **US$13.14/month**; Free F1 also available; Node 22 LTS on Linux available; basic authentication is off by default | Use India South Central for the smoke and final deploys. Evidence in `docs/evidence/azure-validation.md` | P1 |
 | OQ-34 | **DECIDED `[YOU]` 2026-09-21:** upgrade to **Express 5** (5.2.1) | Tested on the skeleton: on Express 4 an async route error leaves the request hanging and can crash the process; on Express 5 it reaches the error handler and returns 500 with the standard body. No async wrapper is needed. Skeleton unchanged | P2 |
 | OQ-35 | **DECIDED `[YOU]` 2026-09-20:** local development uses Atlas database `slsea_local` from the Mac; the deployed database is `slsea_dev` | Free cloud database, same driver path as production; no destructive scripts against `slsea_dev` | P1 |
 | OQ-25 | **PENDING:** viva date/format not confirmed | Non-blocking. Ask as soon as it is announced; reserve 3–4 Oct for smoke test/submit regardless | P8 |
@@ -596,4 +596,4 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 
 ## 18. Diagrams (Phase 0b)
 
-Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). +Syntax-checked with the Mermaid parser; layout not yet viewed. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.
+Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). Syntax-checked with the Mermaid parser and rendered with Mermaid CLI for the study guide. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.
