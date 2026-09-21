@@ -55,3 +55,14 @@ Requirement IDs: G1, G3 (deployment planning)
 Outcome: done - committed in 5e3bd12 and beb5070
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
+
+## 2026-09-21 - Phase 1 exit: rehearsal and tag p1 (manual, guided by Claude chat)
+Tool/model: manual commands, guided by Claude chat
+Branch: fresh clone of dev; tag on origin/dev
+Prompt: guide me to Run the Phase 1 exit checks on the `dev` branch: verify the fresh clone, production-mode startup, database connection, `GET /` response, and create/push the `p1` tag. Record the results and any issues found.
+Files: none changed
+Checks: fresh clone had no .env or node_modules; npm ci --omit=dev installed 91 packages with 0 vulnerabilities; production-mode start connected to slsea_local and listened on 8080; curl GET / returned 200 with {"status":"ok","environment":"local"}
+Requirement IDs: none yet (Phase 1 exit)
+Outcome: done - tag p1 created on origin/dev (135e7e8) and pushed
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
