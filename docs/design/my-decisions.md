@@ -115,6 +115,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - `DECIDED · YOU` (OQ-10) Missing or unknown/invalid API key → **401**. A valid key used on a different installation → **403**. Matches WP §9.
 - `DECIDED · BRIEF §5` A device authenticates as its installation. `DECIDED · LEC S8` The installation id comes from the path only, never the body.
 - `PROPOSAL` Mechanism: long random key; store only its SHA-256 hash on the installation (unique index); hash the presented key, look it up: no match → 401, match on another installation → 403.
+- `PROPOSAL` The unique index on `api_key_hash` is **partial** (only where the field is a string), because a new installation may exist before it has a key (OQ-28, open). See `docs/design/data-model.md`.
 - `PROPOSAL` A JWT sent to the device route is not a valid credential → 401.
 - `PROPOSAL` (OQ-09) The device supplies the event `timestamp` (required, UTC); the server adds `received_at`. LEC S8 accepts device or server time.
 - `DECIDED · YOU` **No timestamp tolerance or "not in the future" rule.** Neither the brief nor the reference material has one. Limitation to state: a device with a wrong clock can store odd timestamps.

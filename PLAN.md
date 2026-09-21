@@ -255,20 +255,20 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 
 ## 8. Database plan (MongoDB Atlas)
 
-Fields snake_case, public IDs are string business IDs (`PV-01`, `DT-03`, `SS-001`, `INS-0001`, `RD-…`); Mongo `_id` is never exposed `[YOU]` (OQ-07). Mongoose `[YOU]` (OQ-19).
+Fields snake_case, public IDs are string business IDs (`PV-01`, `DT-01`, `SS-001`, `INS-0001`, `RD-…`); Mongo `_id` is never exposed `[YOU]` (OQ-07). Mongoose `[YOU]` (OQ-19). Naming: entity Reading = collection `generation_readings` = Mongoose model `GenerationReading` (collection name set explicitly). Full detail: `docs/design/data-model.md`.
 
 | Collection | Key fields | Indexes |
 |---|---|---|
 | `provinces` | `province_id`, `name` | unique `province_id` |
 | `districts` | `district_id`, `name`, `province_id` | unique `district_id`; `province_id` |
-| `substations` | `substation_id`, `name`, `district_id`, `province_id` (derived from district) | unique `substation_id`; `district_id` |
-| `installations` | `installation_id`, `meter_id`, `name`, `substation_id`, `district_id` (derived), `province_id` (derived), `capacity_kw`, `api_key_hash` (never returned), `created_at`, `updated_at` | unique `installation_id`; unique `meter_id`; unique `api_key_hash`; `substation_id`; `district_id` |
-| `generation_readings` | `reading_id`, `installation_id`, `timestamp`, `power_kw`, `energy_kwh`, `voltage`, `received_at` | unique `(installation_id, timestamp)`; `(installation_id, timestamp desc)` for history + last reading |
+| `substations` | `substation_id`, `name`, `district_id`, `province_id` (derived from district) | unique `substation_id`; `district_id`; `province_id` `[PROPOSAL]` |
+| `installations` | `installation_id`, `meter_id`, `name`, `substation_id`, `district_id` (derived), `province_id` (derived), `capacity_kw`, `api_key_hash` (never returned; not required while OQ-28 is open), `created_at`, `updated_at` | unique `installation_id`; unique `meter_id`; **partial** unique `api_key_hash` (only where a string) `[PROPOSAL]`; `substation_id`; `district_id`; `province_id` `[PROPOSAL]` |
+| `generation_readings` | `reading_id`, `installation_id`, `timestamp`, `power_kw`, `energy_kwh`, `voltage`, `received_at` | unique `reading_id` (the `Location` target) `[PROPOSAL]`; unique `(installation_id, timestamp)`, which also serves history and last reading in both sort directions. The separate `(installation_id, timestamp desc)` index is probably redundant: confirm with `explain()` in Phase 3 before dropping it `[PROPOSAL]` |
 | `users` | `user_id`, `username`, `password_hash`, `role`, `jurisdiction_level`, `jurisdiction_id` | unique `username` |
 
 - **Derived ids `[YOU]`:** `substation_id` is the source of truth; `district_id` and `province_id` are derived by the server (never accepted from the client; a PUT copied from a GET is ignored and recomputed). **Storage `[YOU]`:** stored read-only copies for one-lookup scope checks and filters, proven consistent by a seed integrity test; alternative is joining on every request.
 - **Readings carry no jurisdiction ids** `[YOU]` (OQ-04): for a jurisdiction route the service finds the installation ids under the path parent (derived ids on installations, indexed) and queries `generation_readings` for those ids. History therefore follows an installation if its substation changes. Sort is `(requested field, installation_id)`; at seed scale the largest result is one province's readings.
-- Device key lives **on the installation** (`api_key_hash`, unique index), not in a device collection — consistent with M2. Lookup by hash: no match → 401; match on another installation → 403 `[PROPOSAL]`.
+- Device key lives **on the installation** (`api_key_hash`, partial unique index), not in a device collection — consistent with M2. Lookup by hash: no match → 401; match on another installation → 403 `[PROPOSAL]`. Partial because a new installation may exist before it has a key (OQ-28, open).
 - Unique `(installation_id, timestamp)` makes device retries safe (duplicate → 409) — answers "idempotency" for the ingest path `[PROPOSAL]` OQ-09.
 - `capacity_kw` gives a realistic ceiling for seed and validation. Extra fields need one-line justification in the report `[BRIEF §3]`.
 
