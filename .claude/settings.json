@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./*.env)",
+      "Read(./atlas-credentials*)",
+      "Read(./*.PublishSettings)",
+      "Read(./publish-profile*)"
+    ]
+  }
+}

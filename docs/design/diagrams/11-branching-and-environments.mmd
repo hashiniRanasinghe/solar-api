@@ -1,0 +1,47 @@
+%% 11-branching-and-environments.mmd - Branching strategy and release path (local-first)
+%% Basis: BRIEF §7.3, §13 (incremental history, shared repo); PLAN §12.
+%% DECIDED (YOU): local-first development; dev_hashini -> dev -> deployment_dev (deploy branch); deployment_qa is a marker and NOT deployed; main never used;
+%% Azure App Service, deployed from deployment_dev by one GitHub Actions workflow, only for the smoke deploy and the final deploy.
+%% PROPOSAL: MR gates, tags pN on dev, tag submission on deployment_dev, freeze rule, default branch dev, local database slsea_local.
+flowchart LR
+  subgraph WORK["Work - all local"]
+    HB["dev_hashini<br/>my working branch<br/>small commits, ai-log.md in the same commit<br/>local database slsea_local"]
+  end
+
+  subgraph CENTRAL["Central - GitHub default branch"]
+    DV["dev<br/>no direct commits<br/>tags p1 to p8 at phase ends"]
+  end
+
+  subgraph DEPLOY["Deploy branch - used twice"]
+    DP["deployment_dev<br/>no direct commits<br/>tag submission"]
+  end
+
+  AZ["Azure App Service via GitHub Actions<br/>smoke deploy about 25 Sep, deleted afterwards<br/>final deploy 1 Oct, database slsea_dev<br/>URL to submit"]
+
+  QAB["deployment_qa<br/>kept as a best-practice marker<br/>NOT deployed, no QA service"]
+  NOMAIN["main<br/>never used"]
+
+  HB -- "MR after each build step<br/>merge commit, no squash" --> DV
+  DV -. "git pull origin dev<br/>keeps dev_hashini in sync" .-> HB
+  DV --> G1{"Phase end?<br/>local tests and exit test pass"}
+  G1 -- "no" --> HB
+  G1 -- "yes" --> TAG["Tag pN on dev"]
+  TAG --> G2{"Smoke deploy day (about 25 Sep)<br/>or final deploy day (1 Oct)?"}
+  G2 -- "no: keep developing locally" --> HB
+  G2 -- "yes: release MR dev to deployment_dev" --> DP
+  DP -- "push triggers the workflow" --> AZ
+  AZ -- "BASE_URL=live npm test" --> G3{"Live tests ok?"}
+  G3 -- "smoke: record findings, delete Azure resources" --> HB
+  G3 -- "final: tag submission, then freeze dev and deployment_dev" --> DONE["Submitted URL stays up<br/>until marking and the viva are done"]
+  G3 -- "no" --> FIX["Fix on dev_hashini, release again, tag pNb"]
+  FIX --> HB
+  DV -. "created earlier, then left alone" .-> QAB
+
+  classDef branch fill:#e8f1fb,stroke:#3b6ea5
+  classDef env fill:#e9f7ef,stroke:#2e7d4f
+  classDef gate fill:#fff8e1,stroke:#c9a227
+  classDef unused fill:#f5f5f5,stroke:#999,stroke-dasharray:4 3,color:#666
+  class HB,DV,DP branch
+  class AZ,DONE env
+  class G1,G2,G3 gate
+  class QAB,NOMAIN unused

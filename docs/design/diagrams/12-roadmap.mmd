@@ -1,0 +1,23 @@
+%% 12-roadmap.mmd - Roadmap from start to LMS submission, with a "you are here" marker (local-first plan)
+%% Basis: PLAN §13 (phases and timeline), brief §7 and §12 (what is submitted), deadline Sun 4 Oct 2026 (DECIDED · YOU).
+%% HOW TO UPDATE: when a step finishes, move its node from class "now" to class "done" and give the next node class "now".
+%% Only one node should have class "now". Dates come from PLAN §13 and are targets, not promises. Viva date is not known yet (OQ-25).
+flowchart LR
+  S1["Understand<br/>brief, white paper, lectures, reference repos"]
+  S2["Plan and design<br/>decisions, 14 diagrams"]
+  S3["Repo and database<br/>git, branches, Atlas, collaborator"]
+  S4["Phase 1, Sun 20 Sep<br/>local skeleton, repo fixes, Azure zero-cost check<br/>YOU ARE HERE"]
+  S5["Phases 2-4, 21-24 Sep<br/>data, seed, readings, device write, all local<br/>Fri 25: smoke deploy, then delete"]
+  S6["Phases 5-7, 25-28 Sep<br/>auth, queries, admin, Swagger, all local"]
+  S7["Phase 8, 29-30 Sep<br/>tests, audit, rehearsal, code freeze"]
+  S8["Final Azure deploy, Thu 1 Oct<br/>release merge, tag submission, seed, live tests"]
+  S9["Report and submit, 2-4 Oct<br/>report final checks, LMS, then the viva, date TBD"]
+
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
+
+  classDef done fill:#e1f5ee,stroke:#0f6e56,color:#085041
+  classDef now fill:#faeeda,stroke:#854f0b,color:#633806,stroke-width:3px
+  classDef todo fill:#f1efe8,stroke:#5f5e5a,color:#2c2c2a
+  class S1,S2,S3 done
+  class S4 now
+  class S5,S6,S7,S8,S9 todo

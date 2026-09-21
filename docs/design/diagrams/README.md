@@ -6,7 +6,7 @@ Conventions: dashed node/edge = not built, out of scope, or refused; a note cont
 
 | File | Represents | Report section it can support | Decision status / dependency |
 |---|---|---|---|
-| `01-context.mmd` | System context: devices (write), users (read), national admin, marker, Render, Atlas; dashboards out of scope | R1, R4 | None open |
+| `01-context.mmd` | System context: devices (write), users (read), national admin, marker, Azure App Service, Atlas; dashboards out of scope | R1, R4 | None open |
 | `02-resource-model.mmd` | Resources by kind, URI scoping, the four readings parents, query placement, what is NOT built | R1, R2 | OQ-04, 05, 21 **DECIDED**; none open |
 | `03-er-model.mmd` | Entities, keys, stored derived ids, cumulative energy, no Device entity, no jurisdiction ids on readings | R1 | Extra fields are proposals |
 | `04a-auth-device-write.mmd` | Device API-key flow: 401 vs 403 | R3 | OQ-10 decided; hash lookup is a proposal |
@@ -15,11 +15,11 @@ Conventions: dashed node/edge = not built, out of scope, or refused; a note cont
 | `05-flow-ingest-reading.mmd` | Device pushes a reading: 415 / 400 / 409 / 201 + headers | R2 | **OPEN:** OQ-26, OQ-27 |
 | `06-flow-readings-history.mmd` | Readings history under installation / substation / district / province: 404, 403, 400, 304, 200 | R2 | OQ-04 **DECIDED**; **OPEN:** ETag build (OQ-29) |
 | `07-flow-operational-reads.mmd` | Composite, last-reading, district summary (stretch) | R2 | Summary shape and midnight baseline are proposals |
-| `08-deployment.mmd` | The single Dev deployment (Render from `dev`), Atlas database, seed jobs, env vars, cold start; `qa` shown as not deployed | R4 | Environment and branches **DECIDED**; network rule, top-up script are proposals |
+| `08-deployment.mmd` | Local-first setup: local development against `slsea_local`, then the Azure smoke deploy (deleted afterwards) and the final deploy via one GitHub Actions workflow, Atlas databases `slsea_dev` / `slsea_local`, app settings, cost guard; `deployment_qa` shown as not deployed | R4 | Hosting and local-first **DECIDED**; authentication method OQ-32 and region OQ-33 **open until validated**; Basic plan is a proposal |
 | `09-layered-architecture.mmd` | routes → middleware → controllers → services → repositories → MongoDB | R1 | Layering is a proposal |
 | `10-roles-and-permissions.mmd` | Device / reader / admin: allowed, refused (401, 403, 405) | R3 | OQ-03 **DECIDED** |
-| `12-roadmap.mmd` | Start-to-submission roadmap with a "you are here" marker; update the `now` / `done` classes as steps finish | all | Dates are targets; viva date unknown (OQ-25) |
-| `11-branching-and-environments.mmd` | `dev_hashini` → `dev`, auto-deploy to Dev, tags and freeze; `qa` kept undeployed; `main` unused | R4 | Branches and environment **DECIDED**; gates are proposals |
+| `12-roadmap.mmd` | Start-to-submission roadmap (local-first plan) with a "you are here" marker; update the `now` / `done` classes as steps finish | all | Dates are targets; viva date unknown (OQ-25) |
+| `11-branching-and-environments.mmd` | `dev_hashini` → `dev` → `deployment_dev`, tags on `dev`, release merges only at the smoke and final deploys, freeze; `deployment_qa` undeployed marker; `main` unused | R4 | Branches and local-first **DECIDED**; gates are proposals |
 
 ## Additional diagrams considered
 
