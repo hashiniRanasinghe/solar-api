@@ -202,7 +202,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
   - OQ-29: ETag construction.
   - OQ-32: workflow authentication to Azure (publish profile, OIDC or CLI ZIP fallback) — decided at the smoke deploy.
   - OQ-33 closed 2026-09-21: India South Central works; Basic B1 is about US$13.14/month; Free F1 is also available.
-  - OQ-34: Express 4 (installed) or 5.
+   - OQ-34 closed 2026-09-21: Express 5.
   - Validation limits (power vs `capacity_kw`, voltage range).
   - External: viva date and format (OQ-25); current-batch rubric not available.
 - **Closed 2026-09-20 (`DECIDED · YOU`):** OQ-31 (Azure App Service instead of Render), local-first development, deployment by one GitHub Actions workflow, OQ-35 (local database `slsea_local`, deployed database `slsea_dev`), a zero-cost Azure validation now and a throwaway smoke deploy around 25–27 Sep.

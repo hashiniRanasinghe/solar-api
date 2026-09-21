@@ -171,7 +171,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Area | Choice | Tag | Note |
 |---|---|---|---|
 | Runtime | Node (current LTS locally; `engines: >=18`) | `[YOU]` | Brief sets no version |
-| Framework | Express | `[YOU]` | Express 5 forwards rejected async handlers to the error middleware; Express 4 does not |
+| Framework | Express 5 (upgraded from 4 on 2026-09-21, OQ-34) | `[YOU]` | Express 5 forwards rejected async handlers to the error middleware; Express 4 does not. No async wrapper needed |
 | Database | MongoDB Atlas (free M0) | `[YOU]` | Persistence needed because POST readings must survive restarts (in-memory `seed.json` from the lectures would not) |
 | DB access | Mongoose | `[YOU]` (OQ-19) | Schemas self-document; native driver rejected |
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
@@ -560,7 +560,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR **only at the smoke deploy and the final deploy**); `deployment_qa` **kept as a marker, never deployed** | The release step is manual; check `dev` = `deployment_dev` before submission | P1 |
 | OQ-32 | **OPEN until the smoke deploy.** Workflow authentication: publish profile (needs basic authentication on the app), OIDC (may be blocked in the university tenant), or Azure CLI ZIP fallback | Try the publish profile first; record the result in `docs/evidence/` | P4b |
 | OQ-33 | **OPEN until step 0 (zero-cost validation).** Azure region and quota: nearest allowed region to Atlas Mumbai (Central India, South India, Southeast Asia) and whether Basic B1 and Free F1 can be created | Record the result; blocks only the deployment phases | P1 |
-| OQ-34 | **OPEN (technical).** Express 4 (installed) or Express 5? Express 4 needs a small wrapper so async route errors reach the error handler | Decide at the start of Phase 2. Default: keep 4 with the wrapper | P2 |
+| OQ-34 | **DECIDED `[YOU]` 2026-09-21:** upgrade to **Express 5** (5.2.1) | Tested on the skeleton: on Express 4 an async route error leaves the request hanging and can crash the process; on Express 5 it reaches the error handler and returns 500 with the standard body. No async wrapper is needed. Skeleton unchanged | P2 |
 | OQ-35 | **DECIDED `[YOU]` 2026-09-20:** local development uses Atlas database `slsea_local` from the Mac; the deployed database is `slsea_dev` | Free cloud database, same driver path as production; no destructive scripts against `slsea_dev` | P1 |
 | OQ-25 | **PENDING:** viva date/format not confirmed | Non-blocking. Ask as soon as it is announced; reserve 3–4 Oct for smoke test/submit regardless | P8 |
 
