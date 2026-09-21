@@ -386,7 +386,7 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 
 - OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`. `GET /` also returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure) `[PROPOSAL]`.
 - **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually). It is written on `dev_hashini` and arrives through `dev` like any other file. Azure's Deployment Center must **not** commit it for us. Authentication method (publish profile with basic authentication, OIDC, or Azure CLI ZIP fallback) is decided at the smoke deploy (OQ-32).
-- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva.
+- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva.Never upgrade the subscription to Pay-As-You-Go or remove the spending limit, and attach no card: when the credit ends Azure disables the subscription instead of billing.
 - Branch names are spelled `deployment_dev` and `deployment_qa`.
 
 **Other rules**
