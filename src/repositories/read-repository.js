@@ -9,8 +9,10 @@ function createReadRepository(Model, idField, hiddenFields = '') {
     return { items, count };
   }
 
-  async function findById(id) {
-    return Model.findOne({ [idField]: id }).select(hiddenFields);
+  // scopeFilter narrows the lookup (the caller's jurisdiction). $and keeps it
+  // from overwriting the id when both use the same field.
+  async function findById(id, scopeFilter = {}) {
+    return Model.findOne({ $and: [{ [idField]: id }, scopeFilter] }).select(hiddenFields);
   }
 
   return { findPage, findById };

@@ -126,11 +126,11 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 ## 10. Read path: user auth, scopes, jurisdiction
 - `DECIDED · YOU` JWT bearer for users; `POST /login` issues it. `DECIDED · BRIEF §2` National, provincial and district users, read scope by jurisdiction. `DECIDED · BRIEF §5` A district user cannot read another district.
 - `DECIDED · LEC S7` A valid user outside their jurisdiction → 403 (LEC S7's example).
-- `PROPOSAL` The token carries `scope` (`solar:read`; admin also `solar:write`), `jurisdiction_level`, `jurisdiction_id`, short expiry (about 1 hour). WP §12.2 describes scopes; how I use them is my choice. It is my own JWT, **not full OAuth** (no authorization server).
-- `PROPOSAL` National sees all; provincial sees their province and below; district sees their district and below.
+- `DECIDED · YOU (2026-09-26)` The token carries `scope` (`solar:read`; admin also `solar:write`), `jurisdiction_level`, `jurisdiction_id`, short expiry (about 1 hour). WP §12.2 describes scopes; how I use them is my choice. It is my own JWT, **not full OAuth** (no authorization server).
+- `DECIDED · YOU (2026-09-26)` National sees all; provincial sees their province and below; district sees their district and below.
 - `DECIDED · YOU` (OQ-04) **The scope check runs on the path parent.** A district user may call `/districts/{own-district}/readings` and `/substations/{a-substation-in-it}/readings`, but `/provinces/{their-province}/readings` is broader than their jurisdiction → 403. A missing parent id → 404 before the scope check.
-- `PROPOSAL` Collections are narrowed to the caller's scope; an explicit filter naming another jurisdiction → 403.
-- `PROPOSAL` A lower-level user may read the *record* of their own parent province/district (to navigate), never sibling data, and never that parent's `/readings`.
+- `DECIDED · YOU` (2026-09-26) Collections are narrowed to the caller's scope; an explicit filter naming another jurisdiction → 200 with `count` 0, not 403. Reason: a filter narrows and never reveals; same as an unknown filter value.
+- `DECIDED · YOU` (2026-09-26) A province or district user reads only their own subtree; ancestors above it (the parent province or district record, and its `/readings`) → 403. Reason: least privilege, one rule: a user reads only their own subtree.
 - `PROPOSAL` (OQ-15) Demo users and device keys are documented in the README and Swagger, marked demo-only.
 - Basic auth is not used (WP §12.1: only viable over HTTPS, and it carries no scopes). Users are seeded; no `/users` endpoints.
 
@@ -159,7 +159,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 ## 12. Error contract
 - `DECIDED · WP §11` `code` (integer) and `message` are required. `DECIDED · BRIEF §5` One consistent schema with a code, a message and supporting detail across the API.
 - `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields). Integer codes = HTTP status × 100 + a number (for example 40001).
-- Codes in use (2026-09-26): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice · 40007 `from` not a valid UTC timestamp · 40008 `to` not a valid UTC timestamp · 40009 `from` later than `to` (40003–40009 as per-field items in `error[]`) · 40401 route not found · 40402 resource not found · 40403 no reading yet (installation exists) · 50001 unexpected error.
+- Codes in use (2026-09-26): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice · 40007 `from` not a valid UTC timestamp · 40008 `to` not a valid UTC timestamp · 40009 `from` later than `to` (40003–40009 as per-field items in `error[]`) · 40010 invalid request body · 40011 `username` missing or not a non-empty string · 40012 `password` missing or not a non-empty string (40011–40012 as per-field items in `error[]`) · 40101 authentication required (no bearer token) · 40102 invalid or expired token · 40103 invalid username or password · 40301 outside your jurisdiction · 40401 route not found · 40402 resource not found · 40403 no reading yet (installation exists) · 50001 unexpected error.
 - `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
 - `PROPOSAL` `WWW-Authenticate` is `Bearer realm="solar"` for users and a custom `ApiKey realm="solar"` for devices (WP requires the header, not a scheme name).
 

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const mongoose = require('mongoose');
 const app = require('../src/app');
+const { nationalToken } = require('./helpers/auth');
 const { MONGODB_URI } = require('../src/config/env');
 const { GenerationReading } = require('../src/models');
 const readingsRepository = require('../src/repositories/readings');
@@ -13,6 +14,9 @@ const readingsRepository = require('../src/repositories/readings');
 const ID = 'INS-0001';
 const OTHER_ID = 'INS-0002';
 const BASE = `/solar/v1.0/installations/${ID}`;
+
+// Every request is made as a national reader.
+const TOKEN = nationalToken();
 
 let server;
 
@@ -33,7 +37,7 @@ function get(path) {
   return new Promise((resolve, reject) => {
     const { port } = server.address();
     http
-      .get({ host: '127.0.0.1', port, path }, (res) => {
+      .get({ host: '127.0.0.1', port, path, headers: { Authorization: `Bearer ${TOKEN}` } }, (res) => {
         let data = '';
         res.on('data', (chunk) => {
           data += chunk;

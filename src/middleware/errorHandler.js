@@ -13,6 +13,7 @@ function errorHandler(err, req, res, next) {
 
   console.log(`[error] ${err.name} ${appError.status}`);
 
+  res.set(appError.headers || {});
   res.status(appError.status).json({
     code: appError.code,
     message: appError.message,

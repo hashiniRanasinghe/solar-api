@@ -2,18 +2,18 @@ const service = require('../services/provinces');
 const { pageLinks } = require('../utils/links');
 
 async function list(req, res) {
-  const { items, count, offset, limit } = await service.list(req.query);
+  const { items, count, offset, limit } = await service.list(req.query, req.user);
   const { next, previous } = pageLinks(req, { offset, limit, count });
   res.json({ count, next, previous, data: items });
 }
 
 async function get(req, res) {
-  const item = await service.get(req.params.provinceId);
+  const item = await service.get(req.params.provinceId, req.user);
   res.json(item);
 }
 
 async function listReadings(req, res) {
-  const { items, count, offset, limit } = await service.listReadings(req.params.provinceId, req.query);
+  const { items, count, offset, limit } = await service.listReadings(req.params.provinceId, req.query, req.user);
   const { next, previous } = pageLinks(req, { offset, limit, count });
   res.json({ count, next, previous, data: items });
 }

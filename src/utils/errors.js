@@ -1,13 +1,15 @@
 const MORE_INFO = '/docs';
+const BEARER_CHALLENGE = 'Bearer realm="solar"';
 
 class AppError extends Error {
-  constructor(status, number, message, description, error = []) {
+  constructor(status, number, message, description, error = [], headers = {}) {
     super(message);
     this.name = 'AppError';
     this.status = status;
     this.code = status * 100 + number;
     this.description = description;
     this.error = error;
+    this.headers = headers;
   }
 
   static malformedJson() {
@@ -21,6 +23,60 @@ class AppError extends Error {
       'Invalid query parameter',
       'One or more query parameters are not valid.',
       error
+    );
+  }
+
+  static invalidBody(error) {
+    return new AppError(
+      400,
+      10,
+      'Invalid request body',
+      'One or more fields in the request body are not valid.',
+      error
+    );
+  }
+
+  // Every 401 carries WWW-Authenticate (WP section 9). error="invalid_token"
+  // only when a token was sent and rejected.
+  static authenticationRequired() {
+    return new AppError(
+      401,
+      1,
+      'Authentication required',
+      'Send a bearer token in the Authorization header.',
+      [],
+      { 'WWW-Authenticate': BEARER_CHALLENGE }
+    );
+  }
+
+  static invalidToken() {
+    return new AppError(
+      401,
+      2,
+      'Invalid or expired token',
+      'The bearer token is not valid or has expired. Log in again.',
+      [],
+      { 'WWW-Authenticate': `${BEARER_CHALLENGE}, error="invalid_token"` }
+    );
+  }
+
+  static invalidCredentials() {
+    return new AppError(
+      401,
+      3,
+      'Invalid username or password',
+      'The username or password is not correct.',
+      [],
+      { 'WWW-Authenticate': BEARER_CHALLENGE }
+    );
+  }
+
+  static outOfScope() {
+    return new AppError(
+      403,
+      1,
+      'Outside your jurisdiction',
+      'The requested resource is outside your jurisdiction.'
     );
   }
 
@@ -60,6 +116,8 @@ const FIELD_ERROR = {
   from: 40007,
   to: 40008,
   timeWindow: 40009,
+  username: 40011,
+  password: 40012,
 };
 
 module.exports = { AppError, MORE_INFO, FIELD_ERROR };

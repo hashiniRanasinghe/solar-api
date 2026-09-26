@@ -4,7 +4,11 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const mongoose = require('mongoose');
 const app = require('../src/app');
+const { nationalToken } = require('./helpers/auth');
 const { MONGODB_URI } = require('../src/config/env');
+
+// Every request is made as a national reader.
+const TOKEN = nationalToken();
 
 let server;
 
@@ -25,7 +29,7 @@ function get(path) {
   return new Promise((resolve, reject) => {
     const { port } = server.address();
     http
-      .get({ host: '127.0.0.1', port, path }, (res) => {
+      .get({ host: '127.0.0.1', port, path, headers: { Authorization: `Bearer ${TOKEN}` } }, (res) => {
         let data = '';
         res.on('data', (chunk) => {
           data += chunk;
