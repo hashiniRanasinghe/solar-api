@@ -55,4 +55,10 @@ async function getReading(id, readingId) {
   return reading;
 }
 
-module.exports = { list, get, getLastReading, listReadings, getReading };
+// Installation ids under a substation, district or province, for the
+// jurisdiction readings collections.
+async function idsUnder(field, value) {
+  return repository.findIdsBy(field, value);
+}
+
+module.exports = { list, get, getLastReading, listReadings, getReading, idsUnder };

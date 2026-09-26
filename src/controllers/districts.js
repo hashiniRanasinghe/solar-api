@@ -12,4 +12,10 @@ async function get(req, res) {
   res.json(item);
 }
 
-module.exports = { list, get };
+async function listReadings(req, res) {
+  const { items, count, offset, limit } = await service.listReadings(req.params.districtId, req.query);
+  const { next, previous } = pageLinks(req, { offset, limit, count });
+  res.json({ count, next, previous, data: items });
+}
+
+module.exports = { list, get, listReadings };

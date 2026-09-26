@@ -1,4 +1,6 @@
 const repository = require('../repositories/districts');
+const installations = require('./installations');
+const readings = require('./readings');
 const { parseListQuery } = require('./list-query');
 const { AppError } = require('../utils/errors');
 
@@ -22,4 +24,14 @@ async function get(id) {
   return item;
 }
 
-module.exports = { list, get };
+// Readings of every installation under this district. The district must exist
+// before the query is read (404 before 400); one with no installations gives
+// an empty collection.
+async function listReadings(id, query) {
+  await get(id);
+  const parsed = readings.parseQuery(query);
+  const ids = await installations.idsUnder('district_id', id);
+  return readings.listForInstallations(ids, parsed);
+}
+
+module.exports = { list, get, listReadings };

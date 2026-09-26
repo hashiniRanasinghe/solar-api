@@ -163,6 +163,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
 - `PROPOSAL` `WWW-Authenticate` is `Bearer realm="solar"` for users and a custom `ApiKey realm="solar"` for devices (WP requires the header, not a scheme name).
 
+- `PROPOSAL` Jurisdiction readings routes sort across installations in memory (top-k, bounded by offset + limit). Measured with explain on PV-04 (48 installations, ~32,000 readings), 26 Sep: 8-77 ms, no disk use, far under the Atlas 32 MB sort limit. Accepted as-is; a (timestamp, installation_id) index or an offset cap is the fix if the data grows.
 ## 13. Writable resources, roles and authorization
 - `DECIDED · YOU` (OQ-03) **Writable:** readings (create only) and installations (create, replace, delete). **Read-only:** provinces, districts, substations, users (seeded), and every derived resource. Basis: the brief's write path is device ingestion (§5), and it asks for create/retrieve/update/delete "across the writable resources", so installations are the one asset that needs full CRUD (LEC S7/S8 make the same split for vehicles). The hierarchy is fixed reference data.
 - `DECIDED · YOU` **Who may write what:**
