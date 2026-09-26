@@ -14,4 +14,16 @@ async function findOne(installationId, readingId) {
   return GenerationReading.findOne({ reading_id: readingId, installation_id: installationId });
 }
 
-module.exports = { findPage, findNewest, findOne };
+// True when the installation already has a reading at this timestamp. Uses
+// the unique (installation_id, timestamp) index.
+async function existsAt(installationId, timestamp) {
+  return (await GenerationReading.exists({ installation_id: installationId, timestamp })) !== null;
+}
+
+// Appends one reading. A duplicate (installation_id, timestamp) rejects with
+// the driver's duplicate key error (code 11000).
+async function insert(doc) {
+  return GenerationReading.create(doc);
+}
+
+module.exports = { findPage, findNewest, findOne, existsAt, insert };

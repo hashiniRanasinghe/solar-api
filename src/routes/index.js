@@ -4,8 +4,12 @@ const authenticate = require('../middleware/authenticate');
 
 const router = express.Router();
 
-// Open: login issues the token. Everything below needs a bearer token.
+// Open: login issues the token. Everything after authenticate needs a bearer token.
 router.post('/login', authController.login);
+
+// Device ingest: X-API-Key only, so it is mounted before the bearer
+// middleware. GET on these URIs falls through to the routes below.
+router.use('/installations/:installationId/readings', require('./device-readings'));
 
 router.use(authenticate);
 

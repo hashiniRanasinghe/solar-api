@@ -116,13 +116,16 @@ This is what makes the path-based jurisdiction scope check (`my-decisions.md` §
 
 ## 6. Open items — not decided here
 
-These are `OPEN` in `my-decisions.md` (§9, §13, §16) and are listed, not resolved:
+These are `OPEN` in `my-decisions.md` (§11, §13, §16) and are listed, not resolved:
 
-- **OQ-26** — Lecture notes list 404 as a possible response for `POST …/readings`, but a key-hash lookup on an unknown installation returns 401/403 first, so 404 may be unreachable on this route. Not decided whether to drop 404 from this route's contract or check installation existence before the key.
-- **OQ-27** — Whether a `generation_readings.energy_kwh` value lower than the installation's previous reading is rejected. Unclear because of late/out-of-order readings.
 - **OQ-28** — How a newly created installation receives its device key (candidate idea only: return the plain key once in the 201 body; not confirmed).
 - **OQ-29** — How the `ETag` is constructed (Express's default vs an explicit one; installations need a strong ETag for `If-Match`).
-- **Validation limits** — numeric bounds for `power_kw` vs `capacity_kw`, and the `voltage` range, are not set.
+
+Closed on 2026-09-26 (`DECIDED · YOU`, `my-decisions.md` §9):
+
+- **OQ-26** — no 404 on `POST …/readings`: the `api_key_hash` lookup gives 401 for a missing or unknown key and 403 when the key's installation is not the path installation (also when that installation does not exist), so the route never reveals which ids exist.
+- **OQ-27** — a reading is compared with the installation's newest stored reading: same `timestamp` → 409 (the unique `(installation_id, timestamp)` index is the final guard), older `timestamp` → 409, `energy_kwh` lower than the newest → 409; an equal `energy_kwh` is accepted.
+- **Validation limits** — `power_kw` from 0 to the installation's `capacity_kw`; `energy_kwh` ≥ 0; `voltage` from 0 to 300; `timestamp` ISO 8601 UTC on a 15-minute boundary.
 
 ## 7. Notes and gaps
 

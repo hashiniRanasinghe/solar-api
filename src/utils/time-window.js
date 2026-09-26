@@ -56,4 +56,4 @@ function parseTimeWindow(query, errors) {
   return Object.keys(bounds).length > 0 ? { timestamp: bounds } : {};
 }
 
-module.exports = { parseTimeWindow };
+module.exports = { parseTimeWindow, parseUtcTimestamp };

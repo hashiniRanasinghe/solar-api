@@ -1,6 +1,7 @@
 'use strict';
 
 const { GenerationReading } = require('../../src/models');
+const { readingId } = require('../../src/utils/reading-id');
 
 // ---------------------------------------------------------------------------
 // Deterministic RNG (mulberry32). Fixed seed so --reset always regenerates
@@ -94,11 +95,6 @@ const RECEIVED_DELAY_MAX_S = 30;
 
 function installationNumber(installationId) {
   return Number.parseInt(installationId.slice('INS-'.length), 10);
-}
-
-function readingId(installationId, ms) {
-  const digits = new Date(ms).toISOString().replace(/\D/g, '').slice(0, 14);
-  return `RD-${installationId.slice('INS-'.length)}-${digits}`;
 }
 
 function baselineEnergyKwh(installationId, capacityKw) {

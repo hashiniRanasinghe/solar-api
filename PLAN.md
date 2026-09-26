@@ -237,7 +237,7 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 | 10b | `GET /districts/{district-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 10c | `GET /provinces/{province-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 11 | `GET /installations/{installation-id}/readings/{reading-id}` | atomic, target of `Location` `[LEC S8]` | JWT | 200 / 304 | 401, 403, 404 |
-| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **X-API-Key** | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 409, 415 (**404 OPEN, OQ-26**) |
+| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **X-API-Key** | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405 (PUT/PATCH/DELETE), 409, 415; **no 404** (unknown installation → 403, OQ-26 DECIDED) |
 | 13 | `POST /installations` `[YOU]` | create (collection = factory `[WP §7.3]`) | JWT admin (`solar:write`) | 201 + `Location` + headers | 400, 401, 403, 409, 415 |
 | 14 | `PUT /installations/{installation-id}` `[YOU]` | whole-document replace `[WP §7.2]` | JWT admin | 200 | 400, 401, 403, 404, 412, 415 |
 | 15 | `DELETE /installations/{installation-id}` `[YOU]` (readings kept, OQ-13 proposal) | delete | JWT admin | 200 | 401, 403, 404 (2nd call) |
@@ -524,7 +524,7 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 
 ## 15. Open questions and assumptions
 
-Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-26, 27, 28, 29, validation limits, OQ-25 (viva), current rubric.
+Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-28, 29, OQ-25 (viva), current rubric. (OQ-26, OQ-27 and the validation limits were closed on 2026-09-26; rules in `my-decisions.md` §9.)
 
 | ID | Question | My recommendation | Blocks |
 |---|---|---|---|
@@ -551,8 +551,8 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-21 | **DECIDED `[YOU]`:** noun sub-resources named for the thing (`…/installations/{id}/last-reading`, `…/districts/{id}/generation-summary`); "processing function" is a resource *kind*, never a URI segment | Deviation from WP §5.1 recorded; own decision, not confirmed with the lecturer | P3 |
 | OQ-22 | **DECIDED `[YOU]`:** follow white paper → base path `/solar/v1.0` | One `app.use`; Swagger `servers` includes it; 301 for old versions not implemented (only v1.0 exists) — list as a limitation | P1 |
 | OQ-23 | **DECIDED `[YOU]`:** follow white paper → `sort=(timestamp DESC)`, multi-attribute `sort=(a ASC, b DESC)` | Whitelist attributes; default newest first for readings | P6 |
-| OQ-26 | **OPEN.** POST readings: LEC S7/S8 list 404, but a key-hash lookup gives 401/403 before existence is known | (a) drop 404 from this route's contract, or (b) check existence before the key (reveals which ids exist) | P4 |
-| OQ-27 | **OPEN.** `energy_kwh` is cumulative: reject a value lower than the previous reading? Out-of-order/late readings make it unclear | Decide with a reason in Phase 4; seed is non-decreasing regardless | P4 |
+| OQ-26 | **DECIDED `[YOU]` 2026-09-26:** no 404 on POST readings. Missing or unknown key → 401 (40104/40105); a valid key used on an installation that is not its own, or that does not exist, → 403 (40302), so the route never reveals which ids exist | Option (a) of the earlier choice; `my-decisions.md` §9 | P4 |
+| OQ-27 | **DECIDED `[YOU]` 2026-09-26:** compared with the newest stored reading: same timestamp → 409 (40901, unique index as final guard), older timestamp → 409 (40903), lower `energy_kwh` → 409 (40902); equal energy allowed | Late or out-of-order readings are refused. Known limit: two concurrent requests with different timestamps can both pass the older/lower checks | P4 |
 | OQ-28 | **OPEN.** How does a newly created installation get a device key? | Return the plain key once in the 201 body (differs from GET) or seed-only keys | P7 |
 | OQ-29 | **OPEN (technical).** ETag construction (Express default vs explicit; strong ETag needed for `If-Match`) | Decide in Phase 6 | P6 |
 | OQ-24 | Should PUT require `If-Match`? WP §9 gives "request must be conditional but no condition specified" as a 403 example | Optional `If-Match` (simpler); if present and stale → 412 | P7 |
@@ -596,4 +596,4 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 
 ## 18. Diagrams (Phase 0b)
 
-Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). Syntax-checked with the Mermaid parser and rendered with Mermaid CLI for the study guide. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.
+Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN item shown inside the diagrams: OQ-29 (diagram 06). OQ-26 and OQ-27 are shown as DECIDED in diagrams 04c and 05 (2026-09-26). Syntax-checked with the Mermaid parser and rendered with Mermaid CLI for the study guide; `04c` and `05` were revised on 2026-09-26 and are not yet re-checked. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.
