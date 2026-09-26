@@ -159,7 +159,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 ## 12. Error contract
 - `DECIDED · WP §11` `code` (integer) and `message` are required. `DECIDED · BRIEF §5` One consistent schema with a code, a message and supporting detail across the API.
 - `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields). Integer codes = HTTP status × 100 + a number (for example 40001).
-- Codes in use (2026-09-26): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice (the last four as per-field items in `error[]`) · 40401 route not found · 40402 resource not found · 50001 unexpected error.
+- Codes in use (2026-09-26): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice · 40007 `from` not a valid UTC timestamp · 40008 `to` not a valid UTC timestamp · 40009 `from` later than `to` (40003–40009 as per-field items in `error[]`) · 40401 route not found · 40402 resource not found · 40403 no reading yet (installation exists) · 50001 unexpected error.
 - `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
 - `PROPOSAL` `WWW-Authenticate` is `Bearer realm="solar"` for users and a custom `ApiKey realm="solar"` for devices (WP requires the header, not a scheme name).
 

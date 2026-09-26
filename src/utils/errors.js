@@ -37,6 +37,15 @@ class AppError extends Error {
     );
   }
 
+  static noReadingYet() {
+    return new AppError(
+      404,
+      3,
+      'No reading yet',
+      'The installation exists but has not sent any reading yet.'
+    );
+  }
+
   static unexpected() {
     return new AppError(500, 1, 'Internal server error', 'An unexpected error occurred.');
   }
@@ -48,6 +57,9 @@ const FIELD_ERROR = {
   limit: 40004,
   sort: 40005,
   filter: 40006,
+  from: 40007,
+  to: 40008,
+  timeWindow: 40009,
 };
 
 module.exports = { AppError, MORE_INFO, FIELD_ERROR };

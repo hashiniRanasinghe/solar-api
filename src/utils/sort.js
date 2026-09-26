@@ -5,11 +5,14 @@ const WRAPPED = /^\((.+)\)$/;
 const TERM = /^([a-z_]+)\s+(asc|desc)$/i;
 
 // Returns a MongoDB sort object. The business id is always the final key so
-// pages are stable. A bad value is pushed onto errors.
-function parseSort(raw, allowedFields, idField, errors) {
+// pages are stable. defaultSort applies when no sort is given. A bad value is
+// pushed onto errors.
+function parseSort(raw, allowedFields, idField, errors, defaultSort = {}) {
   const sort = {};
 
-  if (raw !== undefined) {
+  if (raw === undefined) {
+    Object.assign(sort, defaultSort);
+  } else {
     const terms = typeof raw === 'string' ? parseTerms(raw, allowedFields) : null;
     if (!terms) {
       errors.push({
