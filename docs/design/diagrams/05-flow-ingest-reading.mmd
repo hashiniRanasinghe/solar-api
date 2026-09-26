@@ -1,7 +1,7 @@
 %% 05-flow-ingest-reading.mmd - Request/response flow: device pushes a reading
 %% Basis: BRIEF §5 (ingestion, correct method, 201 + where it now lives); WP §7.3, §9; LEC S7, S8
 %% Decisions: my-decisions §4, §8, §9.
-%% OPEN: (a) OQ-26 is 404 kept in the contract for this route, (b) OQ-27 is a lower cumulative energy_kwh rejected. Both decided in Phase 4.
+%% DECIDED 2026-09-26: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Check order: 415, 401, 403, 400, 409.
 %% No timestamp tolerance / future-time rule is applied (no supporting evidence in coursework or reference material).
 sequenceDiagram
   autonumber
@@ -10,22 +10,35 @@ sequenceDiagram
   participant S as Service
   participant DB as MongoDB
   D->>M: POST /solar/v1.0/installations/INS-0001/readings, X-API-Key, JSON body
-  M->>M: authenticate the device (diagram 04a)
   alt Content-Type is not JSON
-    M-->>D: 415
-  else body invalid (missing or non-numeric field, bad timestamp, value out of range)
-    M-->>D: 400 + error[] per field
+    M-->>D: 415 (41501)
+  else no key, or key hash not found
+    M-->>D: 401 (40104 / 40105) + WWW-Authenticate: ApiKey realm="solar"
+  else key belongs to another installation (or the path id does not exist)
+    M-->>D: 403 (40302)
+  else body invalid (missing or non-numeric field, bad timestamp, off a 15-minute boundary, out of range, read-only field sent)
+    M->>S: validate body against the installation's capacity_kw
+    S-->>D: 400 (40010) + error[] per field
   else valid
     M->>S: create reading for the installation in the PATH
+    S->>DB: find newest reading of the installation
+    alt same timestamp already stored
+      S-->>D: 409 (40901)
+    else older than the newest reading
+      S-->>D: 409 (40903)
+    else energy_kwh lower than the newest reading
+      S-->>D: 409 (40902)
+    else
     S->>DB: insert reading (unique on installation_id + timestamp)
-    alt same installation and timestamp already stored
-      DB-->>S: duplicate key
-      S-->>D: 409 + error body
+    alt duplicate key (a concurrent request stored it first)
+      DB-->>S: duplicate key (11000)
+      S-->>D: 409 (40901)
     else inserted
       DB-->>S: stored reading (reading_id, received_at set by server)
       S-->>D: 201 Created + Location + Content-Location + ETag + Last-Modified + reading JSON
     end
+    end
   end
-  Note over D,DB: 404 for an unknown installation cannot occur here: unknown key gives 401, another installation key gives 403 (OPEN, OQ-26)
-  Note over D,DB: energy_kwh is cumulative. Rejecting a value lower than the previous reading is OPEN (OQ-27)
+  Note over D,DB: No 404 on this route: an unknown installation gives 403, so ids are not revealed (OQ-26, DECIDED)
+  Note over D,DB: energy_kwh is cumulative: a value lower than the newest reading is refused (OQ-27, DECIDED). Known limit: two concurrent requests with different timestamps can both pass these checks
   Note over D,DB: The Location URI must resolve with GET /installations/{id}/readings/{reading-id} by a user with a JWT

@@ -55,7 +55,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 
 | ID | Requirement | Source | Rubric area | Done |
 |---|---|---|---|---|
-| G1 | Azure App Service web app (final deploy); GitHub Actions workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS (smoke and final deploys); T02 collections non-empty |
+| G1 | Public HTTPS API on Azure App Service, populated with seed data and operational at submission time (deployed by one GitHub Actions workflow) | §7.1, §12, §13 | Deployment | [ ] |
 | G2 | Live OpenAPI (Swagger) surface served from the deployment | §7.2 | Deployment / API design | [ ] |
 | G3 | Git repo shared with module leader; incremental commit history | §7.3, §12, §13 | Deployment | [ ] |
 | G4 | Report 2250–2750 words, 6 identifiable sections (see §11) | §8, §12 | Report | [ ] |
@@ -171,7 +171,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Area | Choice | Tag | Note |
 |---|---|---|---|
 | Runtime | Node (current LTS locally; `engines: >=18`) | `[YOU]` | Brief sets no version |
-| Framework | Express | `[YOU]` | Express 5 forwards rejected async handlers to the error middleware; Express 4 does not |
+| Framework | Express 5 (upgraded from 4 on 2026-09-21, OQ-34) | `[YOU]` | Express 5 forwards rejected async handlers to the error middleware; Express 4 does not. No async wrapper needed |
 | Database | MongoDB Atlas (free M0) | `[YOU]` | Persistence needed because POST readings must survive restarts (in-memory `seed.json` from the lectures would not) |
 | DB access | Mongoose | `[YOU]` (OQ-19) | Schemas self-document; native driver rejected |
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
@@ -237,7 +237,7 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 | 10b | `GET /districts/{district-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 10c | `GET /provinces/{province-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 11 | `GET /installations/{installation-id}/readings/{reading-id}` | atomic, target of `Location` `[LEC S8]` | JWT | 200 / 304 | 401, 403, 404 |
-| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **X-API-Key** | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 409, 415 (**404 OPEN, OQ-26**) |
+| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **X-API-Key** | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405 (PUT/PATCH/DELETE), 409, 415; **no 404** (unknown installation → 403, OQ-26 DECIDED) |
 | 13 | `POST /installations` `[YOU]` | create (collection = factory `[WP §7.3]`) | JWT admin (`solar:write`) | 201 + `Location` + headers | 400, 401, 403, 409, 415 |
 | 14 | `PUT /installations/{installation-id}` `[YOU]` | whole-document replace `[WP §7.2]` | JWT admin | 200 | 400, 401, 403, 404, 412, 415 |
 | 15 | `DELETE /installations/{installation-id}` `[YOU]` (readings kept, OQ-13 proposal) | delete | JWT admin | 200 | 401, 403, 404 (2nd call) |
@@ -255,20 +255,20 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 
 ## 8. Database plan (MongoDB Atlas)
 
-Fields snake_case, public IDs are string business IDs (`PV-01`, `DT-03`, `SS-001`, `INS-0001`, `RD-…`); Mongo `_id` is never exposed `[YOU]` (OQ-07). Mongoose `[YOU]` (OQ-19).
+Fields snake_case, public IDs are string business IDs (`PV-01`, `DT-01`, `SS-001`, `INS-0001`, `RD-…`); Mongo `_id` is never exposed `[YOU]` (OQ-07). Mongoose `[YOU]` (OQ-19). Naming: entity Reading = collection `generation_readings` = Mongoose model `GenerationReading` (collection name set explicitly). Full detail: `docs/design/data-model.md`.
 
 | Collection | Key fields | Indexes |
 |---|---|---|
 | `provinces` | `province_id`, `name` | unique `province_id` |
 | `districts` | `district_id`, `name`, `province_id` | unique `district_id`; `province_id` |
-| `substations` | `substation_id`, `name`, `district_id`, `province_id` (derived from district) | unique `substation_id`; `district_id` |
-| `installations` | `installation_id`, `meter_id`, `name`, `substation_id`, `district_id` (derived), `province_id` (derived), `capacity_kw`, `api_key_hash` (never returned), `created_at`, `updated_at` | unique `installation_id`; unique `meter_id`; unique `api_key_hash`; `substation_id`; `district_id` |
-| `generation_readings` | `reading_id`, `installation_id`, `timestamp`, `power_kw`, `energy_kwh`, `voltage`, `received_at` | unique `(installation_id, timestamp)`; `(installation_id, timestamp desc)` for history + last reading |
+| `substations` | `substation_id`, `name`, `district_id`, `province_id` (derived from district) | unique `substation_id`; `district_id`; `province_id` `[PROPOSAL]` |
+| `installations` | `installation_id`, `meter_id`, `name`, `substation_id`, `district_id` (derived), `province_id` (derived), `capacity_kw`, `api_key_hash` (never returned; not required while OQ-28 is open), `created_at`, `updated_at` | unique `installation_id`; unique `meter_id`; **partial** unique `api_key_hash` (only where a string) `[PROPOSAL]`; `substation_id`; `district_id`; `province_id` `[PROPOSAL]` |
+| `generation_readings` | `reading_id`, `installation_id`, `timestamp`, `power_kw`, `energy_kwh`, `voltage`, `received_at` | unique `reading_id` (the `Location` target) `[PROPOSAL]`; unique `(installation_id, timestamp)`, which also serves history and last reading in both sort directions. The separate `(installation_id, timestamp desc)` index is probably redundant: confirm with `explain()` in Phase 3 before dropping it `[PROPOSAL]` |
 | `users` | `user_id`, `username`, `password_hash`, `role`, `jurisdiction_level`, `jurisdiction_id` | unique `username` |
 
 - **Derived ids `[YOU]`:** `substation_id` is the source of truth; `district_id` and `province_id` are derived by the server (never accepted from the client; a PUT copied from a GET is ignored and recomputed). **Storage `[YOU]`:** stored read-only copies for one-lookup scope checks and filters, proven consistent by a seed integrity test; alternative is joining on every request.
 - **Readings carry no jurisdiction ids** `[YOU]` (OQ-04): for a jurisdiction route the service finds the installation ids under the path parent (derived ids on installations, indexed) and queries `generation_readings` for those ids. History therefore follows an installation if its substation changes. Sort is `(requested field, installation_id)`; at seed scale the largest result is one province's readings.
-- Device key lives **on the installation** (`api_key_hash`, unique index), not in a device collection — consistent with M2. Lookup by hash: no match → 401; match on another installation → 403 `[PROPOSAL]`.
+- Device key lives **on the installation** (`api_key_hash`, partial unique index), not in a device collection — consistent with M2. Lookup by hash: no match → 401; match on another installation → 403 `[PROPOSAL]`. Partial because a new installation may exist before it has a key (OQ-28, open).
 - Unique `(installation_id, timestamp)` makes device retries safe (duplicate → 409) — answers "idempotency" for the ingest path `[PROPOSAL]` OQ-09.
 - `capacity_kw` gives a realistic ceiling for seed and validation. Extra fields need one-line justification in the report `[BRIEF §3]`.
 
@@ -386,7 +386,7 @@ Word count 2250–2750 excludes: declaration, AI appendix, diagrams, tables, cod
 
 - OpenAPI `servers` uses the relative URL `/solar/v1.0`, so the spec never mentions localhost `[PROPOSAL]`. `GET /` also returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure) `[PROPOSAL]`.
 - **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually). It is written on `dev_hashini` and arrives through `dev` like any other file. Azure's Deployment Center must **not** commit it for us. Authentication method (publish profile with basic authentication, OIDC, or Azure CLI ZIP fallback) is decided at the smoke deploy (OQ-32).
-- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva.
+- Cost guard: read the estimated monthly price when creating the plan, set a budget alert in Cost Management, delete the smoke resource group straight after the smoke deploy, and delete the final plan (not just the app) only after marking and the viva. Never upgrade the subscription to Pay-As-You-Go or remove the spending limit, and attach no card: when the credit ends Azure disables the subscription instead of billing.
 - Branch names are spelled `deployment_dev` and `deployment_qa`.
 
 **Other rules**
@@ -524,7 +524,7 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 
 ## 15. Open questions and assumptions
 
-Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-26, 27, 28, 29, validation limits, OQ-25 (viva), current rubric.
+Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-28, 29, OQ-25 (viva), current rubric. (OQ-26, OQ-27 and the validation limits were closed on 2026-09-26; rules in `my-decisions.md` §9.)
 
 | ID | Question | My recommendation | Blocks |
 |---|---|---|---|
@@ -551,16 +551,16 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-21 | **DECIDED `[YOU]`:** noun sub-resources named for the thing (`…/installations/{id}/last-reading`, `…/districts/{id}/generation-summary`); "processing function" is a resource *kind*, never a URI segment | Deviation from WP §5.1 recorded; own decision, not confirmed with the lecturer | P3 |
 | OQ-22 | **DECIDED `[YOU]`:** follow white paper → base path `/solar/v1.0` | One `app.use`; Swagger `servers` includes it; 301 for old versions not implemented (only v1.0 exists) — list as a limitation | P1 |
 | OQ-23 | **DECIDED `[YOU]`:** follow white paper → `sort=(timestamp DESC)`, multi-attribute `sort=(a ASC, b DESC)` | Whitelist attributes; default newest first for readings | P6 |
-| OQ-26 | **OPEN.** POST readings: LEC S7/S8 list 404, but a key-hash lookup gives 401/403 before existence is known | (a) drop 404 from this route's contract, or (b) check existence before the key (reveals which ids exist) | P4 |
-| OQ-27 | **OPEN.** `energy_kwh` is cumulative: reject a value lower than the previous reading? Out-of-order/late readings make it unclear | Decide with a reason in Phase 4; seed is non-decreasing regardless | P4 |
+| OQ-26 | **DECIDED `[YOU]` 2026-09-26:** no 404 on POST readings. Missing or unknown key → 401 (40104/40105); a valid key used on an installation that is not its own, or that does not exist, → 403 (40302), so the route never reveals which ids exist | Option (a) of the earlier choice; `my-decisions.md` §9 | P4 |
+| OQ-27 | **DECIDED `[YOU]` 2026-09-26:** compared with the newest stored reading: same timestamp → 409 (40901, unique index as final guard), older timestamp → 409 (40903), lower `energy_kwh` → 409 (40902); equal energy allowed | Late or out-of-order readings are refused. Known limit: two concurrent requests with different timestamps can both pass the older/lower checks | P4 |
 | OQ-28 | **OPEN.** How does a newly created installation get a device key? | Return the plain key once in the 201 body (differs from GET) or seed-only keys | P7 |
 | OQ-29 | **OPEN (technical).** ETag construction (Express default vs explicit; strong ETag needed for `If-Match`) | Decide in Phase 6 | P6 |
 | OQ-24 | Should PUT require `If-Match`? WP §9 gives "request must be conditional but no condition specified" as a 403 example | Optional `If-Match` (simpler); if present and stale → 412 | P7 |
 | OQ-31 | **DECIDED `[YOU]` 2026-09-20:** host on **Azure App Service** (Azure for Students credit, no card) instead of Render. **Deployment by one GitHub Actions workflow** | Render asked for a card check; Azure credit (US$100, 365 days) needs none. Watch credit use; delete resources per §12b | P1 |
 | OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR **only at the smoke deploy and the final deploy**); `deployment_qa` **kept as a marker, never deployed** | The release step is manual; check `dev` = `deployment_dev` before submission | P1 |
 | OQ-32 | **OPEN until the smoke deploy.** Workflow authentication: publish profile (needs basic authentication on the app), OIDC (may be blocked in the university tenant), or Azure CLI ZIP fallback | Try the publish profile first; record the result in `docs/evidence/` | P4b |
-| OQ-33 | **OPEN until step 0 (zero-cost validation).** Azure region and quota: nearest allowed region to Atlas Mumbai (Central India, South India, Southeast Asia) and whether Basic B1 and Free F1 can be created | Record the result; blocks only the deployment phases | P1 |
-| OQ-34 | **OPEN (technical).** Express 4 (installed) or Express 5? Express 4 needs a small wrapper so async route errors reach the error handler | Decide at the start of Phase 2. Default: keep 4 with the wrapper | P2 |
+| OQ-33 | **DECIDED 2026-09-21** (zero-cost validation passed): Azure region **India South Central**; Basic B1 (1 vCPU, 1.75 GB) about **US$13.14/month**; Free F1 also available; Node 22 LTS on Linux available; basic authentication is off by default | Use India South Central for the smoke and final deploys. Evidence in `docs/evidence/azure-validation.md` | P1 |
+| OQ-34 | **DECIDED `[YOU]` 2026-09-21:** upgrade to **Express 5** (5.2.1) | Tested on the skeleton: on Express 4 an async route error leaves the request hanging and can crash the process; on Express 5 it reaches the error handler and returns 500 with the standard body. No async wrapper is needed. Skeleton unchanged | P2 |
 | OQ-35 | **DECIDED `[YOU]` 2026-09-20:** local development uses Atlas database `slsea_local` from the Mac; the deployed database is `slsea_dev` | Free cloud database, same driver path as production; no destructive scripts against `slsea_dev` | P1 |
 | OQ-25 | **PENDING:** viva date/format not confirmed | Non-blocking. Ask as soon as it is announced; reserve 3–4 Oct for smoke test/submit regardless | P8 |
 
@@ -596,4 +596,4 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 
 ## 18. Diagrams (Phase 0b)
 
-Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN items shown inside the diagrams: OQ-26, OQ-27 (diagram 05, 04c), OQ-29 (diagram 06). +Syntax-checked with the Mermaid parser; layout not yet viewed. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.
+Sources in `docs/design/diagrams/` (index in its README). 14 Mermaid files: `01-context`, `02-resource-model`, `03-er-model`, `04a/04b` auth flows, `04c` request pipeline, `05` ingest, `06` readings history (four parents), `07` operational reads, `08` deployment, `09` layered architecture, `10` roles and permissions, `11` branching and environments, `12` roadmap (progress tracker). OQ-03, 04, 05, 21 are shown as decided. Remaining OPEN item shown inside the diagrams: OQ-29 (diagram 06). OQ-26 and OQ-27 are shown as DECIDED in diagrams 04c and 05 (2026-09-26). Syntax-checked with the Mermaid parser and rendered with Mermaid CLI for the study guide; `04c` and `05` were revised on 2026-09-26 and are not yet re-checked. Diagrams `01`, `08`, `11`, `12` and the diagrams README were updated for the local-first plan on 2026-09-20.

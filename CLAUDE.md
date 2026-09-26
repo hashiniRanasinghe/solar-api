@@ -10,7 +10,7 @@
 - After each change: state which requirement ID (PLAN.md section 2) it serves and how to test it.
 
 ## Stack and model
-- Node/Express, Mongoose, MongoDB Atlas, OpenAPI at /docs. Final hosting: Azure App Service (Linux, Node 22 LTS), used only at the end. Exactly one GitHub Actions workflow (deploy only) is allowed, and only when I ask for it. Nothing else without asking.
+- Express 5 (5.2.x). Async route handlers may throw or reject; Express forwards the error to the error handler. Do NOT add async wrapper helpers. Route parameters use camelCase names (for example :installationId); the URI templates in the docs keep the hyphenated names. Disable the X-Powered-By header.
 - Model: Province > District > Substation > Installation > Reading, plus User. NO Device entity (meter_id is an installation attribute).
 - Installation stores substation_id; district_id/province_id are server-derived, stored read-only, never taken from the client.
 - energy_kwh is CUMULATIVE (running total). String IDs (INS-0001); Mongo _id hidden.

@@ -11,12 +11,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "TZ=UTC node --test \"test/**/*.test.js\""
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.5.0"
   }
 }

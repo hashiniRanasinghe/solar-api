@@ -1,0 +1,207 @@
+// Login and bearer-token checks. Read-only: the only database access is the
+// user lookup for an unknown username. Login success uses a mocked user whose
+// bcrypt hash is made here from a test-only password; no seeded password is used.
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const http = require('node:http');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const app = require('../src/app');
+const { MONGODB_URI } = require('../src/config/env');
+const usersRepository = require('../src/repositories/users');
+const { mintToken, nationalToken } = require('./helpers/auth');
+
+const API = '/solar/v1.0';
+const CHALLENGE = 'Bearer realm="solar"';
+const INVALID_TOKEN_CHALLENGE = 'Bearer realm="solar", error="invalid_token"';
+const TEST_PASSWORD = 'test-only-password';
+
+let server;
+
+before(async () => {
+  assert.ok(MONGODB_URI, 'MONGODB_URI must be set to run the auth tests');
+  await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000, autoIndex: false });
+  server = await new Promise((resolve) => {
+    const s = app.listen(0, () => resolve(s));
+  });
+});
+
+after(async () => {
+  await new Promise((resolve) => server.close(resolve));
+  await mongoose.disconnect();
+});
+
+function request({ method = 'GET', path, headers = {}, body }) {
+  return new Promise((resolve, reject) => {
+    const { port } = server.address();
+    const req = http.request({ host: '127.0.0.1', port, method, path, headers }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        resolve({ statusCode: res.statusCode, headers: res.headers, raw: data, body: JSON.parse(data) });
+      });
+    });
+    req.on('error', reject);
+    if (body !== undefined) req.write(body);
+    req.end();
+  });
+}
+
+function getWithAuth(path, authorization) {
+  return request({ path, headers: authorization === undefined ? {} : { Authorization: authorization } });
+}
+
+function login(credentials) {
+  return request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  });
+}
+
+function assertErrorBody(body, status, code) {
+  assert.equal(body.code, code);
+  assert.equal(Math.floor(body.code / 100), status);
+  assert.equal(typeof body.message, 'string');
+  assert.equal(typeof body.description, 'string');
+  assert.equal(body.moreInfo, '/docs');
+  assert.ok(Array.isArray(body.error));
+}
+
+function mockUser(t, { role = 'reader', level = 'national', jurisdictionId } = {}) {
+  const user = {
+    username: 'mock.user',
+    password_hash: bcrypt.hashSync(TEST_PASSWORD, 4),
+    role,
+    jurisdiction_level: level,
+    jurisdiction_id: jurisdictionId,
+  };
+  return t.mock.method(usersRepository, 'findByUsername', async () => user);
+}
+
+test('GET / stays open', async () => {
+  const res = await getWithAuth('/');
+  assert.equal(res.statusCode, 200);
+});
+
+test('no bearer token gives 401/40101 with WWW-Authenticate and no error attribute', async () => {
+  for (const authorization of [undefined, 'Basic dXNlcjpwYXNz', 'Bearer', 'Bearer ']) {
+    for (const path of [`${API}/provinces`, `${API}/installations/INS-0001/readings`]) {
+      const res = await getWithAuth(path, authorization);
+      assert.equal(res.statusCode, 401, `${authorization} ${path}`);
+      assertErrorBody(res.body, 401, 40101);
+      assert.equal(res.headers['www-authenticate'], CHALLENGE);
+    }
+  }
+});
+
+test('malformed, wrongly signed, unsigned, expired or badly claimed tokens give 401/40102 invalid_token', async () => {
+  const unsigned = [
+    Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(
+      JSON.stringify({ sub: 'x', role: 'reader', jurisdiction_level: 'national', scope: 'solar:read' })
+    ).toString('base64url'),
+    '',
+  ].join('.');
+  const tokens = {
+    malformed: 'abc.def',
+    otherSecret: jwt.sign({ role: 'reader', jurisdiction_level: 'national', scope: 'solar:read' }, 'another-secret', {
+      subject: 'x',
+    }),
+    unsigned,
+    expired: mintToken({}, { expiresIn: -60 }),
+    badLevel: mintToken({ jurisdiction_level: 'galaxy' }),
+    districtWithoutId: mintToken({ jurisdiction_level: 'district', jurisdiction_id: null }),
+  };
+  for (const [name, token] of Object.entries(tokens)) {
+    const res = await getWithAuth(`${API}/provinces`, `Bearer ${token}`);
+    assert.equal(res.statusCode, 401, name);
+    assertErrorBody(res.body, 401, 40102);
+    assert.equal(res.headers['www-authenticate'], INVALID_TOKEN_CHALLENGE, name);
+  }
+});
+
+test('login with missing or non-string fields gives 400/40010 with per-field items', async () => {
+  const cases = [
+    [{}, [40011, 40012]],
+    [{ username: 'a' }, [40012]],
+    [{ password: 'a' }, [40011]],
+    [{ username: 5, password: 'a' }, [40011]],
+    [{ username: 'a', password: { $ne: '' } }, [40012]],
+    [{ username: '', password: '' }, [40011, 40012]],
+    [[], [40011, 40012]],
+  ];
+  for (const [credentials, codes] of cases) {
+    const res = await login(credentials);
+    assert.equal(res.statusCode, 400, JSON.stringify(credentials));
+    assertErrorBody(res.body, 400, 40010);
+    assert.deepEqual(res.body.error.map((e) => e.code).sort(), codes);
+  }
+
+  const noBody = await request({ method: 'POST', path: `${API}/login` });
+  assert.equal(noBody.statusCode, 400);
+  assertErrorBody(noBody.body, 400, 40010);
+});
+
+test('unknown user and wrong password give the same 401/40103 body', async (t) => {
+  const unknown = await login({ username: 'no.such.user.for.tests', password: 'whatever' });
+
+  mockUser(t);
+  const wrongPassword = await login({ username: 'mock.user', password: 'not-the-password' });
+
+  for (const res of [unknown, wrongPassword]) {
+    assert.equal(res.statusCode, 401);
+    assertErrorBody(res.body, 401, 40103);
+    assert.equal(res.headers['www-authenticate'], CHALLENGE);
+  }
+  assert.equal(unknown.raw, wrongPassword.raw);
+});
+
+test('login success returns a bearer token that works on GET /provinces', async (t) => {
+  const mock = mockUser(t, { level: 'district', jurisdictionId: 'DT-01' });
+  const res = await login({ username: 'mock.user', password: TEST_PASSWORD });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(Object.keys(res.body).sort(), ['access_token', 'expires_in', 'token_type']);
+  assert.equal(res.body.token_type, 'Bearer');
+  assert.equal(res.body.expires_in, 3600);
+  assert.equal(mock.mock.callCount(), 1);
+  assert.ok(!res.raw.includes('password'));
+
+  const claims = jwt.decode(res.body.access_token, { complete: true });
+  assert.equal(claims.header.alg, 'HS256');
+  assert.deepEqual(Object.keys(claims.payload).sort(), [
+    'exp',
+    'iat',
+    'jurisdiction_id',
+    'jurisdiction_level',
+    'role',
+    'scope',
+    'sub',
+  ]);
+  assert.equal(claims.payload.sub, 'mock.user');
+  assert.equal(claims.payload.scope, 'solar:read');
+  assert.equal(claims.payload.jurisdiction_id, 'DT-01');
+  assert.equal(claims.payload.exp - claims.payload.iat, 3600);
+
+  const provinces = await getWithAuth(`${API}/provinces`, `Bearer ${res.body.access_token}`);
+  assert.equal(provinces.statusCode, 200);
+});
+
+test('an admin token carries solar:read solar:write', async (t) => {
+  mockUser(t, { role: 'admin' });
+  const res = await login({ username: 'mock.user', password: TEST_PASSWORD });
+  assert.equal(res.statusCode, 200);
+  const claims = jwt.decode(res.body.access_token);
+  assert.equal(claims.scope, 'solar:read solar:write');
+  assert.equal(claims.jurisdiction_id, null);
+});
+
+test('an authenticated request to an unknown route still gives 404/40401', async () => {
+  const res = await getWithAuth(`${API}/no-such-route`, `Bearer ${nationalToken()}`);
+  assert.equal(res.statusCode, 404);
+  assertErrorBody(res.body, 404, 40401);
+});

@@ -1,24 +1,25 @@
 %% 04c-request-pipeline.mmd - Order of checks and where each status code comes from
 %% Basis: WP §9 (status codes), §10.1 (406), §10.4 (304), §10.5 (412), §11 (error body); my-decisions §8-§12
-%% Status: the ORDER of checks is a PROPOSAL. 404 on POST readings is OPEN (see note in diagram 05).
+%% Status: order on POST readings is DECIDED (2026-09-26): 405, 415, 401, 403, 400, 409. Read routes: 401, then 403/404 by scope, then 400.
+%% OQ-26 DECIDED: POST readings has no 404 (unknown installation -> 403). The rest of the order (406, 304, 412) is still a PROPOSAL.
 flowchart TD
   R["Incoming request"] --> RT{"Route and method known?"}
-  RT -- "no route" --> E404["404 + error body"]
-  RT -- "method not allowed on this path" --> E405["405 + Allow (PROPOSAL)"]
-  RT -- yes --> AC{"Accept allows application/json?"}
+  RT -- "no route (with a valid token; without one: 401)" --> E404["404 + error body (40401)"]
+  RT -- "method not allowed on this path<br/>(PUT/PATCH/DELETE on readings)" --> E405["405 + Allow (40501)"]
+  RT -- yes --> AC{"Accept allows application/json?<br/>(PROPOSAL, Phase 6)"}
   AC -- no --> E406["406"]
-  AC -- yes --> AU{"Credential present and accepted?<br/>API key on device route, JWT elsewhere"}
+  AC -- yes --> CT{"Write request: Content-Type is JSON?"}
+  CT -- no --> E415["415 (41501)"]
+  CT -- yes --> AU{"Credential present and accepted?<br/>X-API-Key on POST readings, JWT elsewhere"}
   AU -- no --> E401["401 + WWW-Authenticate"]
-  AU -- yes --> CT{"Write request: Content-Type is JSON?"}
-  CT -- no --> E415["415"]
-  CT -- yes --> EX{"Resource exists?"}
-  EX -- no --> E404b["404"]
-  EX -- yes --> SC{"Inside scope?<br/>device: own installation<br/>user: path parent (installation, substation, district, province)<br/>write: needs solar:write"}
+  AU -- yes --> SC{"Inside scope?<br/>device: key's own installation (unknown id also 403)<br/>user: path parent (installation, substation, district, province)<br/>write: needs solar:write"}
   SC -- no --> E403["403"]
-  SC -- yes --> VA{"Query and body valid?"}
+  SC -- yes --> EX{"Resource exists?<br/>(read routes; national users)"}
+  EX -- no --> E404b["404"]
+  EX -- yes --> VA{"Query and body valid?"}
   VA -- no --> E400["400 + error[] per field"]
-  VA -- yes --> BR{"Business rule ok?<br/>duplicate reading, stale If-Match"}
-  BR -- "duplicate reading" --> E409["409 (PROPOSAL)"]
+  VA -- yes --> BR{"Business rule ok?<br/>reading vs newest stored, stale If-Match"}
+  BR -- "same timestamp 40901<br/>older 40903<br/>lower energy_kwh 40902" --> E409["409"]
   BR -- "stale If-Match" --> E412["412"]
   BR -- ok --> DO["Run the operation"]
   DO --> WR{"Write?"}
