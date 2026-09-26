@@ -135,7 +135,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 - Basic auth is not used (WP §12.1: only viable over HTTPS, and it carries no scopes). Users are seeded; no `/users` endpoints.
 
 ## 11. Query surface
-- `DECIDED · WP §10.3` `offset` + `limit`; the response has `count` (total matching), `next`, `previous`. `PROPOSAL` defaults `offset=0`, `limit=20`, maximum `100`; bad values → 400.
+-`DECIDED · WP §10.3` `offset` + `limit`; the response has `count` (total matching), `next`, `previous`. `PROPOSAL` (built in D6, 2026-09-26) defaults `offset=0`, `limit=20`; `limit` must be 1–100; bad values → 400 with per-field `error[]`. An `offset` past the end → 200 with empty `data` and the full `count`. A filter given twice → 400 (keeps an array out of the database query). Unrecognised query parameters are ignored
 - `DECIDED · YOU` (OQ-23) Sort syntax `sort=(timestamp DESC)`; several fields `sort=(a ASC, b DESC)`. `DECIDED · BRIEF §5` sort by timestamp asc/desc. `PROPOSAL` whitelist: readings → `timestamp`; installations → `installation_id`, `name`, `capacity_kw`. Default: readings newest first, others by id. Unknown field → 400.
 - `PROPOSAL` Ties are broken by `installation_id` (always appended after the requested sort). Many installations share the same 15-minute timestamp, so without a tie-break the pages of a jurisdiction history could repeat or skip rows.
 - `DECIDED · BRIEF §5` Filter by time window. `PROPOSAL` (OQ-20) parameters `from` and `to`, ISO 8601, both inclusive, on every readings collection.
@@ -159,6 +159,7 @@ The marking rubric I have is outdated (it names module NIB304CEM, batch 24.1P). 
 ## 12. Error contract
 - `DECIDED · WP §11` `code` (integer) and `message` are required. `DECIDED · BRIEF §5` One consistent schema with a code, a message and supporting detail across the API.
 - `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields). Integer codes = HTTP status × 100 + a number (for example 40001).
+- Codes in use (2026-09-26): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice (the last four as per-field items in `error[]`) · 40401 route not found · 40402 resource not found · 50001 unexpected error.
 - `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
 - `PROPOSAL` `WWW-Authenticate` is `Bearer realm="solar"` for users and a custom `ApiKey realm="solar"` for devices (WP requires the header, not a scheme name).
 

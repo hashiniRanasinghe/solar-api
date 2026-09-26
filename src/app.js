@@ -15,8 +15,7 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', environment: APP_ENV });
 });
 
-const v1Router = express.Router();
-app.use('/solar/v1.0', v1Router);
+app.use('/solar/v1.0', require('./routes'));
 
 app.use((req, res, next) => {
   next(AppError.routeNotFound());

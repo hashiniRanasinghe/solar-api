@@ -14,8 +14,27 @@ class AppError extends Error {
     return new AppError(400, 1, 'Malformed JSON', 'The request body is not valid JSON.');
   }
 
+  static invalidQuery(error) {
+    return new AppError(
+      400,
+      2,
+      'Invalid query parameter',
+      'One or more query parameters are not valid.',
+      error
+    );
+  }
+
   static routeNotFound() {
     return new AppError(404, 1, 'Not found', 'The requested route does not exist.');
+  }
+
+  static resourceNotFound(resourceName) {
+    return new AppError(
+      404,
+      2,
+      'Resource not found',
+      `The requested ${resourceName} does not exist.`
+    );
   }
 
   static unexpected() {
@@ -23,4 +42,12 @@ class AppError extends Error {
   }
 }
 
-module.exports = { AppError, MORE_INFO };
+// Codes for the per-field items in error[] (same status x 100 + n scheme).
+const FIELD_ERROR = {
+  offset: 40003,
+  limit: 40004,
+  sort: 40005,
+  filter: 40006,
+};
+
+module.exports = { AppError, MORE_INFO, FIELD_ERROR };
