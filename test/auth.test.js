@@ -151,10 +151,45 @@ test('login with missing or non-string fields gives 400/40010 with per-field ite
     assert.deepEqual(res.body.error.map((e) => e.code).sort(), codes);
   }
 
-  const noBody = await request({ method: 'POST', path: `${API}/login` });
-  assert.equal(noBody.statusCode, 400);
-  assertErrorBody(noBody.body, 400, 40010);
-  assert.deepEqual(noBody.body.error.map((e) => e.code), [40022]);
+  const emptyJson = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(emptyJson.statusCode, 400);
+  assertErrorBody(emptyJson.body, 400, 40010);
+  assert.deepEqual(emptyJson.body.error.map((e) => e.code), [40022]);
+});
+
+test('login without a JSON Content-Type gives 415/41501, after 405 and 406 and before 400/401', async () => {
+  const credentials = 'username=a&password=b';
+  for (const headers of [{}, { 'Content-Type': 'text/plain' }, { 'Content-Type': 'application/x-www-form-urlencoded' }]) {
+    const res = await request({ method: 'POST', path: `${API}/login`, headers, body: credentials });
+    assert.equal(res.statusCode, 415, JSON.stringify(headers));
+    assertErrorBody(res.body, 415, 41501);
+  }
+
+  const withCharset = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: '{}',
+  });
+  assert.equal(withCharset.statusCode, 400);
+  assertErrorBody(withCharset.body, 400, 40010);
+
+  const notAcceptable = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'text/plain', Accept: 'text/html' },
+    body: credentials,
+  });
+  assert.equal(notAcceptable.statusCode, 406);
+  assertErrorBody(notAcceptable.body, 406, 40601);
+
+  const notAllowed = await request({ method: 'PUT', path: `${API}/login`, headers: { 'Content-Type': 'text/plain', Accept: 'text/html' } });
+  assert.equal(notAllowed.statusCode, 405);
+  assert.equal(notAllowed.headers.allow, 'POST');
 });
 
 test('unknown user and wrong password give the same 401/40103 body', async (t) => {

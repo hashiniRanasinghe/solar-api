@@ -41,7 +41,7 @@ Remaining gaps: S3/S4 files, S9–S15 (OQ-01). Where a lecture note and the whit
 | Hard gate `[BRIEF §12]` | Done? |
 |---|---|
 | Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] |
-| Live OpenAPI/Swagger from the deployment (`/docs`) | [ ] |
+| Live OpenAPI/Swagger from the deployment (`/docs`) | local done 2026-09-26 (D13, `docs/openapi.yaml`, `test/openapi.test.js`); live pending deploy |
 | Repo shared with module leader as collaborator; incremental commits | [ ] |
 | Report 2250–2750 words with the six required sections | [ ] |
 | Signed declaration + AI-disclosure appendix (prompts, AI-aids) | [ ] |
@@ -176,13 +176,13 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | DB access | Mongoose | `[YOU]` (OQ-19) | Schemas self-document; native driver rejected |
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
 | Device auth | `X-API-Key`, stored as SHA-256 hash, timing-safe compare | `[YOU]` header / `[PROPOSAL]` hashing | Random high-entropy keys don't need bcrypt |
-| Docs | `swagger-ui-express` + `yaml`, spec in `docs/design/openapi.yaml` | `[YOU]` Swagger / `[PROPOSAL]` libs | |
+| Docs | `swagger-ui-express` + `yaml`, spec in `docs/openapi.yaml` (hand-written, single source) | `[YOU]` Swagger and libs (2026-09-26) | |
 | Hosting | **Azure App Service** (Linux, Node 22 LTS), used only for the smoke deploy (Free F1 first, Basic B1 if blocked) and the final deploy (**Basic B1**, paid from the Azure for Students credit, no card). Web app name `solar-api-dev` (add a suffix if taken). Deployed by **one GitHub Actions workflow** when `deployment_dev` is pushed. The final web app is the submitted URL | `[YOU]` Azure (OQ-31) / `[PROPOSAL]` plan sizes, publish-profile authentication (OQ-32) | Read the estimated price when creating the plan; budget alert; delete the smoke resources at once; delete the final plan only after marking and the viva. The F1 tier has a daily compute cap, so it is not used for the final |
 | Tests | Node built-in `node --test` + global `fetch` against `BASE_URL` (default: the local server) | `[PROPOSAL]` | Zero extra deps. Run with `TZ=UTC` to imitate Azure. The same suite runs against the deployed URL at the smoke and final deploys |
 | Dev reload | `node --watch` | `[PROPOSAL]` | No nodemon |
 | **Not used** | TypeScript, Docker, GraphQL, Redis, rate-limit libs; GitHub Actions only for the one deploy workflow (no test or lint pipeline) | `[PROPOSAL]` | Keep the pipeline minimal |
 
-**Dependency set:** `express dotenv cors mongoose jsonwebtoken bcryptjs swagger-ui-express yaml`. No dev dependencies.
+**Dependency set:** `express dotenv cors mongoose jsonwebtoken bcryptjs swagger-ui-express yaml`. One dev dependency: `@apidevtools/swagger-parser` (spec validation test, added 2026-09-26).
 
 ---
 
@@ -210,7 +210,8 @@ src/
   utils/     pagination.js  sort.js  links.js  etag.js  errors.js
 scripts/     seed.js
 test/        *.test.js
-docs/design/ my-decisions.md  data-model.md  openapi.yaml  architecture.md
+docs/openapi.yaml
+docs/design/ my-decisions.md  data-model.md  architecture.md
 ```
 
 One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold rules (scope, last reading, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting concerns. Controllers stay thin. Layers = `[PROPOSAL]` (same as old playbook C3).
@@ -224,8 +225,8 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 | # | Method + URI | Resource type `[LEC S3/S5]` | Auth | Success | Errors |
 |---|---|---|---|---|---|
 | 1 | `GET /` | health | none | 200 | — |
-| 2 | `GET /docs`, `GET /docs.json` | docs | none | 200 | — |
-| 3 | `POST /login` `[YOU]` | **processing function**, verb name allowed `[WP §5.1, §7.3]` | credentials: `{username, password}` (user) or `{installation_id, device_key}` (device) | 200 + token | 400 (mixed or no form 40022), 401 (40103 user, 40106 device) |
+| 2 | `GET /docs` (Swagger UI; 301 to `/docs/`), `GET /docs.json` (the spec) `[YOU]` built 2026-09-26 (D13) | docs, from `docs/openapi.yaml` | none | 200 (301 on `/docs`) | — |
+| 3 | `POST /login` `[YOU]` | **processing function**, verb name allowed `[WP §5.1, §7.3]` | credentials: `{username, password}` (user) or `{installation_id, device_key}` (device) | 200 + token | 400 (mixed or no form 40022), 401 (40103 user, 40106 device), 405, 406, 415 (added 2026-09-26; order 405, 406, 415, then 400/401) |
 | 4 | `GET /provinces`, `/provinces/{province-id}` | collection, atomic | JWT | 200 / 304 | 401, 403, 404 |
 | 5 | `GET /districts`, `/districts/{district-id}` (`?province_id=`) | collection, atomic | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 6 | `GET /substations`, `/substations/{substation-id}` (`?district_id=`, `?province_id=`) `[YOU]` | collection, atomic | JWT | 200 / 304 | 400, 401, 403, 404 |
@@ -327,7 +328,7 @@ Write-path tests leave data behind (append-only); they use future-unique timesta
 | `README.md` | Live URL, `/docs` link, run/seed/test, demo credentials, endpoint table |
 | `docs/design/my-decisions.md` | **My hand-written** decisions (viva ammunition) |
 | `docs/design/data-model.md` | ER (Mermaid), entities, keys, scoping notes |
-| `docs/design/openapi.yaml` | Contract; grown alongside each phase; served at `/docs` |
+| `docs/openapi.yaml` | Contract; hand-written single source, documents what the code does; served at `/docs` and `/docs.json` (path changed from `docs/design/` on 2026-09-26) |
 | `docs/design/diagrams/*.mmd` + `README.md` | 14 Mermaid diagram sources (context, resources, ER, auth, pipeline, flows, deployment, layers, roles, branching); each marks OPEN dependencies |
 | `docs/requirements.md`, `docs/rubric-gaps.md` | From this plan, brief and rubric |
 | `ai-log.md` | Every prompt (chat + Claude Code); source of the AI-disclosure appendix |
@@ -497,7 +498,7 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 | Req | Implementation (planned) | Test |
 |---|---|---|
 | G1 | Azure App Service web app; deploy workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS; T02 collections non-empty |
-| G2 | `swagger-ui-express`, `docs/design/openapi.yaml` | T03 `/docs` 200; T04 `/docs.json` parses, lists all paths |
+| G2 | `swagger-ui-express`, `docs/openapi.yaml` | `test/openapi.test.js`: spec valid; `/docs` and `/docs.json` without a token; every documented operation exists; 405 `Allow` = documented methods; every error code documented |
 | G3 | Git workflow §12 | Manual: `git log`, collaborator screenshot |
 | G4–G6 | Report, declaration, viva | Manual checklist |
 | M1–M4 | `models/`, `data-model.md` | T05 installation JSON has `meter_id`, no `last_power`; T06 `GET /devices` → 404; T07 readings carry the required fields; T07b seeded `energy_kwh` is non-decreasing per installation |
@@ -543,7 +544,7 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-12 | Out-of-scope access: 403 or 404? Silent filtering or 403 for collections? | 403 for atomic/scoped; collections filtered to scope | P5 |
 | OQ-13 | SUPERSEDED 2026-09-26: Deleting an installation leaves its readings (`[LEC S8]` retains history). Then history is unreachable via API. **DECIDED `[YOU]` 2026-09-26:** DELETE of an installation with any readings → 409 (40905), nothing deleted; without readings → 200 with the deleted representation, repeat → 404 | SUPERSEDED: follow lecture (retain, installation → 404). Now: history stays reachable because its installation cannot be deleted; `my-decisions.md` §13 | P7 |
 | OQ-14 | **DECIDED `[YOU]`:** 15-minute seed interval (40 substations, 240 installations) | — | P2 |
-| OQ-15 | How does the marker authenticate? | Documented demo users + device keys in README/Swagger, flagged demo-only | P5 |
+| OQ-15 | **DECIDED `[YOU]` 2026-09-26:** demo logins go in the README (private repo) and the report appendix, not in the public Swagger (public admin credentials would let anyone change the live API); the spec says demo accounts are provided separately to the marker | SUPERSEDED: documented demo users + device keys in README/Swagger, flagged demo-only | P5 |
 | OQ-16 | **DECIDED:** lecturer = `nirangadh` (https://github.com/nirangadh) | Add as collaborator in Phase 1 | P1 |
 | OQ-17 | **DECIDED `[YOU]`:** deadline Sun 4 Oct 2026 (LMS time of day still to note) | Timeline in §13 | — |
 | OQ-18 | **DECIDED `[YOU]`:** repo is new and **empty** (no code, no commits) | No scaffold to reuse or explain; first commit = plan/playbook/structure (Phase 0 → 1) | — |

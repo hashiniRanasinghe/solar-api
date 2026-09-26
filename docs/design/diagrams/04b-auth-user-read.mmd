@@ -23,7 +23,7 @@ sequenceDiagram
   else token lacks scope solar:read (for example a device token)
     A-->>U: 403 (40303) + WWW-Authenticate error insufficient_scope
   else token valid
-    A->>DB: load installation inside the token jurisdiction (its stored district and province ids; national: no limit)
+    A->>DB: load installation inside the token jurisdiction (its stored district and province ids, national: no limit)
     alt found
       A-->>U: 200 or 304
     else not found, province or district user

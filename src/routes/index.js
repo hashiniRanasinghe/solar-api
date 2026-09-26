@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../controllers/auth');
 const acceptJson = require('../middleware/accept-json');
+const requireJson = require('../middleware/require-json');
 const authenticate = require('../middleware/authenticate');
 const privateCache = require('../middleware/private-cache');
 
@@ -10,7 +11,8 @@ const router = express.Router();
 router.use(require('./method-guards'));
 
 // Open: login issues the token. Everything after authenticate needs a bearer token.
-router.post('/login', acceptJson, authController.login);
+// Order: 405 (above), 406, 415, then 400/401 in the service.
+router.post('/login', acceptJson, requireJson, authController.login);
 
 // Device ingest: POST readings with a device token (readings:write). It runs
 // its own checks in its own order; GET on these URIs falls through below.

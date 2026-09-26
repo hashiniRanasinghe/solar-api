@@ -18,6 +18,9 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', environment: APP_ENV });
 });
 
+// Swagger UI at /docs and the spec at /docs.json, public, before the 404.
+app.use(require('./routes/docs').router);
+
 app.use('/solar/v1.0', require('./routes'));
 
 app.use((req, res, next) => {
