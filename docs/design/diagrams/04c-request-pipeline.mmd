@@ -4,7 +4,7 @@
 %% OQ-26 DECIDED: POST readings has no 404 (unknown installation -> 403). The rest of the order (406, 304, 412) is still a PROPOSAL.
 flowchart TD
   R["Incoming request"] --> RT{"Route and method known?"}
-  RT -- "no route" --> E404["404 + error body"]
+  RT -- "no route (with a valid token; without one: 401)" --> E404["404 + error body (40401)"]
   RT -- "method not allowed on this path<br/>(PUT/PATCH/DELETE on readings)" --> E405["405 + Allow (40501)"]
   RT -- yes --> AC{"Accept allows application/json?<br/>(PROPOSAL, Phase 6)"}
   AC -- no --> E406["406"]
