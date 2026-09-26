@@ -9,11 +9,12 @@ const router = express.Router();
 // Open: login issues the token. Everything after authenticate needs a bearer token.
 router.post('/login', acceptJson, authController.login);
 
-// Device ingest: X-API-Key only, so it is mounted before the bearer
-// middleware. GET on these URIs falls through to the routes below.
+// Device ingest: POST readings with a device token (readings:write). It runs
+// its own checks in its own order; GET on these URIs falls through below.
 router.use('/installations/:installationId/readings', require('./device-readings'));
 
 // 406 before 401, then the bearer token, then cache headers for the reads.
+// Each read route requires the scope solar:read.
 router.use(acceptJson);
 router.use(authenticate);
 router.use(privateCache);

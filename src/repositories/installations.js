@@ -10,10 +10,11 @@ async function findIdsBy(field, value) {
   return Installation.distinct('installation_id', { [field]: value });
 }
 
-// The installation that owns a device key. Only the fields the ingest path
-// needs are read; the hash itself is not returned.
-async function findByApiKeyHash(hash) {
-  return Installation.findOne({ api_key_hash: hash }).select('installation_id capacity_kw');
+// The stored device key hash of one installation, for device login only.
+// Returns the hex string, or null when the installation or its key is missing.
+async function findKeyHash(installationId) {
+  const installation = await Installation.findOne({ installation_id: installationId }).select('api_key_hash').lean();
+  return installation && typeof installation.api_key_hash === 'string' ? installation.api_key_hash : null;
 }
 
-module.exports = { findPage, findById, findIdsBy, findByApiKeyHash };
+module.exports = { findPage, findById, findIdsBy, findKeyHash };

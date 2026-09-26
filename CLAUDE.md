@@ -41,9 +41,10 @@
 - One error body everywhere (white paper 11): {code (integer), message, description, moreInfo, error[] per field}.
 
 ## Auth
-- Devices: X-API-Key, own installation only. Users: JWT Bearer with scopes + jurisdiction claims.
+- Devices: POST /login with {installation_id, device_key} returns a device JWT (sub = installation_id, scope readings:write, no jurisdiction claims); Bearer on POST readings, own installation only. X-API-Key is not accepted. Users: JWT Bearer with scopes (solar:read; admin also installations:write) + jurisdiction claims.
+- Scopes are enforced by requireScope: every GET needs solar:read; POST readings needs readings:write. Missing scope = 403 (40303) with WWW-Authenticate error="insufficient_scope".
 - 401 = credentials missing or not accepted (+WWW-Authenticate). 403 = understood but refused. Unknown API key 401; valid key for another installation 403.
-- Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope solar:write, national). Everything else is read-only.
+- Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope installations:write, national). Everything else is read-only.
 
 ## Git and environment
 - Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
@@ -68,7 +69,7 @@
 - The coursework brief defines what the assignment requires. The white paper and the relevant lecture materials give the technical/design guidance for implementing those requirements.
 - Use the S1-S8 lecture PDFs and student notes to understand the concepts and approaches taught in the module.
 - `ref gits.rtf` describes the provided reference Git repositories. Use those repositories for learning and comparison where relevant.
-- The marking rubric in that folder is OUTDATED (module NIB304CEM, batch 24.1P). Use it only as a hint about possible assessment areas. Never use its marks, criteria or wording as current requirements. The current brief and its section 11 weights rule.
+- The final marking rubric `NB6007CEM_Marking_Rubric.pdf` (module NB6007CEM, last modified 25 Aug 2026) in that folder is current and authoritative for marking: use its band descriptors to judge what each dimension needs. Its dimension weights match the brief's section 11. The older rubric (module NIB304CEM, batch 24.1P) is outdated and only a hint.
 - Do NOT copy code, report text, diagrams, documentation or other submitted content from the reference repositories or course materials.
 - Do NOT copy a reference implementation just because it uses a particular approach. Adapt the concepts to this project's requirements and documented decisions.
 - If sources appear to conflict, follow the priority list in Sources and rules, name the conflict, and do not silently make a major design decision.

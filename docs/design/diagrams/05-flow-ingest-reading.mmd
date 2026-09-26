@@ -1,7 +1,7 @@
 %% 05-flow-ingest-reading.mmd - Request/response flow: device pushes a reading
 %% Basis: BRIEF §5 (ingestion, correct method, 201 + where it now lives); WP §7.3, §9; LEC S7, S8
 %% Decisions: my-decisions §4, §8, §9.
-%% DECIDED 2026-09-26: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Check order: 415, 401, 403, 400, 409.
+%% DECIDED 2026-09-26: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Device JWT (revised 2026-09-26). Check order: 405, 406, 415, 401, 403 scope, 403 not own, 400, 409.
 %% No timestamp tolerance / future-time rule is applied (no supporting evidence in coursework or reference material).
 sequenceDiagram
   autonumber
@@ -9,12 +9,14 @@ sequenceDiagram
   participant M as Middleware
   participant S as Service
   participant DB as MongoDB
-  D->>M: POST /solar/v1.0/installations/INS-0001/readings, X-API-Key, JSON body
+  D->>M: POST /solar/v1.0/installations/INS-0001/readings, Authorization: Bearer device JWT, JSON body
   alt Content-Type is not JSON
     M-->>D: 415 (41501)
-  else no key, or key hash not found
-    M-->>D: 401 (40104 / 40105) + WWW-Authenticate: ApiKey realm="solar"
-  else key belongs to another installation (or the path id does not exist)
+  else no token, or token invalid or expired
+    M-->>D: 401 (40101 / 40102) + WWW-Authenticate: Bearer realm="solar"
+  else token lacks scope readings:write
+    M-->>D: 403 (40303) + WWW-Authenticate: insufficient_scope
+  else token belongs to another installation (or the path id does not exist)
     M-->>D: 403 (40302)
   else body invalid (missing or non-numeric field, bad timestamp, off a 15-minute boundary, out of range, read-only field sent)
     M->>S: validate body against the installation's capacity_kw

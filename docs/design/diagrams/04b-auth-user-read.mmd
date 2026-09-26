@@ -7,7 +7,7 @@ sequenceDiagram
   participant U as User
   participant A as API
   participant DB as MongoDB
-  U->>A: POST /solar/v1.0/login with username and password
+  U->>A: POST /solar/v1.0/login with username and password (devices use installation_id and device_key, diagram 04a)
   A->>DB: find user and compare bcrypt hash
   alt credentials not accepted
     A-->>U: 401 + WWW-Authenticate Bearer realm solar + error body
@@ -17,13 +17,15 @@ sequenceDiagram
   U->>A: GET /solar/v1.0/installations/{installation-id} with Authorization Bearer JWT
   alt token missing, invalid or expired
     A-->>U: 401 + WWW-Authenticate
+  else token lacks scope solar:read (for example a device token)
+    A-->>U: 403 (40303) + WWW-Authenticate error insufficient_scope
   else token valid
     A->>DB: load installation (carries substation, district and province ids)
     alt installation does not exist
       A-->>U: 404
     else exists
       A->>A: compare its district and province with the token jurisdiction
-      alt outside jurisdiction or scope solar:read missing
+      alt outside jurisdiction
         A-->>U: 403
       else inside jurisdiction
         A-->>U: 200 or 304
@@ -32,4 +34,4 @@ sequenceDiagram
   end
   Note over U,A: Collections are narrowed to the caller scope. An explicit filter naming another jurisdiction gives 403 (PROPOSAL)
   Note over U,A: Readings under a substation, district or province: the scope check runs on the PATH PARENT (OQ-04). A province route is broader than a district user, so 403
-  Note over U,A: Users never reach the device write route. Scope solar:write (admin, national) is only for installation POST, PUT, DELETE (OQ-03 decided)
+  Note over U,A: User tokens never carry readings:write, so POST readings gives 403 (40303). Scope installations:write (admin, national) is only for installation POST, PUT, DELETE (OQ-03 decided)

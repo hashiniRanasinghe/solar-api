@@ -72,7 +72,7 @@ Collection name and model mapping per Conventions above.
 | unique `districts.district_id`; index `districts.province_id` | member lookup; `GET /districts?province_id=…` |
 | unique `substations.substation_id`; index `substations.district_id` | member lookup; `GET /substations?district_id=…` |
 | unique `installations.installation_id`; unique `installations.meter_id`; index `installations.substation_id`; index `installations.district_id` | member lookup; duplicate-`meter_id` rejection (409, `my-decisions.md` §13); resolving the installation IDs under a substation/district/province path parent for jurisdiction-scoped readings (§11, OQ-04) |
-| partial unique `installations.api_key_hash` (index only where the field is a string) `PROPOSAL` | device-key lookup on ingest (401/403 split, §9) — partial because the field isn't required on every installation while OQ-28 is open; does not decide OQ-28 |
+| partial unique `installations.api_key_hash` (index only where the field is a string) `PROPOSAL` | no two installations share a device key; device login reads `api_key_hash` by `installation_id` (revised 2026-09-26: the hash is no longer looked up on ingest) — partial because the field isn't required on every installation while OQ-28 is open; does not decide OQ-28 |
 | `installations.province_id`; `substations.province_id` `PROPOSAL` | `GET /installations?province_id=…`, `GET /substations?province_id=…`, and the province readings route; optional at this data size (240 installations / 40 substations) |
 | unique `generation_readings.reading_id` | member lookup and the `Location` target for `GET /installations/{installation-id}/readings/{reading-id}` |
 | unique `generation_readings.(installation_id, timestamp)` | idempotent device ingest — a retried POST for the same installation+timestamp hits this and gets 409 instead of a duplicate row (§9, §8 table). MongoDB can read a compound index backwards, so this one index also serves `last-reading` / per-installation history in both sort directions; `PLAN.md` §8's separate `(installation_id, timestamp desc)` index is `PROPOSAL`ed here as redundant — confirm with `explain()` in Phase 3 before dropping it |
@@ -123,7 +123,7 @@ These are `OPEN` in `my-decisions.md` (§11, §13, §16) and are listed, not res
 
 Closed on 2026-09-26 (`DECIDED · YOU`, `my-decisions.md` §9):
 
-- **OQ-26** — no 404 on `POST …/readings`: the `api_key_hash` lookup gives 401 for a missing or unknown key and 403 when the key's installation is not the path installation (also when that installation does not exist), so the route never reveals which ids exist.
+- **OQ-26** — no 404 on `POST …/readings`: a missing, invalid or expired token gives 401, and a device token for an installation that is not the path installation (also when that installation does not exist) gives 403, so the route never reveals which ids exist. (Revised 2026-09-26: the device key is checked against `api_key_hash` at `POST /login`, which returns a device JWT; X-API-Key was removed.)
 - **OQ-27** — a reading is compared with the installation's newest stored reading: same `timestamp` → 409 (the unique `(installation_id, timestamp)` index is the final guard), older `timestamp` → 409, `energy_kwh` lower than the newest → 409; an equal `energy_kwh` is accepted.
 - **Validation limits** — `power_kw` from 0 to the installation's `capacity_kw`; `energy_kwh` ≥ 0; `voltage` from 0 to 300; `timestamp` ISO 8601 UTC on a 15-minute boundary.
 

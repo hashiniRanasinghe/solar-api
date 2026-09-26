@@ -16,9 +16,9 @@ flowchart LR
 
   DB[("MongoDB Atlas<br/>provinces, districts, substations,<br/>installations, generation_readings, users")]
 
-  DEV -- "POST readings<br/>X-API-Key" --> API
-  USR -- "POST /login, then GET<br/>Bearer JWT" --> API
-  ADM -- "Bearer JWT<br/>scope solar:write" --> API
+  DEV -- "POST /login (device key), then POST readings<br/>Bearer JWT, scope readings:write" --> API
+  USR -- "POST /login, then GET<br/>Bearer JWT, scope solar:read" --> API
+  ADM -- "Bearer JWT<br/>scope installations:write" --> API
   API --> DB
   MKR --> DOCS
   BI -. "would consume the read path<br/>(not built)" .-> API

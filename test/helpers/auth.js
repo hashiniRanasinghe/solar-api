@@ -3,7 +3,7 @@
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../src/config/env');
 
-const SCOPES = { reader: 'solar:read', admin: 'solar:read solar:write' };
+const SCOPES = { reader: 'solar:read', admin: 'solar:read installations:write' };
 
 function mintToken(
   { sub = 'test.user', role = 'reader', jurisdiction_level = 'national', jurisdiction_id = null } = {},
@@ -20,4 +20,18 @@ const nationalToken = () => mintToken();
 const provinceToken = (id) => mintToken({ jurisdiction_level: 'province', jurisdiction_id: id });
 const districtToken = (id) => mintToken({ jurisdiction_level: 'district', jurisdiction_id: id });
 
-module.exports = { mintToken, nationalToken, provinceToken, districtToken };
+// A device token as POST /login issues it: sub = installation id, no
+// jurisdiction claims.
+function deviceToken(installationId, options = {}) {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET must be set to run the tests');
+  }
+  return jwt.sign({ role: 'device', scope: 'readings:write' }, JWT_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: 3600,
+    subject: installationId,
+    ...options,
+  });
+}
+
+module.exports = { mintToken, nationalToken, provinceToken, districtToken, deviceToken };

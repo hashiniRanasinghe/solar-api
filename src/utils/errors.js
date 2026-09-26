@@ -1,6 +1,5 @@
 const MORE_INFO = '/docs';
 const BEARER_CHALLENGE = 'Bearer realm="solar"';
-const API_KEY_CHALLENGE = 'ApiKey realm="solar"';
 
 class AppError extends Error {
   constructor(status, number, message, description, error = [], headers = {}) {
@@ -72,27 +71,15 @@ class AppError extends Error {
     );
   }
 
-  // Device routes: the key goes in X-API-Key. A bearer token is not a
-  // credential there.
-  static apiKeyRequired() {
+  // Device login: unknown installation and wrong key give this same body.
+  static invalidDeviceCredentials() {
     return new AppError(
       401,
-      4,
-      'API key required',
-      'Send the installation device key in the X-API-Key header.',
+      6,
+      'Invalid device credentials',
+      'The installation_id or device_key is not correct.',
       [],
-      { 'WWW-Authenticate': API_KEY_CHALLENGE }
-    );
-  }
-
-  static invalidApiKey() {
-    return new AppError(
-      401,
-      5,
-      'API key not accepted',
-      'The device key in the X-API-Key header is not valid.',
-      [],
-      { 'WWW-Authenticate': API_KEY_CHALLENGE }
+      { 'WWW-Authenticate': BEARER_CHALLENGE }
     );
   }
 
@@ -105,14 +92,27 @@ class AppError extends Error {
     );
   }
 
-  // Also for an installation that does not exist, so a device key never
+  // Also for an installation that does not exist, so a device token never
   // reveals which installation ids exist (OQ-26).
   static notOwnInstallation() {
     return new AppError(
       403,
       2,
       'Not your installation',
-      'A device key may only write readings for its own installation.'
+      'A device token may only write readings for its own installation.'
+    );
+  }
+
+  // The token is valid but does not carry the scope the route needs
+  // (WP section 12.2; challenge per RFC 6750 section 3.1).
+  static insufficientScope(scope) {
+    return new AppError(
+      403,
+      3,
+      'Insufficient scope',
+      `This request needs a token with the scope ${scope}.`,
+      [],
+      { 'WWW-Authenticate': `${BEARER_CHALLENGE}, error="insufficient_scope", scope="${scope}"` }
     );
   }
 
@@ -216,6 +216,9 @@ const FIELD_ERROR = {
   energy_kwh: 40017,
   voltage: 40018,
   readOnly: 40019,
+  installation_id: 40020,
+  device_key: 40021,
+  credentials: 40022,
 };
 
 module.exports = { AppError, MORE_INFO, FIELD_ERROR };

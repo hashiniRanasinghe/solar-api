@@ -1,21 +1,23 @@
 %% 09-layered-architecture.mmd - Internal layers and middleware (matches the planned src/ folders)
 %% Basis: BRIEF §8 (architecture section); playbook C3; PLAN §6. Layering itself is a PROPOSAL (not required by the brief).
-%% No OPEN dependency. authApiKey guards only POST readings; authJwt + scope guard every other protected route.
+%% No OPEN dependency. Revised 2026-09-26: one bearer path for all clients; requireScope splits reads (solar:read) from POST readings (readings:write); ownInstallation checks the device token's installation.
 flowchart LR
   REQ["HTTP request"] --> ROUTES["routes/<br/>URI + method wiring"]
   subgraph MW["middleware/"]
     NEG["negotiate<br/>406, 415"]
-    AK["authApiKey<br/>device path"]
-    JW["authJwt + scope<br/>user path"]
+    JW["authenticate<br/>bearer JWT, users and devices"]
+    RS["requireScope<br/>solar:read or readings:write"]
+    OI["ownInstallation<br/>device path"]
     VAL["validate<br/>400 + error[]"]
     COND["conditional<br/>ETag, 304, 412"]
     ERR["errorHandler<br/>one error body"]
   end
   ROUTES --> NEG
-  NEG --> AK
   NEG --> JW
-  AK --> VAL
-  JW --> VAL
+  JW --> RS
+  RS --> OI
+  RS --> VAL
+  OI --> VAL
   VAL --> CTRL
   CTRL["controllers/<br/>HTTP to service call and back"] --> SVC["services/<br/>scope rules, last reading, summary"]
   SVC --> REPO["repositories/<br/>only code that touches MongoDB"]
