@@ -7,10 +7,33 @@ const bcrypt = require('bcryptjs');
 
 const { MONGODB_URI } = require('../src/config/env');
 const connectDB = require('../src/config/db');
-const { Province, District, Substation, Installation, User } = require('../src/models');
+const {
+  Province,
+  District,
+  Substation,
+  Installation,
+  GenerationReading,
+  User,
+} = require('../src/models');
+const {
+  RNG_SEED,
+  mulberry32,
+  SLOT_MS,
+  floorToSlot,
+  baselineEnergyKwh,
+  buildReadings,
+  insertReadingsInBatches,
+  countEnergyDecreases,
+  getDbNameFromUri,
+} = require('./lib/readings');
 
 const OUTPUT_FILE = path.join(__dirname, 'seed-keys.txt');
 const BATCH_SIZE = 500;
+
+// 7 days of 15-minute readings per installation, ending at the run time
+// floored to the last 15-minute boundary (UTC).
+const READING_DAYS = 7;
+const READINGS_PER_INSTALLATION = (READING_DAYS * 24 * 60 * 60 * 1000) / SLOT_MS;
 
 // Realistic small residential/commercial rooftop solar range for Sri Lanka:
 // ~3 kW is close to the smallest single-phase residential net-metering
@@ -24,23 +47,7 @@ const args = process.argv.slice(2);
 const isReset = args.includes('--reset');
 const isDryRun = args.includes('--dry-run');
 
-// ---------------------------------------------------------------------------
-// Deterministic RNG (mulberry32). Fixed seed so --reset always regenerates
-// the same ids, names and district/substation/installation distributions.
-// ---------------------------------------------------------------------------
-const RNG_SEED = 1337;
-
-function mulberry32(seed) {
-  let a = seed;
-  return function rng() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
+// Deterministic hierarchy RNG stream (mulberry32, fixed seed; see lib/readings.js).
 const rng = mulberry32(RNG_SEED);
 
 function rngInt(min, max) {
@@ -223,14 +230,6 @@ function buildDemoUsers(provinces, districts) {
   return { users, demoUsers };
 }
 
-function getDbNameFromUri(uri) {
-  try {
-    return new URL(uri).pathname.replace(/^\//, '') || '(no database in URI path)';
-  } catch (err) {
-    return '(could not parse MONGODB_URI)';
-  }
-}
-
 async function insertInBatches(Model, docs) {
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     // eslint-disable-next-line no-await-in-loop
@@ -281,6 +280,63 @@ async function verifyIntegrity(substations, installations) {
   return pass;
 }
 
+// Readings checks, all as database aggregations (no readings loaded here).
+async function verifyReadings(installationIds, nowMs) {
+  const countsById = new Map();
+  (
+    await GenerationReading.aggregate([{ $group: { _id: '$installation_id', count: { $sum: 1 } } }])
+  ).forEach((row) => countsById.set(row._id, row.count));
+
+  let wrongCount = 0;
+  installationIds.forEach((id) => {
+    if (countsById.get(id) !== READINGS_PER_INSTALLATION) wrongCount += 1;
+  });
+  const knownIds = new Set(installationIds);
+  const orphanGroups = [...countsById.keys()].filter((id) => !knownIds.has(id)).length;
+
+  const badTimestampRows = await GenerationReading.aggregate([
+    {
+      $match: {
+        $expr: {
+          $or: [
+            { $ne: [{ $mod: [{ $toLong: '$timestamp' }, SLOT_MS] }, 0] },
+            { $gt: ['$timestamp', new Date(nowMs)] },
+          ],
+        },
+      },
+    },
+    { $count: 'bad' },
+  ]);
+  const badTimestamps = badTimestampRows.length ? badTimestampRows[0].bad : 0;
+
+  const energyDecreases = await countEnergyDecreases();
+
+  const pass =
+    wrongCount === 0 && orphanGroups === 0 && badTimestamps === 0 && energyDecreases === 0;
+  console.log('\nReadings integrity check');
+  console.log(
+    `  installations checked: ${installationIds.length}, ` +
+      `without exactly ${READINGS_PER_INSTALLATION} readings: ${wrongCount}, ` +
+      `reading groups for unknown installations: ${orphanGroups}`
+  );
+  console.log(`  timestamps off a 15-minute boundary or in the future: ${badTimestamps}`);
+  console.log(`  energy_kwh decreases within an installation: ${energyDecreases}`);
+  console.log(`  result: ${pass ? 'PASS' : 'FAIL'}`);
+
+  return pass;
+}
+
+function* readingGroups(installations, startMs, endMs) {
+  for (const installation of installations) {
+    yield buildReadings(
+      installation,
+      startMs,
+      endMs,
+      baselineEnergyKwh(installation.installation_id, installation.capacity_kw)
+    );
+  }
+}
+
 async function main() {
   if (!MONGODB_URI) {
     console.error('Seed aborted: MONGODB_URI is not set.');
@@ -291,10 +347,19 @@ async function main() {
   const { substations, installations, deviceKeys } = buildSubstationsAndInstallations(districts);
   const { users, demoUsers } = buildDemoUsers(provinces, districts);
 
+  const windowEndMs = floorToSlot(Date.now());
+  const windowStartMs = windowEndMs - (READINGS_PER_INSTALLATION - 1) * SLOT_MS;
+  const plannedReadings = installations.length * READINGS_PER_INSTALLATION;
+
   console.log(`Target database (from MONGODB_URI): ${getDbNameFromUri(MONGODB_URI)}`);
   console.log(
     `Planned counts: provinces=${provinces.length}, districts=${districts.length}, ` +
-      `substations=${substations.length}, installations=${installations.length}, users=${users.length}`
+      `substations=${substations.length}, installations=${installations.length}, users=${users.length}, ` +
+      `readings=${plannedReadings} (${installations.length} x ${READINGS_PER_INSTALLATION})`
+  );
+  console.log(
+    `Readings window (UTC, every 15 minutes): ${new Date(windowStartMs).toISOString()} ` +
+      `to ${new Date(windowEndMs).toISOString()}`
   );
 
   if (isDryRun) {
@@ -304,6 +369,20 @@ async function main() {
 
   await connectDB();
 
+  if (isReset) {
+    console.log(
+      '\n--reset: clearing provinces, districts, substations, installations, users, generation_readings...'
+    );
+    await Promise.all([
+      Province.deleteMany({}),
+      District.deleteMany({}),
+      Substation.deleteMany({}),
+      Installation.deleteMany({}),
+      User.deleteMany({}),
+      GenerationReading.deleteMany({}),
+    ]);
+  }
+
   const existingCounts = await Promise.all([
     Province.countDocuments(),
     District.countDocuments(),
@@ -311,68 +390,102 @@ async function main() {
     Installation.countDocuments(),
     User.countDocuments(),
   ]);
-  const alreadySeeded = existingCounts.some((count) => count > 0);
+  const hierarchySeeded = existingCounts.some((count) => count > 0);
+  const readingsSeeded = (await GenerationReading.countDocuments()) > 0;
 
-  if (alreadySeeded && !isReset) {
+  let hierarchyPassed = true;
+  let readingsPassed = true;
+
+  if (hierarchySeeded) {
     console.log(
-      '\nOne or more target collections already have data and --reset was not given; ' +
-        'skipping seed (safe to run twice by accident). Use --reset to reseed.'
+      '\nHierarchy/user collections already have data and --reset was not given; ' +
+        'skipping them (device keys file left unchanged). Use --reset to reseed.'
     );
+  } else {
+    console.log('\nInserting hierarchy and users...');
+    await insertInBatches(Province, provinces);
+    await insertInBatches(District, districts);
+    await insertInBatches(Substation, substations);
+    await insertInBatches(Installation, installations);
+    await insertInBatches(User, users);
+
+    // Written only when these installations were inserted, so the file's
+    // plain keys always match the stored hashes.
+    fs.writeFileSync(
+      OUTPUT_FILE,
+      JSON.stringify({ device_keys: deviceKeys, demo_users: demoUsers }, null, 2),
+      { mode: 0o600 }
+    );
+  }
+
+  let readingsInserted = 0;
+  if (readingsSeeded) {
+    console.log(
+      '\ngeneration_readings already has data and --reset was not given; skipping readings. ' +
+        'Use scripts/topup.js to bring them up to now.'
+    );
+  } else {
+    const storedInstallations = await Installation.find({}, 'installation_id capacity_kw')
+      .sort({ installation_id: 1 })
+      .lean();
+    console.log(
+      `\nInserting readings for ${storedInstallations.length} installations ` +
+        `(${storedInstallations.length * READINGS_PER_INSTALLATION} planned)...`
+    );
+    ({ inserted: readingsInserted } = await insertReadingsInBatches(
+      readingGroups(storedInstallations, windowStartMs, windowEndMs)
+    ));
+  }
+
+  if (hierarchySeeded && readingsSeeded) {
+    console.log('\nNothing to do.');
     await require('mongoose').disconnect();
     return;
   }
 
-  if (isReset) {
-    console.log('\n--reset: clearing provinces, districts, substations, installations, users...');
-    await Promise.all([
-      Province.deleteMany({}),
-      District.deleteMany({}),
-      Substation.deleteMany({}),
-      Installation.deleteMany({}),
-      User.deleteMany({}),
-    ]);
-  }
-
-  console.log('Inserting seed data...');
-  await insertInBatches(Province, provinces);
-  await insertInBatches(District, districts);
-  await insertInBatches(Substation, substations);
-  await insertInBatches(Installation, installations);
-  await insertInBatches(User, users);
-
-  console.log('Syncing indexes...');
+  console.log('\nSyncing indexes...');
   await Promise.all([
     Province.syncIndexes(),
     District.syncIndexes(),
     Substation.syncIndexes(),
     Installation.syncIndexes(),
     User.syncIndexes(),
+    GenerationReading.syncIndexes(),
   ]);
 
-  const integrityPassed = await verifyIntegrity(substations, installations);
-
-  fs.writeFileSync(
-    OUTPUT_FILE,
-    JSON.stringify({ device_keys: deviceKeys, demo_users: demoUsers }, null, 2),
-    { mode: 0o600 }
-  );
+  if (!hierarchySeeded) {
+    hierarchyPassed = await verifyIntegrity(substations, installations);
+  }
+  if (!readingsSeeded) {
+    const installationIds = (await Installation.find({}, 'installation_id').lean()).map(
+      (ins) => ins.installation_id
+    );
+    readingsPassed = await verifyReadings(installationIds, Date.now());
+  }
 
   console.log('\nSeed summary');
-  console.log(`  provinces: ${provinces.length}`);
-  console.log(`  districts: ${districts.length}`);
-  console.log(`  substations: ${substations.length}`);
-  console.log(`  installations: ${installations.length}`);
-  console.log(`  users: ${users.length}`);
-  console.log(`  device keys and demo passwords written to: ${path.relative(process.cwd(), OUTPUT_FILE)}`);
+  if (!hierarchySeeded) {
+    console.log(`  provinces: ${provinces.length}`);
+    console.log(`  districts: ${districts.length}`);
+    console.log(`  substations: ${substations.length}`);
+    console.log(`  installations: ${installations.length}`);
+    console.log(`  users: ${users.length}`);
+    console.log(
+      `  device keys and demo passwords written to: ${path.relative(process.cwd(), OUTPUT_FILE)}`
+    );
+  }
+  if (!readingsSeeded) {
+    console.log(`  generation_readings: ${readingsInserted}`);
+  }
 
   await require('mongoose').disconnect();
 
-  if (!integrityPassed) {
+  if (!hierarchyPassed || !readingsPassed) {
     process.exit(1);
   }
 }
 
 main().catch((err) => {
-  console.error('Seed failed:', err.name);
+  console.error('Seed failed:', err.name, err.codeName || '');
   process.exit(1);
 });
