@@ -1,6 +1,5 @@
 const MORE_INFO = '/docs';
 const BEARER_CHALLENGE = 'Bearer realm="solar"';
-const API_KEY_CHALLENGE = 'ApiKey realm="solar"';
 
 class AppError extends Error {
   constructor(status, number, message, description, error = [], headers = {}) {
@@ -72,27 +71,15 @@ class AppError extends Error {
     );
   }
 
-  // Device routes: the key goes in X-API-Key. A bearer token is not a
-  // credential there.
-  static apiKeyRequired() {
+  // Device login: unknown installation and wrong key give this same body.
+  static invalidDeviceCredentials() {
     return new AppError(
       401,
-      4,
-      'API key required',
-      'Send the installation device key in the X-API-Key header.',
+      6,
+      'Invalid device credentials',
+      'The installation_id or device_key is not correct.',
       [],
-      { 'WWW-Authenticate': API_KEY_CHALLENGE }
-    );
-  }
-
-  static invalidApiKey() {
-    return new AppError(
-      401,
-      5,
-      'API key not accepted',
-      'The device key in the X-API-Key header is not valid.',
-      [],
-      { 'WWW-Authenticate': API_KEY_CHALLENGE }
+      { 'WWW-Authenticate': BEARER_CHALLENGE }
     );
   }
 
@@ -105,14 +92,27 @@ class AppError extends Error {
     );
   }
 
-  // Also for an installation that does not exist, so a device key never
+  // Also for an installation that does not exist, so a device token never
   // reveals which installation ids exist (OQ-26).
   static notOwnInstallation() {
     return new AppError(
       403,
       2,
       'Not your installation',
-      'A device key may only write readings for its own installation.'
+      'A device token may only write readings for its own installation.'
+    );
+  }
+
+  // The token is valid but does not carry the scope the route needs
+  // (WP section 12.2; challenge per RFC 6750 section 3.1).
+  static insufficientScope(scope) {
+    return new AppError(
+      403,
+      3,
+      'Insufficient scope',
+      `This request needs a token with the scope ${scope}.`,
+      [],
+      { 'WWW-Authenticate': `${BEARER_CHALLENGE}, error="insufficient_scope", scope="${scope}"` }
     );
   }
 
@@ -149,6 +149,15 @@ class AppError extends Error {
     );
   }
 
+  static notAcceptable() {
+    return new AppError(
+      406,
+      1,
+      'Not acceptable',
+      'This API only returns application/json. Send an Accept header that allows it.'
+    );
+  }
+
   static duplicateReading() {
     return new AppError(
       409,
@@ -173,6 +182,45 @@ class AppError extends Error {
       3,
       'Reading older than the latest reading',
       'The timestamp is older than the latest stored reading of the installation.'
+    );
+  }
+
+  static duplicateMeterId() {
+    return new AppError(
+      409,
+      4,
+      'Duplicate meter_id',
+      'Another installation already has this meter_id.'
+    );
+  }
+
+  // Readings are append-only evidence, so an installation with readings is
+  // never deleted.
+  static installationHasReadings() {
+    return new AppError(
+      409,
+      5,
+      'Installation has readings',
+      'An installation with readings cannot be deleted; its history is kept.'
+    );
+  }
+
+  static installationIdUnavailable() {
+    return new AppError(
+      409,
+      6,
+      'No installation id available',
+      'The server could not assign an installation id. Send the request again.'
+    );
+  }
+
+  // If-Match did not match the current ETag (WP section 10.5).
+  static preconditionFailed() {
+    return new AppError(
+      412,
+      1,
+      'Precondition failed',
+      'The installation has changed since the ETag in If-Match was issued. GET it again and retry.'
     );
   }
 
@@ -207,6 +255,15 @@ const FIELD_ERROR = {
   energy_kwh: 40017,
   voltage: 40018,
   readOnly: 40019,
+  installation_id: 40020,
+  device_key: 40021,
+  credentials: 40022,
+  name: 40023,
+  meter_id: 40024,
+  substation_id: 40025,
+  unknownSubstation: 40026,
+  capacity_kw: 40027,
+  installationIdMismatch: 40028,
 };
 
 module.exports = { AppError, MORE_INFO, FIELD_ERROR };

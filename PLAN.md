@@ -13,7 +13,7 @@
 | `[YOU]` | Your own fixed decision |
 | `[PROPOSAL]` | My suggestion. Becomes `[YOU]` only when you confirm it in `docs/design/my-decisions.md` |
 | `[WP §n]` | Stated in the white paper (WSO2 REST API Design Guidelines) — now read directly |
-| `[UNCONFIRMED]` | Rule I still cannot see (rubric bands, lecturer's S9–S15 choices). Do not treat as fact |
+| `[UNCONFIRMED]` | Rule I still cannot see (lecturer's S9–S15 choices). Do not treat as fact |
 
 ---
 
@@ -22,7 +22,7 @@
 | Source | Status |
 |---|---|
 | Brief (9 pp) | Read in full |
-| Marking rubric | **Current rubric not available.** Brief §11 weights are authoritative. `outdated_use_as_a_ref.pdf` was read: it is for module NIB304CEM, batch 24.1P, with different weights, so it is **supplementary only** (see §17). Not authoritative for marks, criteria, wording or requirements |
+| Marking rubric | **Final rubric available (2026-09-26):** `NB6007CEM_Marking_Rubric.pdf`, module NB6007CEM, last modified 25 Aug 2026. Current and authoritative for marking; its weights match brief §11. The older `outdated_use_as_a_ref.pdf` (NIB304CEM, batch 24.1P) stays supplementary only (see §17) |
 | White paper | **Read in full** (uploaded 2026-09-19). Sections cited below as `[WP §n]` |
 | Lectures S1, S2, S5–S8 | Read (project files) |
 | Lectures S3, S4 | Read from lecturer repo `dev`; **missing from project files** |
@@ -32,7 +32,7 @@
 | Reference 2: `PruthuviDe/WebAPIDev_Test` (classmate repo) | Taught system (police vehicles), MongoDB + JWT. No Swagger, no tests, error body is `{error}` only. Its README describes S9–S10 — **second-hand, unverified** |
 | Your repo `hashiniRanasinghe/solar-api` | **Reviewed 2026-09-20 from a ZIP.** Code as approved; `.env` untracked. Found and fixed: corrupted `.gitignore`, junk `.gitkeep`, nested `docs/docs/design`. `.env` was inside the shared ZIP, so the Atlas password was rotated. Docs still said Render until this revision |
 
-Remaining gaps: rubric bands, S3/S4 files, S9–S15 (OQ-01). Where a lecture note and the white paper disagree, the white paper is the design authority (brief cover) — see §4a.
+Remaining gaps: S3/S4 files, S9–S15 (OQ-01). Where a lecture note and the white paper disagree, the white paper is the design authority (brief cover) — see §4a.
 
 ---
 
@@ -41,7 +41,7 @@ Remaining gaps: rubric bands, S3/S4 files, S9–S15 (OQ-01). Where a lecture not
 | Hard gate `[BRIEF §12]` | Done? |
 |---|---|
 | Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] |
-| Live OpenAPI/Swagger from the deployment (`/docs`) | [ ] |
+| Live OpenAPI/Swagger from the deployment (`/docs`) | local done 2026-09-26 (D13, `docs/openapi.yaml`, `test/openapi.test.js`); live pending deploy |
 | Repo shared with module leader as collaborator; incremental commits | [ ] |
 | Report 2250–2750 words with the six required sections | [ ] |
 | Signed declaration + AI-disclosure appendix (prompts, AI-aids) | [ ] |
@@ -87,7 +87,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | S4 | 401 vs 403 used correctly; `WWW-Authenticate` on 401 | `[LEC S7, S8]` | Security | [ ] |
 | R1–R6 | Report sections: Architecture & data model · API design justification · Security · Deployment · Richardson evaluation (incl. why not L3) · Critical evaluation | §8 | Report | [ ] |
 
-**Rubric weights (verified against brief §11):** API design 20 · Architecture 15 · Coverage 15 · Security 15 · Implementation with generated code 10 · Deployment 10 · Report 10 · Functionality 5 = 100. "Coverage" means design-spine breadth and advanced behaviour (V1–V5), **not test coverage**. Band descriptors are in a separate rubric; the previous-batch copy you will upload is indicative only.
+**Rubric weights (verified against brief §11):** API design 20 · Architecture 15 · Coverage 15 · Security 15 · Implementation with generated code 10 · Deployment 10 · Report 10 · Functionality 5 = 100. "Coverage" means design-spine breadth and advanced behaviour (V1–V5), **not test coverage**. Band descriptors are in the final rubric `NB6007CEM_Marking_Rubric.pdf` (25 Aug 2026), which is authoritative for marking.
 
 **Correction to old plan:** Conditional GET (V4) is a *listed requirement*, not an optional top-band extra. Only A8 is labelled upper-band stretch `[BRIEF §5]`.
 
@@ -101,7 +101,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Hierarchy Province → District → Substation → Installation → Reading | `[YOU]` `[BRIEF §3]` |
 | No Device entity; `meter_id` is an installation attribute | `[YOU]` `[BRIEF §3]` |
 | Readings append-only: no PUT/PATCH/DELETE on readings | `[YOU]` `[LEC S7]` |
-| Devices write only their own installation (`X-API-Key`) | `[YOU]` `[BRIEF §2]` |
+| Devices write only their own installation (device JWT from `POST /login`, scope `readings:write`; revised 2026-09-26, was `X-API-Key`) | `[YOU]` `[BRIEF §2]` `[WP §12.1, §12.2]` final rubric Security |
 | Users read by jurisdiction (JWT Bearer) | `[YOU]` (JWT is your choice; brief only requires jurisdiction-scoped auth) |
 | JSON field names snake_case | `[YOU]` `[LEC S5]` |
 | URI path segments: lowercase, hyphens, no underscores/camelCase, plural collections, singular atomic | `[WP §5.1]` |
@@ -127,7 +127,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | `POST /login` for token issue (processing function, verb name, 200 + token) | `[YOU]` `[WP §5.1, §7.3]` (OQ-11) |
 | Sort syntax `sort=(timestamp DESC)` / `sort=(a ASC, b DESC)` | `[YOU]` `[WP §10.2]` (OQ-23) |
 | Processing functions (`last-reading`, `generation-summary`) use the **lecturer's noun sub-resource form**; deviation from WP §5.1 is recorded and defended in the critical evaluation | `[YOU]` `[LEC S5/S6]` (OQ-21) |
-| Missing or invalid/unknown API key → 401; valid key used on another installation → 403 | `[YOU]` `[WP §9]` (OQ-10) |
+| Missing, invalid or expired token → 401; valid device token used on another installation → 403 (40302); token without the route's scope → 403 (40303) | `[YOU]` `[WP §9, §12.2]` (OQ-10, revised 2026-09-26) |
 | Stricter than brief: no `localhost` in spec/report/docs | `[YOU]` (README dev notes may say it; keep it out of the spec and report) |
 
 ---
@@ -176,13 +176,13 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | DB access | Mongoose | `[YOU]` (OQ-19) | Schemas self-document; native driver rejected |
 | Read auth | JWT Bearer (`jsonwebtoken`), passwords with `bcryptjs` | `[YOU]` / `[PROPOSAL]` for libs | Lectures teach Basic then OAuth bearer (S13 missing) |
 | Device auth | `X-API-Key`, stored as SHA-256 hash, timing-safe compare | `[YOU]` header / `[PROPOSAL]` hashing | Random high-entropy keys don't need bcrypt |
-| Docs | `swagger-ui-express` + `yaml`, spec in `docs/design/openapi.yaml` | `[YOU]` Swagger / `[PROPOSAL]` libs | |
+| Docs | `swagger-ui-express` + `yaml`, spec in `docs/openapi.yaml` (hand-written, single source) | `[YOU]` Swagger and libs (2026-09-26) | |
 | Hosting | **Azure App Service** (Linux, Node 22 LTS), used only for the smoke deploy (Free F1 first, Basic B1 if blocked) and the final deploy (**Basic B1**, paid from the Azure for Students credit, no card). Web app name `solar-api-dev` (add a suffix if taken). Deployed by **one GitHub Actions workflow** when `deployment_dev` is pushed. The final web app is the submitted URL | `[YOU]` Azure (OQ-31) / `[PROPOSAL]` plan sizes, publish-profile authentication (OQ-32) | Read the estimated price when creating the plan; budget alert; delete the smoke resources at once; delete the final plan only after marking and the viva. The F1 tier has a daily compute cap, so it is not used for the final |
 | Tests | Node built-in `node --test` + global `fetch` against `BASE_URL` (default: the local server) | `[PROPOSAL]` | Zero extra deps. Run with `TZ=UTC` to imitate Azure. The same suite runs against the deployed URL at the smoke and final deploys |
 | Dev reload | `node --watch` | `[PROPOSAL]` | No nodemon |
 | **Not used** | TypeScript, Docker, GraphQL, Redis, rate-limit libs; GitHub Actions only for the one deploy workflow (no test or lint pipeline) | `[PROPOSAL]` | Keep the pipeline minimal |
 
-**Dependency set:** `express dotenv cors mongoose jsonwebtoken bcryptjs swagger-ui-express yaml`. No dev dependencies.
+**Dependency set:** `express dotenv cors mongoose jsonwebtoken bcryptjs swagger-ui-express yaml`. One dev dependency: `@apidevtools/swagger-parser` (spec validation test, added 2026-09-26).
 
 ---
 
@@ -210,7 +210,8 @@ src/
   utils/     pagination.js  sort.js  links.js  etag.js  errors.js
 scripts/     seed.js
 test/        *.test.js
-docs/design/ my-decisions.md  data-model.md  openapi.yaml  architecture.md
+docs/openapi.yaml
+docs/design/ my-decisions.md  data-model.md  architecture.md
 ```
 
 One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold rules (scope, last reading, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting concerns. Controllers stay thin. Layers = `[PROPOSAL]` (same as old playbook C3).
@@ -224,8 +225,8 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 | # | Method + URI | Resource type `[LEC S3/S5]` | Auth | Success | Errors |
 |---|---|---|---|---|---|
 | 1 | `GET /` | health | none | 200 | — |
-| 2 | `GET /docs`, `GET /docs.json` | docs | none | 200 | — |
-| 3 | `POST /login` `[YOU]` | **processing function**, verb name allowed `[WP §5.1, §7.3]` | credentials | 200 + token | 400, 401 |
+| 2 | `GET /docs` (Swagger UI; 301 to `/docs/`), `GET /docs.json` (the spec) `[YOU]` built 2026-09-26 (D13) | docs, from `docs/openapi.yaml` | none | 200 (301 on `/docs`) | — |
+| 3 | `POST /login` `[YOU]` | **processing function**, verb name allowed `[WP §5.1, §7.3]` | credentials: `{username, password}` (user) or `{installation_id, device_key}` (device) | 200 + token | 400 (mixed or no form 40022), 401 (40103 user, 40106 device), 405, 406, 415 (added 2026-09-26; order 405, 406, 415, then 400/401) |
 | 4 | `GET /provinces`, `/provinces/{province-id}` | collection, atomic | JWT | 200 / 304 | 401, 403, 404 |
 | 5 | `GET /districts`, `/districts/{district-id}` (`?province_id=`) | collection, atomic | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 6 | `GET /substations`, `/substations/{substation-id}` (`?district_id=`, `?province_id=`) `[YOU]` | collection, atomic | JWT | 200 / 304 | 400, 401, 403, 404 |
@@ -237,17 +238,17 @@ Resource map `[PROPOSAL]` unless tagged. Names follow `[WP §5.1]`. All paths ar
 | 10b | `GET /districts/{district-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 10c | `GET /provinces/{province-id}/readings` `[YOU]` | **scoped collection** (OQ-04), same query | JWT | 200 / 304 | 400, 401, 403, 404 |
 | 11 | `GET /installations/{installation-id}/readings/{reading-id}` | atomic, target of `Location` `[LEC S8]` | JWT | 200 / 304 | 401, 403, 404 |
-| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **X-API-Key** | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405 (PUT/PATCH/DELETE), 409, 415; **no 404** (unknown installation → 403, OQ-26 DECIDED) |
-| 13 | `POST /installations` `[YOU]` | create (collection = factory `[WP §7.3]`) | JWT admin (`solar:write`) | 201 + `Location` + headers | 400, 401, 403, 409, 415 |
-| 14 | `PUT /installations/{installation-id}` `[YOU]` | whole-document replace `[WP §7.2]` | JWT admin | 200 | 400, 401, 403, 404, 412, 415 |
-| 15 | `DELETE /installations/{installation-id}` `[YOU]` (readings kept, OQ-13 proposal) | delete | JWT admin | 200 | 401, 403, 404 (2nd call) |
+| 12 | `POST /installations/{installation-id}/readings` | ingestion (collection = factory `[WP §7.3]`) | **device JWT** (`readings:write`) | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403 (40303 scope, 40302 not own), 405 (PUT/PATCH/DELETE), 406, 409, 415; **no 404** (unknown installation → 403, OQ-26 DECIDED) |
+| 13 | `POST /installations` `[YOU]` (built 2026-09-26) | create (collection = factory `[WP §7.3]`); server picks the next `INS-NNNN`; issues the device key (OQ-28) | JWT admin (`installations:write`) | **201** + `Location`, `ETag` (as GET), `Last-Modified`, `Cache-Control: no-store`; body with `device_key` (once); no `Content-Location` | 400 (40010 + 40023–40027), 401, 403 (40303 scope, 40301 substation out of scope), 405, 406, 409 (40904 meter_id, 40906 id), 415 |
+| 14 | `PUT /installations/{installation-id}` `[YOU]` (built 2026-09-26) | whole-document replace `[WP §7.2]`; server-set fields ignored and recomputed; never creates | JWT admin (`installations:write`) | 200 + the GET representation, new `ETag`, `Last-Modified` | 400 (40010, 40028 id mismatch), 401, 403, 404, 405, 406, 409 (40904), 412 (41201, optional `If-Match`), 415 |
+| 15 | `DELETE /installations/{installation-id}` `[YOU]` (built 2026-09-26; OQ-13 decided: refused while readings exist) | delete | JWT admin (`installations:write`) | 200 + the deleted representation | 401, 403, 404 (2nd call), 405, 406, 409 (40905 has readings), 412 (41201) |
 | 16 | `GET /districts/{district-id}/generation-summary` `[YOU]` | **processing**, stretch A8; lecture form, deviates from WP §5.1 | JWT | 200 / 304 | 401, 403, 404 |
 
 **Same query on every readings collection** (`from`, `to`, `sort=(timestamp DESC)`, `offset`, `limit`); ties broken by `installation_id` so pages are stable `[PROPOSAL]`. Placement rule `[YOU]` (OQ-04): *path = which parent; query = how to read it*. Rejected: `GET /readings?district_id=` (phantom global collection), filters only on `/installations` (would not filter readings), copying jurisdiction ids onto every reading.
 
 **Deliberately absent (defend at viva):** global `/readings` · `/devices` · PUT/PATCH/DELETE on readings · any PATCH `[LEC S8]` · writes on province/district/substation `[LEC S7]` · `/users` endpoints (users are seeded).
 
-**Global behaviour** `[PROPOSAL]` unless noted: `res.json()` everywhere (`Content-Type: application/json`) `[LEC S5]` · `Accept` mismatch → 406 even with one media type `[WP §10.1]` · wrong request `Content-Type` → 415 `[WP §9]` · bad input → 400 with per-field `error[]` (422 not used) `[WP §11]` · `If-None-Match` (precedence) then `If-Modified-Since` → 304 empty body `[WP §10.4]` · `If-Match` (precedence) on PUT → 412; `If-Modified…` variants optional `[WP §10.5]` · every 401 carries `WWW-Authenticate`; API-key scheme name is custom (`ApiKey realm="solar"`) `[PROPOSAL]` · error body per §4 table `[WP §11]`, integer codes = HTTP status × 100 + n (e.g. 40001) `[PROPOSAL]` · unsupported method on a known path → 405 + `Allow` · collection always 200 (empty = `[]`/`data: []`), member 404 `[LEC S8]` · installation/reading write timestamps in UTC ISO 8601 `Z`.
+**Global behaviour** `[PROPOSAL]` unless noted: `res.json()` everywhere (`Content-Type: application/json`) `[LEC S5]` · `Accept` mismatch → 406 even with one media type `[WP §10.1]` · wrong request `Content-Type` → 415 `[WP §9]` · bad input → 400 with per-field `error[]` (422 not used) `[WP §11]` · `If-None-Match` (precedence) then `If-Modified-Since` → 304 empty body `[WP §10.4]` · `If-Match` (precedence) on PUT → 412; `If-Modified…` variants optional `[WP §10.5]` · every 401 carries `WWW-Authenticate: Bearer realm="solar"`; a missing scope gives 403 with `error="insufficient_scope"` (RFC 6750 §3.1) · error body per §4 table `[WP §11]`, integer codes = HTTP status × 100 + n (e.g. 40001) `[PROPOSAL]` · unsupported method on a known path → 405 + `Allow` · collection always 200 (empty = `[]`/`data: []`), member 404 `[LEC S8]` · installation/reading write timestamps in UTC ISO 8601 `Z`.
 
 **Composite vs last-reading:** composite serves "installation + latest state in one call"; `last-reading` serves reading-only clients. Same helper feeds both (no duplicated logic) `[LEC S6]`.
 
@@ -282,17 +283,18 @@ Old plan's seed (76 installations, ~14,600 readings) is **below brief scale** (�
 
 | Concern | Control | Where | Tag |
 |---|---|---|---|
-| Write/read split | Two schemes, two middleware; JWT never accepted on POST readings; API key never accepted on GET | `authApiKey`, `authJwt` | `[BRIEF §2]` |
-| Device = its installation | Key hash looked up by `{installation-id}` from path; `installation_id` never taken from body | `authApiKey` | `[LEC S8]` |
-| Missing / not-accepted credential | 401 + `WWW-Authenticate` (unknown key, bad password, expired/invalid JWT) | both | `[WP §9]` |
-| Understood but refused | 403 (valid key for another installation; user outside jurisdiction or lacking scope) | `authApiKey`, `scope` | `[WP §9]` `[LEC S8]` OQ-10 |
-| Token scopes | JWT carries a `scope` list (e.g. `solar:read`, `solar:write`) plus jurisdiction claims; insufficient scope → 403 | `authJwt` | `[WP §12.2]` `[PROPOSAL]` |
+| Write/read split | One bearer scheme, split by scope (revised 2026-09-26): POST readings needs `readings:write` (device tokens only); every GET needs `solar:read` (user tokens only). X-API-Key is not accepted | `authenticate`, `requireScope` | `[BRIEF §2]` `[WP §12.2]` |
+| Device login | `POST /login` with `{installation_id, device_key}`: SHA-256 of the key compared with the stored `api_key_hash` using `timingSafeEqual`; unknown id compared with a dummy hash; unknown id and wrong key give the same 401 (40106). Token: HS256, 1 hour, `sub` = installation id, `role` device, `scope` readings:write | `services/auth.js` | `[WP §12.1]` (simple credentials only to obtain a token) `[YOU]` |
+| Device = its installation | Token `sub` must equal `{installation-id}` in the path; `installation_id` never taken from body | `ownInstallation` | `[LEC S8]` |
+| Missing / not-accepted credential | 401 + `WWW-Authenticate` (bad device key or password at login, missing, expired or invalid JWT) | `authenticate`, login | `[WP §9]` |
+| Understood but refused | 403 (device token for another installation 40302; user outside jurisdiction 40301; token lacking scope 40303) | `ownInstallation`, `requireScope`, `scope` | `[WP §9]` `[LEC S8]` OQ-10 |
+| Token scopes | JWT carries `scope`: reader `solar:read`, admin `solar:read installations:write`, device `readings:write`; insufficient scope → 403 (40303) + `WWW-Authenticate: Bearer realm="solar", error="insufficient_scope", scope="…"` | `requireScope` | `[WP §12.2]` `[YOU]` (2026-09-26) |
 | Honest labelling | Own JWT issued by `/login`, not a full OAuth 2.0 flow — do not call it OAuth without an authorization server | report evidence | `[PROPOSAL]` |
-| Roles `[YOU]` (OQ-03) | **Device** (API key): POST own readings only. **Reader** (JWT `solar:read`): GET in jurisdiction. **Admin** (JWT `solar:read`+`solar:write`, national): GET all; POST/PUT/DELETE installations. Reader write attempt → 403; admin posting a reading → 401 (needs a device key) | `authJwt`, `authApiKey` | `[YOU]` |
+| Roles `[YOU]` (OQ-03) | **Device** (JWT `readings:write`): POST own readings only; any GET → 403 (40303). **Reader** (JWT `solar:read`): GET in jurisdiction. **Admin** (JWT `solar:read`+`installations:write`, national): GET all; POST/PUT/DELETE installations. Reader write attempt → 403; reader or admin posting a reading → 403 (40303) | `requireScope`, `ownInstallation` | `[YOU]` |
 | Jurisdiction on readings routes `[YOU]` (OQ-04) | Scope check runs on the **path parent**; parent missing → 404 first; province route for a district user → 403 | `scope.js` | `[YOU]` |
 | Jurisdiction scope | JWT carries `role`, `jurisdiction_level`, `jurisdiction_id`; `scope` middleware resolves resource → province/district and compares; collections filtered to scope | `scope.js` + services | `[PROPOSAL]` OQ-12 |
-| Users never write readings | POST readings route has no JWT path | route table | `[BRIEF §2]` |
-| Passwords / keys | bcrypt hash; SHA-256 key hash; secrets never logged or returned | services | `[PROPOSAL]` |
+| Users never write readings | User tokens never carry `readings:write`, so POST readings gives 403 (40303) | `requireScope` | `[BRIEF §2]` |
+| Passwords / keys | bcrypt hash; SHA-256 device key hash with a constant-time compare; secrets, keys, hashes and login bodies never logged or returned | services | `[PROPOSAL]` |
 | Secrets | `.env` git-ignored; `.env.example` committed; **no hard-coded fallback secrets** (classmate repo has one — don't repeat) | config | `[PROPOSAL]` |
 | Injection | Validate types on every query/body value; reject objects where strings expected (NoSQL operators) | `validate.js` | `[PROPOSAL]` |
 | Input limits | `limit` capped; body size limit; range checks on `power_kw`, `voltage`, `energy_kwh` | `validate.js` | `[PROPOSAL]` |
@@ -310,7 +312,7 @@ Brief mandates no automated tests. Tests are for **my confidence, viva evidence 
 |---|---|---|
 | Contract/behaviour | Status, headers, shapes per endpoint | `node --test test/` with `fetch`; `BASE_URL` defaults to the local server and can point at the deployed URL |
 | Seed integrity | Counts, FK integrity, derived `district_id`/`province_id` match their parents, ≥1 week/installation, newest reading is recent after top-up | `test/seed.test.js` via API + one script check |
-| Security matrix | 401 vs 403 vs 200 per client type | `test/auth.test.js` (device key, wrong key, user in/out of scope, no creds) |
+| Security matrix | 401 vs 403 vs 200 per client type | `test/auth.test.js`, `test/device-write.test.js`, `test/scope.test.js` (device login, wrong key, device token on GET, user token on POST readings, user in/out of scope, no creds) |
 | Live smoke | Same suite against the deployed URL — **only at the smoke deploy and the final deploy** | `BASE_URL=https://<app-name>.azurewebsites.net npm test` (copy the real hostname from the portal) |
 | Production-mode rehearsal | Proves the app runs from repo contents only, as on Azure | Fresh clone in a temp folder, `npm ci --omit=dev`, then `TZ=UTC NODE_ENV=production PORT=8080 node --env-file=<a git-ignored env file> src/server.js`; run at the end of Phase 1, Phase 4 and Phase 8 |
 | Manual evidence | `curl -i` outputs and Swagger screenshots for the report | saved under `docs/evidence/` |
@@ -326,7 +328,7 @@ Write-path tests leave data behind (append-only); they use future-unique timesta
 | `README.md` | Live URL, `/docs` link, run/seed/test, demo credentials, endpoint table |
 | `docs/design/my-decisions.md` | **My hand-written** decisions (viva ammunition) |
 | `docs/design/data-model.md` | ER (Mermaid), entities, keys, scoping notes |
-| `docs/design/openapi.yaml` | Contract; grown alongside each phase; served at `/docs` |
+| `docs/openapi.yaml` | Contract; hand-written single source, documents what the code does; served at `/docs` and `/docs.json` (path changed from `docs/design/` on 2026-09-26) |
 | `docs/design/diagrams/*.mmd` + `README.md` | 14 Mermaid diagram sources (context, resources, ER, auth, pipeline, flows, deployment, layers, roles, branching); each marks OPEN dependencies |
 | `docs/requirements.md`, `docs/rubric-gaps.md` | From this plan, brief and rubric |
 | `ai-log.md` | Every prompt (chat + Claude Code); source of the AI-disclosure appendix |
@@ -496,7 +498,7 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 | Req | Implementation (planned) | Test |
 |---|---|---|
 | G1 | Azure App Service web app; deploy workflow; Atlas; `scripts/seed.js` | T01 live `GET /` 200 over HTTPS; T02 collections non-empty |
-| G2 | `swagger-ui-express`, `docs/design/openapi.yaml` | T03 `/docs` 200; T04 `/docs.json` parses, lists all paths |
+| G2 | `swagger-ui-express`, `docs/openapi.yaml` | `test/openapi.test.js`: spec valid; `/docs` and `/docs.json` without a token; every documented operation exists; 405 `Allow` = documented methods; every error code documented |
 | G3 | Git workflow §12 | Manual: `git log`, collaborator screenshot |
 | G4–G6 | Report, declaration, viva | Manual checklist |
 | M1–M4 | `models/`, `data-model.md` | T05 installation JSON has `meter_id`, no `last_power`; T06 `GET /devices` → 404; T07 readings carry the required fields; T07b seeded `energy_kwh` is non-decreasing per installation |
@@ -514,9 +516,9 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 | V3 | `utils/sort.js` | T34 asc and desc by timestamp; T35 unknown sort field → 400 |
 | V4 | `middleware/conditional.js` | T36 `If-None-Match` → 304, 0-byte body; T36b `If-Modified-Since` works and `If-None-Match` wins when both sent; T37 changed data → 200 |
 | V5 | `utils/errors.js`, `errorHandler.js` | T38 every 4xx has integer `code`, `message`, `description`; T38b validation errors list `error[]` per field |
-| S1 | `authApiKey` | T39 no key → 401 + `WWW-Authenticate`; T39b unknown key → 401; T40 other installation's key → 403; T41 key from body ignored |
+| S1 | device login, `authenticate`, `requireScope`, `ownInstallation` | T39 no token (or X-API-Key alone) → 401 + `WWW-Authenticate`; T39b wrong key and unknown installation at login → identical 401 (40106); T40 other installation's token → 403 (40302); T41 installation_id from body ignored |
 | S2 | `authJwt`, `scope` | T42a district user: own `/districts/{id}/readings` 200, other district's 403, own province's `/readings` 403; T42 district user reads own district 200; T43 other district 403; T44 national reads all; T45 collections filtered to scope |
-| S3 | route table, roles | T46 JWT on POST readings → 401; T46b reader `POST/PUT/DELETE /installations` → 403; T46c device key on `POST /installations` → 401; T46d admin `POST /installations` → 201 |
+| S3 | route table, roles, `requireScope` | T46 reader or admin JWT on POST readings → 403 (40303); T46e device JWT on any GET → 403 (40303); T46b reader `POST/PUT/DELETE /installations` → 403; T46c device JWT on `POST /installations` → 403; T46d admin `POST /installations` → 201 |
 | S4 | auth middleware | T47 401 has `WWW-Authenticate`; 403 does not |
 | R1–R6 | Report | Manual evidence checklist §11 |
 
@@ -524,13 +526,13 @@ Test IDs are planned, not written yet. `T` = `node --test` case against `BASE_UR
 
 ## 15. Open questions and assumptions
 
-Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-28, 29, OQ-25 (viva), current rubric. (OQ-26, OQ-27 and the validation limits were closed on 2026-09-26; rules in `my-decisions.md` §9.)
+Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes before the phase shown. **Genuinely OPEN:** OQ-25 (viva), OQ-32. (OQ-13, OQ-24 and OQ-28 were closed on 2026-09-26 in Phase 7; OQ-29 was closed earlier the same day.) (Current rubric received: `NB6007CEM_Marking_Rubric.pdf`, 25 Aug 2026.) (OQ-26, OQ-27 and the validation limits were closed on 2026-09-26; rules in `my-decisions.md` §9.)
 
 | ID | Question | My recommendation | Blocks |
 |---|---|---|---|
-| OQ-01 | **White paper now in project (resolved).** Still missing: rubric bands, S3/S4 files, S9–S15 | Upload the rest; rubric matters most | report, Phase 8 audit |
+| OQ-01 | **White paper now in project (resolved). Final rubric in project (resolved 2026-09-26).** Still missing: S3/S4 files, S9–S15 | Upload the rest | report, Phase 8 audit |
 | OQ-02 | **DECIDED `[YOU]`:** fresh submission; no previous attempt, no marker feedback | Earlier message said "official re-sit"; read as the module attempt, not a prior submission. Brief §14 not applicable | — |
-| OQ-03 | **DECIDED `[YOU]`:** writable = readings (device POST) and installations (admin POST/PUT/DELETE); read-only = hierarchy, users, derived resources; roles device / reader / admin | Risk: brief §2 says users are read-clients; admin writes installations, never readings. Details in `my-decisions.md` §13 | P7 |
+| OQ-03 | **DECIDED `[YOU]`, built 2026-09-26:** writable = readings (device POST) and installations (admin POST/PUT/DELETE); read-only = hierarchy, users, derived resources; roles device / reader / admin | Risk: brief §2 says users are read-clients; admin writes installations, never readings. Details in `my-decisions.md` §13 | P7 |
 | OQ-04 | **DECIDED `[YOU]` (own decision, not confirmed with the lecturer):** readings collections under installation, substation, district and province (GET only above installation); jurisdiction = path parent, time window/sort/pagination = query; `/installations` also filtered by query | Rationale and rejected alternatives in `my-decisions.md` §11. Extends the brief's "sub-collection under each installation" | P6 |
 | OQ-05 | **DECIDED `[YOU]`:** hierarchy resources top-level with query filters | Client-need test `[LEC S3]`; readings scoped | P2 |
 | OQ-06 | **DECIDED `[YOU]`:** `/substations` | — | P2 |
@@ -540,9 +542,9 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-10 | **DECIDED `[YOU]`:** missing/invalid API key → 401; valid key on another installation → 403 | Fits WP §9 | P4 |
 | OQ-11 | **DECIDED `[YOU]`:** follow white paper → `POST /login`, 200 + token | WP §5.1 verb-named processing function; §7.3 POST initiates functions | P5 |
 | OQ-12 | Out-of-scope access: 403 or 404? Silent filtering or 403 for collections? | 403 for atomic/scoped; collections filtered to scope | P5 |
-| OQ-13 | Deleting an installation leaves its readings (`[LEC S8]` retains history). Then history is unreachable via API | Follow lecture (retain, installation → 404); explain in report | P7 |
+| OQ-13 | SUPERSEDED 2026-09-26: Deleting an installation leaves its readings (`[LEC S8]` retains history). Then history is unreachable via API. **DECIDED `[YOU]` 2026-09-26:** DELETE of an installation with any readings → 409 (40905), nothing deleted; without readings → 200 with the deleted representation, repeat → 404 | SUPERSEDED: follow lecture (retain, installation → 404). Now: history stays reachable because its installation cannot be deleted; `my-decisions.md` §13 | P7 |
 | OQ-14 | **DECIDED `[YOU]`:** 15-minute seed interval (40 substations, 240 installations) | — | P2 |
-| OQ-15 | How does the marker authenticate? | Documented demo users + device keys in README/Swagger, flagged demo-only | P5 |
+| OQ-15 | **DECIDED `[YOU]` 2026-09-26:** demo logins go in the README (private repo) and the report appendix, not in the public Swagger (public admin credentials would let anyone change the live API); the spec says demo accounts are provided separately to the marker | SUPERSEDED: documented demo users + device keys in README/Swagger, flagged demo-only | P5 |
 | OQ-16 | **DECIDED:** lecturer = `nirangadh` (https://github.com/nirangadh) | Add as collaborator in Phase 1 | P1 |
 | OQ-17 | **DECIDED `[YOU]`:** deadline Sun 4 Oct 2026 (LMS time of day still to note) | Timeline in §13 | — |
 | OQ-18 | **DECIDED `[YOU]`:** repo is new and **empty** (no code, no commits) | No scaffold to reuse or explain; first commit = plan/playbook/structure (Phase 0 → 1) | — |
@@ -551,11 +553,11 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 | OQ-21 | **DECIDED `[YOU]`:** noun sub-resources named for the thing (`…/installations/{id}/last-reading`, `…/districts/{id}/generation-summary`); "processing function" is a resource *kind*, never a URI segment | Deviation from WP §5.1 recorded; own decision, not confirmed with the lecturer | P3 |
 | OQ-22 | **DECIDED `[YOU]`:** follow white paper → base path `/solar/v1.0` | One `app.use`; Swagger `servers` includes it; 301 for old versions not implemented (only v1.0 exists) — list as a limitation | P1 |
 | OQ-23 | **DECIDED `[YOU]`:** follow white paper → `sort=(timestamp DESC)`, multi-attribute `sort=(a ASC, b DESC)` | Whitelist attributes; default newest first for readings | P6 |
-| OQ-26 | **DECIDED `[YOU]` 2026-09-26:** no 404 on POST readings. Missing or unknown key → 401 (40104/40105); a valid key used on an installation that is not its own, or that does not exist, → 403 (40302), so the route never reveals which ids exist | Option (a) of the earlier choice; `my-decisions.md` §9 | P4 |
+| OQ-26 | **DECIDED `[YOU]` 2026-09-26:** no 404 on POST readings. Missing or unknown key → 401 (40104/40105); a valid key used on an installation that is not its own, or that does not exist, → 403 (40302), so the route never reveals which ids exist. **Revised 2026-09-26 (device JWT):** missing, invalid or expired token → 401 (40101/40102); a device token for another installation, or for one that does not exist, → 403 (40302); 40104/40105 retired | Option (a) of the earlier choice; `my-decisions.md` §9 | P4 |
 | OQ-27 | **DECIDED `[YOU]` 2026-09-26:** compared with the newest stored reading: same timestamp → 409 (40901, unique index as final guard), older timestamp → 409 (40903), lower `energy_kwh` → 409 (40902); equal energy allowed | Late or out-of-order readings are refused. Known limit: two concurrent requests with different timestamps can both pass the older/lower checks | P4 |
-| OQ-28 | **OPEN.** How does a newly created installation get a device key? | Return the plain key once in the 201 body (differs from GET) or seed-only keys | P7 |
-| OQ-29 | **OPEN (technical).** ETag construction (Express default vs explicit; strong ETag needed for `If-Match`) | Decide in Phase 6 | P6 |
-| OQ-24 | Should PUT require `If-Match`? WP §9 gives "request must be conditional but no condition specified" as a 403 example | Optional `If-Match` (simpler); if present and stale → 412 | P7 |
+| OQ-28 | SUPERSEDED 2026-09-26: **OPEN.** How does a newly created installation get a device key? **DECIDED `[YOU]` 2026-09-26:** `POST /installations` generates a key (`randomBytes(32)` hex), stores only its SHA-256, returns it once as `device_key` in the 201 (`Cache-Control: no-store`); the device then uses `POST /login` | `my-decisions.md` §13 | P7 |
+| OQ-29 | **Closed 2026-09-26 (DECIDED · YOU).** ETag construction: strong, content-based (`app.set('etag', 'strong')`); see my-decisions §11 | Done in D12 | P6 |
+| OQ-24 | **DECIDED `[YOU]` 2026-09-26:** `If-Match` is optional on PUT and DELETE; present and not matching the current strong ETag → 412 (41201); `*` matches any existing installation; the write also filters on the `updated_at` read, so a change in between gives 412. (WP §9's 403 "must be conditional" case is not used) | The composite ETag changes with each new reading, so a stale `If-Match` after a device posts gives 412 (accepted); `my-decisions.md` §13 | P7 |
 | OQ-31 | **DECIDED `[YOU]` 2026-09-20:** host on **Azure App Service** (Azure for Students credit, no card) instead of Render. **Deployment by one GitHub Actions workflow** | Render asked for a card check; Azure credit (US$100, 365 days) needs none. Watch credit use; delete resources per §12b | P1 |
 | OQ-30 | **DECIDED `[YOU]`:** `main` never touched; `dev_hashini` → `dev` → `deployment_dev` (deploy branch, by MR **only at the smoke deploy and the final deploy**); `deployment_qa` **kept as a marker, never deployed** | The release step is manual; check `dev` = `deployment_dev` before submission | P1 |
 | OQ-32 | **OPEN until the smoke deploy.** Workflow authentication: publish profile (needs basic authentication on the app), OIDC (may be blocked in the university tenant), or Azure CLI ZIP fallback | Try the publish profile first; record the result in `docs/evidence/` | P4b |
@@ -580,6 +582,8 @@ Rows marked DECIDED are closed. Unmarked rows are `[PROPOSAL]` awaiting your yes
 ---
 
 ## 17. Outdated rubric — supplementary only
+
+**Update 2026-09-26:** the final rubric `NB6007CEM_Marking_Rubric.pdf` (NB6007CEM, last modified 25 Aug 2026) is now in the course folder. It is current and authoritative for marking; its weights match brief §11. This section is kept as a record of how the older rubric was used before that. Security change made because of it: device JWT instead of X-API-Key (`my-decisions.md` §9).
 
 `outdated_use_as_a_ref.pdf` is for **NIB304CEM, Mode C, batch 24.1P** (same lecturer). Its marks, weights, criteria, wording and level descriptors are **not** current. Current authority: brief §11 and the brief's requirements. Used only to hint at assessment areas:
 

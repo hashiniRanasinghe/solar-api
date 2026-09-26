@@ -37,7 +37,7 @@ Conventions (`my-decisions.md` §2, §7): fields are snake_case; every public ID
 | `district_id` | string | yes | index | **derived** from `substation_id`, server-set, read-only |
 | `province_id` | string | yes | index `PROPOSAL` | **derived** from `substation_id`, server-set, read-only; index optional at this data size — see §2 |
 | `capacity_kw` | number | yes | — | ceiling for seed realism and validation |
-| `api_key_hash` | string | no | partial unique (only where present as a string) `PROPOSAL` | device credential hash; **never returned** by any API response; not required on every document while OQ-28 (how a new installation gets a key) is open (§6) — does not decide OQ-28 |
+| `api_key_hash` | string | no | partial unique (only where present as a string) | device credential hash (SHA-256 hex of the device key); **never returned** by any API response. Every installation created by the seed or by `POST /installations` gets a key (OQ-28 decided 2026-09-26: the plain key is returned once in the 201). Not required on the document: one without a key is valid but cannot log in (§6) |
 | `created_at` | datetime (UTC) | yes | — | |
 | `updated_at` | datetime (UTC) | yes | — | |
 
@@ -72,7 +72,7 @@ Collection name and model mapping per Conventions above.
 | unique `districts.district_id`; index `districts.province_id` | member lookup; `GET /districts?province_id=…` |
 | unique `substations.substation_id`; index `substations.district_id` | member lookup; `GET /substations?district_id=…` |
 | unique `installations.installation_id`; unique `installations.meter_id`; index `installations.substation_id`; index `installations.district_id` | member lookup; duplicate-`meter_id` rejection (409, `my-decisions.md` §13); resolving the installation IDs under a substation/district/province path parent for jurisdiction-scoped readings (§11, OQ-04) |
-| partial unique `installations.api_key_hash` (index only where the field is a string) `PROPOSAL` | device-key lookup on ingest (401/403 split, §9) — partial because the field isn't required on every installation while OQ-28 is open; does not decide OQ-28 |
+| partial unique `installations.api_key_hash` (index only where the field is a string) | no two installations share a device key; device login reads `api_key_hash` by `installation_id` (revised 2026-09-26: the hash is no longer looked up on ingest) — partial because the field is not required on the document (OQ-28 decided 2026-09-26, §6) |
 | `installations.province_id`; `substations.province_id` `PROPOSAL` | `GET /installations?province_id=…`, `GET /substations?province_id=…`, and the province readings route; optional at this data size (240 installations / 40 substations) |
 | unique `generation_readings.reading_id` | member lookup and the `Location` target for `GET /installations/{installation-id}/readings/{reading-id}` |
 | unique `generation_readings.(installation_id, timestamp)` | idempotent device ingest — a retried POST for the same installation+timestamp hits this and gets 409 instead of a duplicate row (§9, §8 table). MongoDB can read a compound index backwards, so this one index also serves `last-reading` / per-installation history in both sort directions; `PLAN.md` §8's separate `(installation_id, timestamp desc)` index is `PROPOSAL`ed here as redundant — confirm with `explain()` in Phase 3 before dropping it |
@@ -118,14 +118,17 @@ This is what makes the path-based jurisdiction scope check (`my-decisions.md` §
 
 These are `OPEN` in `my-decisions.md` (§11, §13, §16) and are listed, not resolved:
 
-- **OQ-28** — How a newly created installation receives its device key (candidate idea only: return the plain key once in the 201 body; not confirmed).
-- **OQ-29** — How the `ETag` is constructed (Express's default vs an explicit one; installations need a strong ETag for `If-Match`).
+- SUPERSEDED 2026-09-26 (decided, see below) **OQ-28** — How a newly created installation receives its device key (candidate idea only: return the plain key once in the 201 body; not confirmed).
+- SUPERSEDED 2026-09-26 (closed, see below) **OQ-29** — How the `ETag` is constructed (Express's default vs an explicit one; installations need a strong ETag for `If-Match`).
 
 Closed on 2026-09-26 (`DECIDED · YOU`, `my-decisions.md` §9):
 
-- **OQ-26** — no 404 on `POST …/readings`: the `api_key_hash` lookup gives 401 for a missing or unknown key and 403 when the key's installation is not the path installation (also when that installation does not exist), so the route never reveals which ids exist.
+- **OQ-26** — no 404 on `POST …/readings`: a missing, invalid or expired token gives 401, and a device token for an installation that is not the path installation (also when that installation does not exist) gives 403, so the route never reveals which ids exist. (Revised 2026-09-26: the device key is checked against `api_key_hash` at `POST /login`, which returns a device JWT; X-API-Key was removed.)
 - **OQ-27** — a reading is compared with the installation's newest stored reading: same `timestamp` → 409 (the unique `(installation_id, timestamp)` index is the final guard), older `timestamp` → 409, `energy_kwh` lower than the newest → 409; an equal `energy_kwh` is accepted.
 - **Validation limits** — `power_kw` from 0 to the installation's `capacity_kw`; `energy_kwh` ≥ 0; `voltage` from 0 to 300; `timestamp` ISO 8601 UTC on a 15-minute boundary.
+- **OQ-28** (Phase 7) — every installation created through `POST /installations` gets a device key: 32 random bytes as hex, only its SHA-256 hex stored in `api_key_hash`, the plain key returned once as `device_key` in the 201 body and never again (`my-decisions.md` §13). The server also sets `installation_id` (next `INS-NNNN`), `district_id` and `province_id` (from `substation_id`), `created_at` and `updated_at`.
+- **OQ-29** — strong, content-based ETag (`app.set('etag', 'strong')`) on every GET and 201; used for `If-Match` on installation PUT and DELETE (`my-decisions.md` §11, §13).
+- **OQ-13** (Phase 7) — an installation with readings cannot be deleted (409), so no reading is ever left without its installation through the API.
 
 ## 7. Notes and gaps
 
@@ -140,7 +143,7 @@ Fixed:
 Real gaps found (not fixed here):
 - `reading_id` has no index in `PLAN.md` §8's index list, although it's needed as the `Location` target for `GET /installations/{installation-id}/readings/{reading-id}` (§1, §2).
 - `PLAN.md` §8 lists `(installation_id, timestamp)` unique and `(installation_id, timestamp desc)` as two separate indexes on `generation_readings`; §2 above proposes the second is redundant (a compound index can be read backwards) — confirm with `explain()` in Phase 3 before dropping it.
-- `PLAN.md` §8 lists `installations.api_key_hash` as a plain unique index; §1/§2 above propose a **partial** unique index instead, tied to OQ-28 being open.
+- `PLAN.md` §8 lists `installations.api_key_hash` as a plain unique index; §1/§2 above use a **partial** unique index instead (built; kept after OQ-28 was decided, because the field is not required on the document).
 - `installations.province_id` and `substations.province_id` have no index in `PLAN.md` §8; §2 above proposes adding both as optional, low-priority indexes.
 
 Documents that would need edits to reflect the above (not made in this document): `PLAN.md` §8 (index list — add `reading_id`, drop or justify the redundant readings-desc index, change `api_key_hash` to partial, add the two `province_id` indexes; also the district-ID example, `DT-03` → `DT-01`) and §9 (note `api_key_hash`'s index is now proposed as partial, tied to OQ-28). `my-decisions.md` already uses `DT-01` and needs no change on that point.

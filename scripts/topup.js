@@ -74,7 +74,7 @@ async function main() {
 
   if (skippedNoReadings.length > 0) {
     console.log(
-      `Skipped ${skippedNoReadings.length} installation(s) with no readings (run the seed first): ` +
+      `Skipped ${skippedNoReadings.length} installation(s) with no readings yet (new installation or not seeded): ` +
         skippedNoReadings.join(', ')
     );
   }

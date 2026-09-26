@@ -36,4 +36,4 @@ async function findInScope(repository, id, user, resource) {
   throw AppError.outOfScope();
 }
 
-module.exports = { narrow, findInScope };
+module.exports = { scopeFilter, narrow, findInScope };

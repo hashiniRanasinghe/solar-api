@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -26,6 +25,7 @@ const {
   countEnergyDecreases,
   getDbNameFromUri,
 } = require('./lib/readings');
+const { generateDemoPassword, generateDeviceKey, parseSeedArgs } = require('./lib/credentials');
 
 const OUTPUT_FILE = path.join(__dirname, 'seed-keys.txt');
 const BATCH_SIZE = 500;
@@ -43,9 +43,14 @@ const READINGS_PER_INSTALLATION = (READING_DAYS * 24 * 60 * 60 * 1000) / SLOT_MS
 const CAPACITY_MIN_KW = 3;
 const CAPACITY_MAX_KW = 50;
 
-const args = process.argv.slice(2);
-const isReset = args.includes('--reset');
-const isDryRun = args.includes('--dry-run');
+// parseSeedArgs throws on a forbidden combination; main() reports it.
+let options;
+let argsError = null;
+try {
+  options = parseSeedArgs(process.argv.slice(2));
+} catch (err) {
+  argsError = err;
+}
 
 // Deterministic hierarchy RNG stream (mulberry32, fixed seed; see lib/readings.js).
 const rng = mulberry32(RNG_SEED);
@@ -151,8 +156,7 @@ function buildSubstationsAndInstallations(districts) {
     for (let i = 0; i < count; i += 1) {
       installationCounter += 1;
       const installation_id = `INS-${pad(installationCounter, 4)}`;
-      const plainKey = crypto.randomBytes(32).toString('hex');
-      const api_key_hash = crypto.createHash('sha256').update(plainKey).digest('hex');
+      const { plainKey, api_key_hash } = generateDeviceKey();
       deviceKeys[installation_id] = plainKey;
 
       installations.push({
@@ -171,29 +175,25 @@ function buildSubstationsAndInstallations(districts) {
   return { substations, installations, deviceKeys };
 }
 
-// Demo users: PROPOSAL usernames/passwords for the student to document in
-// the report/README later. Plain passwords are written only to the
-// git-ignored output file below, never printed to stdout.
+// Demo users. Passwords are random at seed time; the plain values go only to
+// the git-ignored output file, never to stdout or a committed file.
 function buildDemoUsers(provinces, districts) {
   const specs = [
     {
       user_id: 'USR-01',
       username: 'national.admin',
-      password: 'AdminDemo#2026',
       role: 'admin',
       jurisdiction_level: 'national',
     },
     {
       user_id: 'USR-02',
       username: 'national.reader',
-      password: 'ReaderDemo#2026',
       role: 'reader',
       jurisdiction_level: 'national',
     },
     {
       user_id: 'USR-03',
       username: 'western.reader',
-      password: 'ProvinceDemo#2026',
       role: 'reader',
       jurisdiction_level: 'province',
       jurisdiction_id: provinces[0].province_id,
@@ -201,12 +201,14 @@ function buildDemoUsers(provinces, districts) {
     {
       user_id: 'USR-04',
       username: 'colombo.reader',
-      password: 'DistrictDemo#2026',
       role: 'reader',
       jurisdiction_level: 'district',
       jurisdiction_id: districts[0].district_id,
     },
   ];
+  specs.forEach((spec) => {
+    spec.password = generateDemoPassword();
+  });
 
   const users = specs.map((spec) => ({
     user_id: spec.user_id,
@@ -326,6 +328,69 @@ async function verifyReadings(installationIds, nowMs) {
   return pass;
 }
 
+function writeKeysFile(deviceKeys, demoUsers) {
+  fs.writeFileSync(
+    OUTPUT_FILE,
+    JSON.stringify({ device_keys: deviceKeys, demo_users: demoUsers }, null, 2),
+    { mode: 0o600 }
+  );
+}
+
+// New passwords for every seeded user and new device keys for every
+// installation. Only password_hash and api_key_hash change (no updated_at, no
+// readings). Prints counts only.
+async function rotateCredentials() {
+  await connectDB();
+  const [users, installations] = await Promise.all([
+    User.find({}, 'username role jurisdiction_level jurisdiction_id').sort({ user_id: 1 }).lean(),
+    Installation.find({}, 'installation_id').sort({ installation_id: 1 }).lean(),
+  ]);
+  if (users.length === 0 || installations.length === 0) {
+    console.error('Rotation aborted: no users or installations found. Run the seed first.');
+    await require('mongoose').disconnect();
+    process.exit(1);
+  }
+
+  const demoUsers = {};
+  const userOps = users.map((u) => {
+    const password = generateDemoPassword();
+    demoUsers[u.username] = {
+      password,
+      role: u.role,
+      jurisdiction_level: u.jurisdiction_level,
+      jurisdiction_id: u.jurisdiction_id || null,
+    };
+    return {
+      updateOne: {
+        filter: { username: u.username },
+        update: { $set: { password_hash: bcrypt.hashSync(password, 10) } },
+      },
+    };
+  });
+
+  const deviceKeys = {};
+  const installationOps = installations.map((ins) => {
+    const { plainKey, api_key_hash } = generateDeviceKey();
+    deviceKeys[ins.installation_id] = plainKey;
+    return {
+      updateOne: {
+        filter: { installation_id: ins.installation_id },
+        update: { $set: { api_key_hash } },
+      },
+    };
+  });
+
+  const userResult = await User.bulkWrite(userOps, { timestamps: false });
+  const installationResult = await Installation.bulkWrite(installationOps, { timestamps: false });
+  writeKeysFile(deviceKeys, demoUsers);
+
+  console.log('\nCredentials rotated');
+  console.log(`  users: ${userResult.modifiedCount} of ${users.length}`);
+  console.log(`  installations: ${installationResult.modifiedCount} of ${installations.length}`);
+  console.log(`  new values written to: ${path.relative(process.cwd(), OUTPUT_FILE)}`);
+  await require('mongoose').disconnect();
+}
+
 function* readingGroups(installations, startMs, endMs) {
   for (const installation of installations) {
     yield buildReadings(
@@ -338,9 +403,19 @@ function* readingGroups(installations, startMs, endMs) {
 }
 
 async function main() {
+  if (argsError) {
+    console.error(`Seed aborted: ${argsError.message}.`);
+    process.exit(1);
+  }
   if (!MONGODB_URI) {
     console.error('Seed aborted: MONGODB_URI is not set.');
     process.exit(1);
+  }
+
+  if (options.rotate) {
+    console.log(`Target database (from MONGODB_URI): ${getDbNameFromUri(MONGODB_URI)}`);
+    await rotateCredentials();
+    return;
   }
 
   const { provinces, districts } = buildProvincesAndDistricts();
@@ -362,14 +437,14 @@ async function main() {
       `to ${new Date(windowEndMs).toISOString()}`
   );
 
-  if (isDryRun) {
+  if (options.dryRun) {
     console.log('\n--dry-run: no database connection made, nothing written.');
     return;
   }
 
   await connectDB();
 
-  if (isReset) {
+  if (options.reset) {
     console.log(
       '\n--reset: clearing provinces, districts, substations, installations, users, generation_readings...'
     );
@@ -411,11 +486,7 @@ async function main() {
 
     // Written only when these installations were inserted, so the file's
     // plain keys always match the stored hashes.
-    fs.writeFileSync(
-      OUTPUT_FILE,
-      JSON.stringify({ device_keys: deviceKeys, demo_users: demoUsers }, null, 2),
-      { mode: 0o600 }
-    );
+    writeKeysFile(deviceKeys, demoUsers);
   }
 
   let readingsInserted = 0;

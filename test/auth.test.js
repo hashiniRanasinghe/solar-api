@@ -8,9 +8,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const app = require('../src/app');
-const { MONGODB_URI } = require('../src/config/env');
+const { MONGODB_URI, JWT_SECRET } = require('../src/config/env');
 const usersRepository = require('../src/repositories/users');
-const { mintToken, nationalToken } = require('./helpers/auth');
+const { mintToken, nationalToken, deviceToken } = require('./helpers/auth');
 
 const API = '/solar/v1.0';
 const CHALLENGE = 'Bearer realm="solar"';
@@ -116,6 +116,9 @@ test('malformed, wrongly signed, unsigned, expired or badly claimed tokens give 
     expired: mintToken({}, { expiresIn: -60 }),
     badLevel: mintToken({ jurisdiction_level: 'galaxy' }),
     districtWithoutId: mintToken({ jurisdiction_level: 'district', jurisdiction_id: null }),
+    deviceBadSub: deviceToken('mock.user'),
+    deviceWrongScope: jwt.sign({ role: 'device', scope: 'solar:read' }, JWT_SECRET, { subject: 'INS-0001' }),
+    expiredDevice: deviceToken('INS-0001', { expiresIn: -60 }),
   };
   for (const [name, token] of Object.entries(tokens)) {
     const res = await getWithAuth(`${API}/provinces`, `Bearer ${token}`);
@@ -127,13 +130,19 @@ test('malformed, wrongly signed, unsigned, expired or badly claimed tokens give 
 
 test('login with missing or non-string fields gives 400/40010 with per-field items', async () => {
   const cases = [
-    [{}, [40011, 40012]],
     [{ username: 'a' }, [40012]],
     [{ password: 'a' }, [40011]],
     [{ username: 5, password: 'a' }, [40011]],
     [{ username: 'a', password: { $ne: '' } }, [40012]],
     [{ username: '', password: '' }, [40011, 40012]],
-    [[], [40011, 40012]],
+    [{ installation_id: 'INS-0001' }, [40021]],
+    [{ device_key: 'x' }, [40020]],
+    [{ installation_id: 7, device_key: '' }, [40020, 40021]],
+    [{ installation_id: 'INS-0001', device_key: { $ne: '' } }, [40021]],
+    [{}, [40022]],
+    [[], [40022]],
+    [{ username: 'a', password: 'b', installation_id: 'INS-0001', device_key: 'x' }, [40022]],
+    [{ username: 'a', device_key: 'x' }, [40022]],
   ];
   for (const [credentials, codes] of cases) {
     const res = await login(credentials);
@@ -142,9 +151,45 @@ test('login with missing or non-string fields gives 400/40010 with per-field ite
     assert.deepEqual(res.body.error.map((e) => e.code).sort(), codes);
   }
 
-  const noBody = await request({ method: 'POST', path: `${API}/login` });
-  assert.equal(noBody.statusCode, 400);
-  assertErrorBody(noBody.body, 400, 40010);
+  const emptyJson = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(emptyJson.statusCode, 400);
+  assertErrorBody(emptyJson.body, 400, 40010);
+  assert.deepEqual(emptyJson.body.error.map((e) => e.code), [40022]);
+});
+
+test('login without a JSON Content-Type gives 415/41501, after 405 and 406 and before 400/401', async () => {
+  const credentials = 'username=a&password=b';
+  for (const headers of [{}, { 'Content-Type': 'text/plain' }, { 'Content-Type': 'application/x-www-form-urlencoded' }]) {
+    const res = await request({ method: 'POST', path: `${API}/login`, headers, body: credentials });
+    assert.equal(res.statusCode, 415, JSON.stringify(headers));
+    assertErrorBody(res.body, 415, 41501);
+  }
+
+  const withCharset = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: '{}',
+  });
+  assert.equal(withCharset.statusCode, 400);
+  assertErrorBody(withCharset.body, 400, 40010);
+
+  const notAcceptable = await request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'text/plain', Accept: 'text/html' },
+    body: credentials,
+  });
+  assert.equal(notAcceptable.statusCode, 406);
+  assertErrorBody(notAcceptable.body, 406, 40601);
+
+  const notAllowed = await request({ method: 'PUT', path: `${API}/login`, headers: { 'Content-Type': 'text/plain', Accept: 'text/html' } });
+  assert.equal(notAllowed.statusCode, 405);
+  assert.equal(notAllowed.headers.allow, 'POST');
 });
 
 test('unknown user and wrong password give the same 401/40103 body', async (t) => {
@@ -191,12 +236,12 @@ test('login success returns a bearer token that works on GET /provinces', async 
   assert.equal(provinces.statusCode, 200);
 });
 
-test('an admin token carries solar:read solar:write', async (t) => {
+test('an admin token carries solar:read installations:write', async (t) => {
   mockUser(t, { role: 'admin' });
   const res = await login({ username: 'mock.user', password: TEST_PASSWORD });
   assert.equal(res.statusCode, 200);
   const claims = jwt.decode(res.body.access_token);
-  assert.equal(claims.scope, 'solar:read solar:write');
+  assert.equal(claims.scope, 'solar:read installations:write');
   assert.equal(claims.jurisdiction_id, null);
 });
 

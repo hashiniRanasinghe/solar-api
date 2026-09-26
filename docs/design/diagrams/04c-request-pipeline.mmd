@@ -1,34 +1,42 @@
 %% 04c-request-pipeline.mmd - Order of checks and where each status code comes from
 %% Basis: WP §9 (status codes), §10.1 (406), §10.4 (304), §10.5 (412), §11 (error body); my-decisions §8-§12
-%% Status: order on POST readings is DECIDED (2026-09-26): 405, 415, 401, 403, 400, 409. Read routes: 401, then 403/404 by scope, then 400.
-%% OQ-26 DECIDED: POST readings has no 404 (unknown installation -> 403). The rest of the order (406, 304, 412) is still a PROPOSAL.
+%% Status: order on POST readings is DECIDED (2026-09-26, revised for device JWT): 405, 406, 415, 401, 403 scope (40303), 403 not own (40302), 400, 409. Read routes: 406, 401, 403 scope (40303), then 403/404 by jurisdiction, then 400.
+%% OQ-26 DECIDED: POST readings has no 404 (unknown installation -> 403).
+%% SUPERSEDED 2026-09-26: 412 is still a PROPOSAL.
+%% 406 and 304 DECIDED (2026-09-26, OQ-29): 406 on every /solar/v1.0 route incl. /login; strong content ETag; 304 only after auth and scope pass.
+%% 412 DECIDED (2026-09-26, OQ-24): optional If-Match on installation PUT and DELETE. Order on those routes: 405, 406, 415 (PUT), 401, 403 scope, 403/404 by jurisdiction and existence, 412, 400, 409.
+%% 405 DECIDED (2026-09-26): every URI that exists answers an unsupported method with 405 + Allow, before 406 and 401.
 flowchart TD
   R["Incoming request"] --> RT{"Route and method known?"}
   RT -- "no route (with a valid token; without one: 401)" --> E404["404 + error body (40401)"]
-  RT -- "method not allowed on this path<br/>(PUT/PATCH/DELETE on readings)" --> E405["405 + Allow (40501)"]
-  RT -- yes --> AC{"Accept allows application/json?<br/>(PROPOSAL, Phase 6)"}
-  AC -- no --> E406["406"]
+  RT -- "method not allowed on this path<br/>(read-only URIs: Allow GET; /installations: GET, POST;<br/>/installations/{id}: GET, PUT, DELETE; /login: POST; readings)" --> E405["405 + Allow (40501)"]
+  RT -- yes --> AC{"Accept allows application/json?<br/>(absent or */* is fine; every route incl. /login)"}
+  AC -- no --> E406["406 (40601)"]
   AC -- yes --> CT{"Write request: Content-Type is JSON?"}
   CT -- no --> E415["415 (41501)"]
-  CT -- yes --> AU{"Credential present and accepted?<br/>X-API-Key on POST readings, JWT elsewhere"}
+  CT -- yes --> AU{"Bearer JWT present and accepted?<br/>(X-API-Key is not a credential)"}
   AU -- no --> E401["401 + WWW-Authenticate"]
-  AU -- yes --> SC{"Inside scope?<br/>device: key's own installation (unknown id also 403)<br/>user: path parent (installation, substation, district, province)<br/>write: needs solar:write"}
+  AU -- yes --> TS{"Token has the route's scope?<br/>GET: solar:read<br/>POST readings: readings:write<br/>installation writes: installations:write"}
+  TS -- no --> E403s["403 (40303)<br/>+ WWW-Authenticate insufficient_scope"]
+  TS -- yes --> SC{"Inside scope?<br/>device: token's own installation (unknown id also 403)<br/>user: path parent (installation, substation, district, province)"}
   SC -- no --> E403["403"]
-  SC -- yes --> EX{"Resource exists?<br/>(read routes; national users)"}
+  SC -- yes --> EX{"Resource exists?<br/>(read routes, installation PUT/DELETE; national users)"}
   EX -- no --> E404b["404"]
-  EX -- yes --> VA{"Query and body valid?"}
+  EX -- yes --> IM{"If-Match sent and not the current strong ETag?<br/>(installation PUT/DELETE; * matches)"}
+  IM -- yes --> E412["412 (41201)"]
+  IM -- no --> VA{"Query and body valid?"}
   VA -- no --> E400["400 + error[] per field"]
-  VA -- yes --> BR{"Business rule ok?<br/>reading vs newest stored, stale If-Match"}
-  BR -- "same timestamp 40901<br/>older 40903<br/>lower energy_kwh 40902" --> E409["409"]
-  BR -- "stale If-Match" --> E412["412"]
+  VA -- yes --> BR{"Business rule ok?<br/>reading vs newest stored; installation conflicts"}
+  BR -- "same timestamp 40901<br/>older 40903<br/>lower energy_kwh 40902<br/>duplicate meter_id 40904<br/>DELETE with readings 40905<br/>no id left 40906" --> E409["409"]
+  BR -- "installation changed after the If-Match check" --> E412
   BR -- ok --> DO["Run the operation"]
   DO --> WR{"Write?"}
   WR -- yes --> OK201["201 or 200 + headers"]
-  WR -- "no (GET)" --> CG{"If-None-Match / If-Modified-Since matches?"}
-  CG -- yes --> OK304["304, empty body"]
-  CG -- no --> OK200["200 + ETag + Last-Modified"]
+  WR -- "no (GET)" --> CG{"If-None-Match matches the strong ETag?<br/>(If-Modified-Since only when no If-None-Match)"}
+  CG -- yes --> OK304["304, empty body<br/>keeps ETag (+ Last-Modified)"]
+  CG -- no --> OK200["200 + strong ETag<br/>+ Last-Modified where a timestamp exists<br/>+ Cache-Control: private, no-cache, Vary: Authorization"]
 
   classDef err fill:#fdecea,stroke:#c0392b
   classDef ok fill:#e9f7ef,stroke:#2e7d4f
-  class E404,E405,E406,E401,E415,E404b,E403,E400,E409,E412 err
+  class E404,E405,E406,E401,E415,E404b,E403s,E403,E400,E409,E412 err
   class OK201,OK304,OK200 ok

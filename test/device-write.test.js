@@ -2,7 +2,8 @@
 // Writes go ONLY to the database slsea_test (same MONGODB_URI, dbName
 // overridden), never to slsea_local. The test builds the minimum hierarchy and
 // two installations whose device keys are generated here; only their SHA-256
-// hashes are stored. The database is removed afterwards, with a guard that
+// hashes are stored. Devices log in with the key (POST /login) and post with
+// the bearer token. The database is removed afterwards, with a guard that
 // refuses to touch any other database. No seeded key is read.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,14 +13,16 @@ const mongoose = require('mongoose');
 const app = require('../src/app');
 const { MONGODB_URI } = require('../src/config/env');
 const { Province, District, Substation, Installation, GenerationReading } = require('../src/models');
-const { nationalToken } = require('./helpers/auth');
+const jwt = require('jsonwebtoken');
+const { nationalToken, mintToken, deviceToken } = require('./helpers/auth');
 
 const TEST_DB = 'slsea_test';
 const API = '/solar/v1.0';
 const OWN = 'INS-9001';
 const OTHER = 'INS-9002';
 const CAPACITY_KW = 5;
-const CHALLENGE = 'ApiKey realm="solar"';
+const CHALLENGE = 'Bearer realm="solar"';
+const scopeChallenge = (scope) => `Bearer realm="solar", error="insufficient_scope", scope="${scope}"`;
 const OWN_KEY = crypto.randomBytes(32).toString('hex');
 const OTHER_KEY = crypto.randomBytes(32).toString('hex');
 
@@ -126,16 +129,25 @@ function request({ method = 'GET', path, headers = {}, body }) {
   });
 }
 
-// POST a reading. key / contentType: the header value, or null to omit it.
-function post({ id = OWN, key = OWN_KEY, body, contentType = 'application/json', headers = {} }) {
+// POST a reading. token / contentType: the header value, or null to omit it.
+function post({ id = OWN, token = deviceToken(OWN), body, contentType = 'application/json', headers = {} }) {
   const all = { ...headers };
   if (contentType !== null) all['Content-Type'] = contentType;
-  if (key !== null) all['X-API-Key'] = key;
+  if (token !== null) all.Authorization = `Bearer ${token}`;
   return request({
     method: 'POST',
     path: `${API}/installations/${id}/readings`,
     headers: all,
     body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+}
+
+function login(credentials) {
+  return request({
+    method: 'POST',
+    path: `${API}/login`,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
   });
 }
 
@@ -186,7 +198,8 @@ test('201 with Location, Content-Location, ETag, Last-Modified and the reading; 
   const location = `${API}/installations/${OWN}/readings/${body.reading_id}`;
   assert.equal(res.headers.location, location);
   assert.equal(res.headers['content-location'], location);
-  assert.ok(res.headers.etag);
+  assert.match(res.headers.etag, /^"[^"]+"$/);
+  assert.ok(!res.headers.etag.startsWith('W/'));
   assert.equal(res.headers['last-modified'], new Date(body.received_at).toUTCString());
   assert.ok(!res.raw.includes('api_key_hash'));
   assert.ok(!res.raw.includes('"_id"'));
@@ -196,57 +209,109 @@ test('201 with Location, Content-Location, ETag, Last-Modified and the reading; 
   assert.deepEqual(got.body, body);
 });
 
-test('missing X-API-Key gives 401 with WWW-Authenticate', async () => {
-  const res = await post({ key: null, body: reading(20) });
-  assertError(res, 401, 40104);
-  assert.equal(res.headers['www-authenticate'], CHALLENGE);
+test('device login returns a readings:write token for the installation, and it posts a 201', async () => {
+  const res = await login({ installation_id: OWN, device_key: OWN_KEY });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(Object.keys(res.body).sort(), ['access_token', 'expires_in', 'token_type']);
+  assert.equal(res.body.token_type, 'Bearer');
+  assert.equal(res.body.expires_in, 3600);
+  assert.ok(!res.raw.includes(OWN_KEY));
+  assert.ok(!res.raw.includes(sha256(OWN_KEY)));
+
+  const claims = jwt.decode(res.body.access_token, { complete: true });
+  assert.equal(claims.header.alg, 'HS256');
+  assert.deepEqual(Object.keys(claims.payload).sort(), ['exp', 'iat', 'role', 'scope', 'sub']);
+  assert.equal(claims.payload.sub, OWN);
+  assert.equal(claims.payload.role, 'device');
+  assert.equal(claims.payload.scope, 'readings:write');
+  assert.equal(claims.payload.exp - claims.payload.iat, 3600);
+
+  const created = await post({ token: res.body.access_token, body: reading(11) });
+  assert.equal(created.statusCode, 201);
 });
 
-test('empty X-API-Key gives 401', async () => {
-  const res = await post({ key: '', body: reading(20) });
-  assertError(res, 401, 40104);
-  assert.equal(res.headers['www-authenticate'], CHALLENGE);
+test('wrong key and unknown installation give the same 401/40106 body', async () => {
+  const wrongKey = await login({ installation_id: OWN, device_key: OTHER_KEY });
+  const unknown = await login({ installation_id: 'INS-9999', device_key: OWN_KEY });
+  for (const res of [wrongKey, unknown]) {
+    assertError(res, 401, 40106);
+    assert.equal(res.headers['www-authenticate'], CHALLENGE);
+  }
+  assert.equal(wrongKey.raw, unknown.raw);
 });
 
-test('unknown key gives 401 with WWW-Authenticate', async () => {
-  const res = await post({ key: crypto.randomBytes(32).toString('hex'), body: reading(20) });
-  assertError(res, 401, 40105);
-  assert.equal(res.headers['www-authenticate'], CHALLENGE);
+test('no token, or X-API-Key alone, gives 401/40101 with WWW-Authenticate', async () => {
+  const none = await post({ token: null, body: reading(20) });
+  assertError(none, 401, 40101);
+  assert.equal(none.headers['www-authenticate'], CHALLENGE);
+  const keyOnly = await post({ token: null, headers: { 'X-API-Key': OWN_KEY }, body: reading(20) });
+  assertError(keyOnly, 401, 40101);
+  assert.equal(keyOnly.headers['www-authenticate'], CHALLENGE);
 });
 
-test('a bearer token is not a credential here: 401', async () => {
-  const res = await post({
-    key: null,
-    headers: { Authorization: `Bearer ${nationalToken()}` },
-    body: reading(20),
-  });
-  assertError(res, 401, 40104);
-  assert.equal(res.headers['www-authenticate'], CHALLENGE);
+test('an expired device token gives 401/40102', async () => {
+  const res = await post({ token: deviceToken(OWN, { expiresIn: -60 }), body: reading(20) });
+  assertError(res, 401, 40102);
+  assert.equal(res.headers['www-authenticate'], `${CHALLENGE}, error="invalid_token"`);
 });
 
-test("another installation's key gives 403 without WWW-Authenticate", async () => {
-  const res = await post({ key: OTHER_KEY, body: reading(20) });
+test('reader and admin tokens on POST readings give 403/40303 insufficient_scope', async () => {
+  for (const token of [nationalToken(), mintToken({ role: 'admin' })]) {
+    const res = await post({ token, body: reading(20) });
+    assertError(res, 403, 40303);
+    assert.equal(res.headers['www-authenticate'], scopeChallenge('readings:write'));
+  }
+  assert.equal(await GenerationReading.countDocuments({ installation_id: OWN, timestamp: at(20) }), 0);
+});
+
+test('a device token on a GET gives 403/40303 insufficient_scope', async () => {
+  for (const path of [`/installations/${OWN}/readings`, `/installations/${OWN}`, '/provinces']) {
+    const res = await request({ path: `${API}${path}`, headers: { Authorization: `Bearer ${deviceToken(OWN)}` } });
+    assertError(res, 403, 40303);
+    assert.equal(res.headers['www-authenticate'], scopeChallenge('solar:read'), path);
+  }
+});
+
+test("another installation's token gives 403/40302 without WWW-Authenticate", async () => {
+  const res = await post({ token: deviceToken(OTHER), body: reading(20) });
   assertError(res, 403, 40302);
   assert.equal(res.headers['www-authenticate'], undefined);
 });
 
-test('an unknown installation gives 403, not 404', async () => {
-  const res = await post({ id: 'INS-9999', body: reading(20) });
-  assertError(res, 403, 40302);
+test('an unknown installation gives 403, not 404, even for its own token', async () => {
+  const other = await post({ id: 'INS-9999', body: reading(20) });
+  assertError(other, 403, 40302);
+  const own = await post({ id: 'INS-9999', token: deviceToken('INS-9999'), body: reading(20) });
+  assertError(own, 403, 40302);
 });
 
-test('Content-Type other than application/json gives 415, before the key check', async () => {
+test('Content-Type other than application/json gives 415, before the token check', async () => {
   const text = await post({ contentType: 'text/plain', body: JSON.stringify(reading(20)) });
   assertError(text, 415, 41501);
-  const none = await post({ contentType: null, key: null, body: JSON.stringify(reading(20)) });
+  const none = await post({ contentType: null, token: null, body: JSON.stringify(reading(20)) });
   assertError(none, 415, 41501);
   const charset = await post({ contentType: 'application/json; charset=utf-8', body: reading(21) });
   assert.equal(charset.statusCode, 201);
 });
 
-test('403 comes before 400: invalid body with another installation key', async () => {
-  const res = await post({ key: OTHER_KEY, body: { timestamp: 'bad' } });
-  assertError(res, 403, 40302);
+test('Accept that does not allow application/json gives 406, before 415 and the token check', async () => {
+  const res = await post({ contentType: 'text/plain', token: null, body: 'x', headers: { Accept: 'text/html' } });
+  assertError(res, 406, 40601);
+  assert.equal(await GenerationReading.countDocuments({ installation_id: OWN, timestamp: at(22) }), 0);
+  const any = await post({ body: reading(22), headers: { Accept: '*/*' } });
+  assert.equal(any.statusCode, 201);
+});
+
+test('405 comes before 406', async () => {
+  const res = await request({ method: 'PUT', path: `${API}/installations/${OWN}/readings`, headers: { Accept: 'text/html' } });
+  assertError(res, 405, 40501);
+});
+
+test('403 comes before 400: invalid body with another installation token or the wrong scope', async () => {
+  const other = await post({ token: deviceToken(OTHER), body: { timestamp: 'bad' } });
+  assertError(other, 403, 40302);
+  const reader = await post({ token: nationalToken(), body: { timestamp: 'bad' } });
+  assertError(reader, 403, 40303);
 });
 
 test('timestamp not ISO 8601 UTC gives 400 with a 40013 item', async () => {
@@ -374,7 +439,7 @@ test('readings are append-only: PUT, PATCH, DELETE give 405 with Allow', async (
     assertError(onCollection, 405, 40501);
     assert.equal(onCollection.headers.allow, 'GET, POST');
 
-    const onMember = await request({ method, path: member, headers: { 'X-API-Key': OWN_KEY } });
+    const onMember = await request({ method, path: member, headers: { Authorization: `Bearer ${deviceToken(OWN)}` } });
     assertError(onMember, 405, 40501);
     assert.equal(onMember.headers.allow, 'GET');
   }
@@ -383,7 +448,7 @@ test('readings are append-only: PUT, PATCH, DELETE give 405 with Allow', async (
   assert.equal(await GenerationReading.countDocuments({ reading_id: 'RD-9001-20260901023000' }), 1);
 });
 
-test('GET on the readings collection still needs a bearer token', async () => {
+test('GET on the readings collection needs a solar:read bearer token', async () => {
   const path = `${API}/installations/${OWN}/readings`;
   const withKey = await request({ path, headers: { 'X-API-Key': OWN_KEY } });
   assertError(withKey, 401, 40101);
