@@ -4,7 +4,7 @@
 - Read PLAN.md and docs/design/my-decisions.md before any task.
 - Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
 - NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
-- OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
+- OPEN decisions and items still marked PROPOSAL (PLAN.md section 15; my-decisions.md section 16): do NOT choose silently. Stop and ask.
 - SECRETS: NEVER open, read, print, create, edit or copy .env, any *.env file, atlas-credentials* or any file that may hold a password, key or connection string. Not with Read, cat, awk, grep or any shell command. I create .env myself. To check that a variable is set, use a command that does not print it. If a secret was printed anywhere, say so immediately.
 - Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
 - After each change: state which requirement ID (PLAN.md section 2) it serves and how to test it.
@@ -43,21 +43,21 @@
 ## Auth
 - Devices: POST /login with {installation_id, device_key} returns a device JWT (sub = installation_id, scope readings:write, no jurisdiction claims); Bearer on POST readings, own installation only. X-API-Key is not accepted. Users: JWT Bearer with scopes (solar:read; admin also installations:write) + jurisdiction claims.
 - Scopes are enforced by requireScope: every GET needs solar:read; POST readings needs readings:write. Missing scope = 403 (40303) with WWW-Authenticate error="insufficient_scope".
-- 401 = credentials missing or not accepted (+WWW-Authenticate). 403 = understood but refused. Unknown API key 401; valid key for another installation 403.
+- 401 = credentials missing or not accepted (+WWW-Authenticate). 403 = understood but refused. Bad device key at login 401; valid device token for another installation 403 (40302).
 - Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope installations:write, national). Everything else is read-only.
 
 ## Git and environment
 - Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
-- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR at the planned smoke deploy (about 25-27 Sep) and at the final freeze (1 Oct). Azure deploys from it through a GitHub Actions workflow.
+- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR at the smoke deploy (before 1 Oct) and at the final deploy (1 Oct). Azure deploys from it through a GitHub Actions workflow.
 - NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
 - Never force-push, squash or rewrite pushed history.
 - No deployment during development. Planned: a short throwaway smoke deploy (deleted afterwards) and the final deployment, both Azure App Service via GitHub Actions on push to deployment_dev, database slsea_dev (the final one is the submitted URL). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
 - Do not create or edit .github/workflows, Azure or deployment files, and never handle publish profiles or deployment credentials, unless I ask for that specific task.
 
 ## AI log (ai-log.md)
-- When a task finishes (the step's done-when check has run), append ONE entry to ai-log.md before I commit. Write nothing to it during the task. Do not commit.
-- Entry fields: date and time; step id (for example D2); tool and model; branch; Prompt (my prompt(s) for the task, verbatim, secrets redacted); files created or changed (paths); checks run with the result (command and pass/fail, no secrets); requirement IDs served; Outcome (done / partial / failed) with one factual line on anything that failed or was corrected during the task.
-- End every entry with these two lines exactly, for me to fill: `Reviewed by me: (student to fill)` and `Accepted / changed / rejected: (student to fill)`. Never fill them and never invent my review.
+- When a task finishes (the step's done-when check has run), add ONE entry at the end of ai-log.md before I commit, and add its row to the Contents table: fill "What I decided (from my prompts)" only with facts from my prompts, and leave "My review" empty. Write nothing to it during the task. Do not commit.
+- Use the entry format at the top of ai-log.md ("## Entry format"): a ### heading with date, time, step id and tool; Tool/model and Branch on one line; "#### Prompts" with each of my prompts verbatim as a quote (secrets redacted); "#### Result" with files created or changed (paths), checks run with the result (command and pass/fail, no secrets), requirement IDs served, and Outcome (done / partial / failed) with one factual line on anything that failed or was corrected during the task.
+- My review lives only in the "My review" column of the Contents table. Never fill it and never invent my review.
 - Facts only. No claims about tests that were not run. Never include passwords, URIs, keys or anything from .env.
 - Append only. Never edit or delete earlier entries. Log a prompt from another tool or the Claude chat only when I ask.
 

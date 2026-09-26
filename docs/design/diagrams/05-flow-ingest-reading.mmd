@@ -1,8 +1,8 @@
 %% 05-flow-ingest-reading.mmd - Request/response flow: device pushes a reading
 %% Basis: BRIEF §5 (ingestion, correct method, 201 + where it now lives); WP §7.3, §9; LEC S7, S8
 %% Decisions: my-decisions §4, §8, §9.
-%% DECIDED 2026-09-26: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Device JWT (revised 2026-09-26). Check order: 405, 406, 415, 401, 403 scope, 403 not own, 400, 409.
-%% No timestamp tolerance / future-time rule is applied (no supporting evidence in coursework or reference material).
+%% DECIDED: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Device JWT. Check order: 405, 406, 415, 401, 403 scope, 403 not own, 400, 409.
+%% No timestamp tolerance / future-time rule is applied (my-decisions §9).
 sequenceDiagram
   autonumber
   participant D as Device

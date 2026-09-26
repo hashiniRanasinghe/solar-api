@@ -1,45 +1,45 @@
 %% 08-deployment.mmd - Deployment architecture (local-first; Azure only for the smoke deploy and the final deploy)
-%% Basis: BRIEF §7 (public HTTPS API, live Swagger, shared repo), §12 (deployed at submission); PLAN §5, §12, §12a, §12b
+%% Basis: BRIEF §7 (public HTTPS API, live Swagger, shared repo), §12 (deployed at submission); PLAN §12, §12a, §12b
 %% DECIDED (YOU): local-first development; branches dev_hashini -> dev -> deployment_dev; deployment_qa is a marker, NEVER deployed; main never used;
-%% hosting = Azure App Service on the Azure for Students credit (OQ-31); deployment by one GitHub Actions workflow; local DB slsea_local, deployed DB slsea_dev.
-%% PROPOSALS: Basic B1 plan (Free F1 first for the smoke deploy), publish-profile authentication (OQ-32, decided at the smoke deploy), network rule, app setting names.
+%% hosting = Azure App Service on the Azure for Students credit (OQ-31), region India South Central (OQ-33); one GitHub Actions workflow; local DB slsea_local, deployed DB slsea_dev.
+%% PROPOSALS: Free F1 first for the smoke deploy, Basic B1 for the final; publish-profile authentication (OQ-32, decided at the smoke deploy).
 %% Secret values are never shown.
 flowchart LR
   subgraph LOCAL["Local - all development and tests (Mac, Node 22, VS Code, Claude Code)"]
-    CODE["Repo on branch dev_hashini<br/>local .env uses slsea_local<br/>tests with TZ=UTC<br/>production-mode rehearsal from a fresh clone"]
-    SEEDJOB["scripts/seed.js and top-up<br/>run from the Mac<br/>node --env-file=.env.deploy for slsea_dev"]
+    CODE["Repo on branch dev_hashini<br/>local .env uses slsea_local<br/>npm test with TZ=UTC<br/>production-mode rehearsal from a fresh clone"]
+    SEEDJOB["scripts/seed.js and scripts/topup.js<br/>run from the Mac<br/>node --env-file=.env.deploy for slsea_dev"]
   end
 
-  GH["GitHub repo hashiniRanasinghe/solar-api<br/>dev_hashini, dev, deployment_dev, deployment_qa<br/>default branch dev, main unused<br/>lecturer nirangadh is a collaborator (invite must be accepted)"]
+  GH["GitHub repo hashiniRanasinghe/solar-api<br/>dev_hashini, dev, deployment_dev, deployment_qa<br/>default branch dev, main unused<br/>lecturer nirangadh invited as collaborator"]
 
   GA["GitHub Actions: deploy-deployment-dev.yml<br/>runs only on push to deployment_dev<br/>secret AZURE_WEBAPP_PUBLISH_PROFILE<br/>variable AZURE_WEBAPP_NAME"]
 
-  subgraph AZ["Azure App Service - Linux, Node 22 LTS, HTTPS Only"]
-    SMOKE["SMOKE deploy, about Fri 25 Sep<br/>Free F1 first, else Basic B1<br/>DELETE the resource group afterwards"]
-    APP["FINAL deploy, Thu 1 Oct<br/>Basic B1, Always On<br/>app settings: MONGODB_URI, JWT_SECRET, NODE_ENV, APP_ENV=dev<br/>URL to submit - keep until marking and the viva are done"]
+  subgraph AZ["Azure App Service - Linux, Node 22 LTS, HTTPS Only, India South Central"]
+    SMOKE["SMOKE deploy (throwaway)<br/>Free F1 first, else Basic B1<br/>DELETE the resource group afterwards"]
+    APP["FINAL deploy, Thu 1 Oct<br/>Basic B1, Always On<br/>app settings: MONGODB_URI, JWT_SECRET (new value), NODE_ENV, APP_ENV=dev<br/>URL to submit - keep until marking and the viva are done"]
   end
 
   subgraph ATLAS["MongoDB Atlas M0 cluster - mongodb+srv URI, Network Access 0.0.0.0/0"]
     DDB[("database slsea_dev<br/>deployed data")]
-    LDB[("database slsea_local<br/>local runs and tests")]
+    LDB[("database slsea_local<br/>local runs and tests<br/>(write tests use slsea_test)")]
   end
 
   CLIENTS["Devices, users, marker<br/>HTTPS only"]
 
-  CODE -- "git push dev_hashini, MR into dev" --> GH
-  GH -- "release MR dev to deployment_dev = push<br/>ONLY at the smoke deploy and the final deploy" --> GA
-  GA -- "deploy package" --> SMOKE
-  GA -- "deploy package" --> APP
+  CODE -- "git push dev_hashini, PR into dev" --> GH
+  GH -- "release PR dev to deployment_dev = push<br/>ONLY at the smoke deploy and the final deploy" --> GA
+  GA -- "deploy package (includes docs/openapi.yaml)" --> SMOKE
+  GA -- "deploy package (includes docs/openapi.yaml)" --> APP
   APP -- "TLS" --> DDB
   SMOKE -. "TLS" .-> DDB
-  SEEDJOB -- "seed and recent readings" --> DDB
+  SEEDJOB -- "seed and top-up to now" --> DDB
   CODE -- "local run" --> LDB
   CLIENTS -- "HTTPS" --> APP
 
   NOQA["deployment_qa: marker branch, NOT deployed<br/>(no QA app, no QA database)"]
   GH -.-> NOQA
 
-  NOTE["Cost guard: paid from the Azure for Students credit.<br/>Read the estimated price, set a budget alert,<br/>delete smoke resources at once, delete the final plan after marking and the viva.<br/>Freeze dev and deployment_dev after the submission tag"]
+  NOTE["Cost guard: paid from the Azure for Students credit, no card.<br/>Read the estimated price, set a budget alert,<br/>delete smoke resources at once, delete the final plan after marking and the viva.<br/>Freeze dev and deployment_dev after the submission tag"]
   NOTE -.-> APP
 
   classDef note fill:#fff8e1,stroke:#c9a227,stroke-dasharray:4 3

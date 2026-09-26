@@ -1,7 +1,8 @@
 %% 03-er-model.mmd - Database / ER model (MongoDB collections shown as entities)
 %% Basis: BRIEF §3 (entities, no Device, append-only readings, cumulative energy), §4 (seed); LEC S1
-%% Decisions: my-decisions §2, §3, §4. Fields marked "derived" follow the confirmed derived-id decision: stored read-only, integrity validated by the seed check.
-%% No OPEN dependency in the structure. Readings carry NO province/district/substation ids: jurisdiction readings resolve installation ids from the path parent (OQ-04). Extra fields (name, capacity_kw, received_at, created_at, updated_at) are PROPOSALS.
+%% Decisions: my-decisions §2, §3, §4; docs/design/data-model.md. Matches src/models/.
+%% Derived ids are stored read-only and checked by the seed integrity check.
+%% Readings carry NO province/district/substation ids: jurisdiction readings resolve installation ids from the path parent (OQ-04).
 %% There is deliberately NO Device entity: meter_id is an installation attribute.
 erDiagram
   PROVINCE ||--o{ DISTRICT : "has"
@@ -53,5 +54,5 @@ erDiagram
     string password_hash
     string role "reader or admin"
     string jurisdiction_level "national, province or district"
-    string jurisdiction_id "empty when national"
+    string jurisdiction_id "not set when national"
   }
