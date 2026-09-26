@@ -10,7 +10,11 @@ sequenceDiagram
   participant S as Service
   participant DB as MongoDB
   D->>M: POST /solar/v1.0/installations/INS-0001/readings, Authorization: Bearer device JWT, JSON body
-  alt Content-Type is not JSON
+  alt method is PUT, PATCH or DELETE (readings are append-only)
+    M-->>D: 405 (40501) + Allow: GET, POST
+  else Accept present and does not allow application/json
+    M-->>D: 406 (40601)
+  else Content-Type is not JSON
     M-->>D: 415 (41501)
   else no token, or token invalid or expired
     M-->>D: 401 (40101 / 40102) + WWW-Authenticate: Bearer realm="solar"

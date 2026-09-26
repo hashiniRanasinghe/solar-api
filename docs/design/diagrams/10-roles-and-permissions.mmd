@@ -1,6 +1,7 @@
 %% 10-roles-and-permissions.mmd - Who may do what (authorization matrix as a diagram)
 %% Basis: BRIEF §2 (write-read split), §5 (writable resources, jurisdiction-scoped reads); WP §9 (401 vs 403); LEC S7, S8
 %% Decisions: my-decisions §9, §10, §13. DECIDED (YOU): OQ-03 writable set and roles, OQ-10 401 vs 403, device JWT and scopes (2026-09-26).
+%% 405 on every read-only URI is built (2026-09-26). Admin CRUD on installations built (2026-09-26, my-decisions §13).
 %% Risk to explain: brief §2 calls SLSEA users "read-clients"; the admin writes installations, never readings.
 flowchart LR
   DEV["Device<br/>JWT scope readings:write<br/>sub = installation id"]
@@ -9,14 +10,14 @@ flowchart LR
 
   W1["POST /installations/{own-id}/readings"]
   R1["GET everything readable:<br/>hierarchy, installations, last-reading,<br/>readings under a parent, summary"]
-  W2["POST, PUT, DELETE /installations"]
+  W2["POST /installations (201 + device_key once)<br/>PUT, DELETE /installations/{id}"]
   LG["POST /login<br/>public"]
-  NO["PUT, PATCH, DELETE on readings<br/>POST, PUT, DELETE on hierarchy<br/>-> 405 with Allow"]
+  NO["PUT, PATCH, DELETE on readings<br/>POST, PUT, PATCH, DELETE on hierarchy,<br/>last-reading, generation-summary<br/>-> 405 with Allow (before 401)"]
 
   DEV -- "own installation only" --> W1
   RDR -- "inside jurisdiction only" --> R1
   ADM -- "all" --> R1
-  ADM --> W2
+  ADM -- "installations:write, national" --> W2
   DEV --> LG
   RDR --> LG
   ADM --> LG
@@ -24,11 +25,14 @@ flowchart LR
   DEV -. "another installation: 403<br/>no, invalid or expired token: 401" .-> W1
   DEV -. "any GET: 403 insufficient_scope" .-> R1
   RDR -. "outside jurisdiction: 403" .-> R1
-  RDR -. "403" .-> W2
+  RDR -. "403 insufficient_scope" .-> W2
+  DEV -. "403 insufficient_scope" .-> W2
+  ADM -. "missing id: 404; outside subtree (scoped admin): 403<br/>stale If-Match: 412<br/>duplicate meter_id or has readings: 409" .-> W2
   RDR -. "reading POST: 403 insufficient_scope" .-> W1
   ADM -. "reading POST: 403 insufficient_scope" .-> W1
   RDR -.-> NO
   ADM -.-> NO
+  DEV -.-> NO
 
   classDef actor fill:#e8f1fb,stroke:#3b6ea5
   classDef op fill:#e9f7ef,stroke:#2e7d4f

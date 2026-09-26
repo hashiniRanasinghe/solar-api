@@ -185,6 +185,45 @@ class AppError extends Error {
     );
   }
 
+  static duplicateMeterId() {
+    return new AppError(
+      409,
+      4,
+      'Duplicate meter_id',
+      'Another installation already has this meter_id.'
+    );
+  }
+
+  // Readings are append-only evidence, so an installation with readings is
+  // never deleted.
+  static installationHasReadings() {
+    return new AppError(
+      409,
+      5,
+      'Installation has readings',
+      'An installation with readings cannot be deleted; its history is kept.'
+    );
+  }
+
+  static installationIdUnavailable() {
+    return new AppError(
+      409,
+      6,
+      'No installation id available',
+      'The server could not assign an installation id. Send the request again.'
+    );
+  }
+
+  // If-Match did not match the current ETag (WP section 10.5).
+  static preconditionFailed() {
+    return new AppError(
+      412,
+      1,
+      'Precondition failed',
+      'The installation has changed since the ETag in If-Match was issued. GET it again and retry.'
+    );
+  }
+
   static unsupportedMediaType() {
     return new AppError(
       415,
@@ -219,6 +258,12 @@ const FIELD_ERROR = {
   installation_id: 40020,
   device_key: 40021,
   credentials: 40022,
+  name: 40023,
+  meter_id: 40024,
+  substation_id: 40025,
+  unknownSubstation: 40026,
+  capacity_kw: 40027,
+  installationIdMismatch: 40028,
 };
 
 module.exports = { AppError, MORE_INFO, FIELD_ERROR };

@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "TZ=UTC node --test \"test/**/*.test.js\""
+    "test": "TZ=UTC node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
