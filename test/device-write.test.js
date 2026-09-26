@@ -186,7 +186,8 @@ test('201 with Location, Content-Location, ETag, Last-Modified and the reading; 
   const location = `${API}/installations/${OWN}/readings/${body.reading_id}`;
   assert.equal(res.headers.location, location);
   assert.equal(res.headers['content-location'], location);
-  assert.ok(res.headers.etag);
+  assert.match(res.headers.etag, /^"[^"]+"$/);
+  assert.ok(!res.headers.etag.startsWith('W/'));
   assert.equal(res.headers['last-modified'], new Date(body.received_at).toUTCString());
   assert.ok(!res.raw.includes('api_key_hash'));
   assert.ok(!res.raw.includes('"_id"'));
@@ -242,6 +243,19 @@ test('Content-Type other than application/json gives 415, before the key check',
   assertError(none, 415, 41501);
   const charset = await post({ contentType: 'application/json; charset=utf-8', body: reading(21) });
   assert.equal(charset.statusCode, 201);
+});
+
+test('Accept that does not allow application/json gives 406, before 415 and the key check', async () => {
+  const res = await post({ contentType: 'text/plain', key: null, body: 'x', headers: { Accept: 'text/html' } });
+  assertError(res, 406, 40601);
+  assert.equal(await GenerationReading.countDocuments({ installation_id: OWN, timestamp: at(22) }), 0);
+  const any = await post({ body: reading(22), headers: { Accept: '*/*' } });
+  assert.equal(any.statusCode, 201);
+});
+
+test('405 comes before 406', async () => {
+  const res = await request({ method: 'PUT', path: `${API}/installations/${OWN}/readings`, headers: { Accept: 'text/html' } });
+  assertError(res, 405, 40501);
 });
 
 test('403 comes before 400: invalid body with another installation key', async () => {

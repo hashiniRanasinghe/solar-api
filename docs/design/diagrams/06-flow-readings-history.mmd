@@ -2,7 +2,7 @@
 %% Basis: BRIEF §5, §6 (analytical view: pagination, filtering by jurisdiction and time window, sorting, conditional GET); WP §4.6, §5.6, §5.7, §10.2-10.4
 %% Decisions: my-decisions §10, §11. OQ-04 DECIDED (YOU): jurisdiction = path parent, everything else = query. Sort syntax DECIDED (OQ-23).
 %% PROPOSALS: defaults and caps, tie-break by installation_id, scope rule for province / district / substation.
-%% OPEN: how the ETag is built (OQ-29, Phase 6).
+%% DECIDED (OQ-29, 2026-09-26): strong content-based ETag (app.set('etag', 'strong')); collections have no Last-Modified.
 sequenceDiagram
   autonumber
   participant U as User
@@ -29,11 +29,11 @@ sequenceDiagram
         DB-->>S: matching set
         S->>S: count total, sort by requested field then installation_id, slice by offset and limit
         S-->>M: count, data, next and previous links
-        M->>M: compute ETag and Last-Modified
-        alt If-None-Match (or If-Modified-Since) still current
+        M->>M: compute strong ETag from the body (no Last-Modified on collections)
+        alt If-None-Match matches the ETag
           M-->>U: 304 Not Modified, empty body
         else changed or no validator sent
-          M-->>U: 200 + ETag + Last-Modified + {count, next, previous, data}
+          M-->>U: 200 + ETag + Cache-Control private, no-cache + {count, next, previous, data}
         end
       end
     end

@@ -149,6 +149,15 @@ class AppError extends Error {
     );
   }
 
+  static notAcceptable() {
+    return new AppError(
+      406,
+      1,
+      'Not acceptable',
+      'This API only returns application/json. Send an Accept header that allows it.'
+    );
+  }
+
   static duplicateReading() {
     return new AppError(
       409,
