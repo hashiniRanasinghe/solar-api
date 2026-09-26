@@ -169,7 +169,7 @@ There is no global `/readings` and no `/devices`. Readings are append-only: PUT,
 | `scripts/` | Seed, top-up and their helpers (`scripts/lib/`) |
 | `test/` | `node --test` suites |
 | `docs/openapi.yaml` | The OpenAPI spec served at `/docs` |
-| `docs/design/` | `my-decisions.md` (design decisions), `data-model.md` (data model), `diagrams/` (14 Mermaid sources with a README) |
+| `docs/design/` | `my-decisions.md` (design decisions), `data-model.md` (data model), `diagrams/` (12 Mermaid sources; index in `PLAN.md` §18) |
 | `docs/evidence/` | Evidence for the report |
 | `ai-log.md` | AI usage log; the source of the AI-disclosure appendix |
 

@@ -1,8 +1,7 @@
-%% 07-flow-operational-reads.mmd - Request/response flows: composite, last-reading, district summary (stretch)
-%% Basis: BRIEF §5, §6 (composite, last-known-reading as derived resource, district summary stretch); LEC S5, S6
-%% Decisions: my-decisions §5. Lecturer-form noun sub-resources confirmed by you (OQ-21, deviation from WP §5.1).
-%% The summary uses a cumulative-energy DELTA (energy_kwh is cumulative). Local-day boundary Asia/Colombo is a PROPOSAL.
-%% Response field names of the summary are NOT decided yet.
+%% 07-flow-operational-reads.mmd - Request/response flows: composite, last-reading, district generation summary
+%% Basis: BRIEF §5, §6 (composite, last-known reading as a derived resource, district summary stretch); LEC S5, S6
+%% Decisions: my-decisions §5 (noun sub-resources OQ-21, deviation from WP §5.1; summary rules DECIDED 2026-09-26).
+%% Scope and existence checks as in diagram 04b (scoped users 403 before 404; national users 404).
 sequenceDiagram
   autonumber
   participant U as User
@@ -12,16 +11,16 @@ sequenceDiagram
   rect rgb(233, 247, 239)
     Note over U,DB: Composite - GET /installations/{installation-id}
     U->>A: GET installation
-    A->>S: load installation
-    S->>DB: installation + newest reading (index installation_id, timestamp desc)
+    A->>S: load installation in scope
+    S->>DB: installation + newest reading (index installation_id, timestamp read backwards)
     S-->>U: 200 installation with last_reading object, or null when no reading. Never the history
   end
   rect rgb(253, 240, 227)
-    Note over U,DB: Processing function - GET /installations/{installation-id}/last-reading
+    Note over U,DB: Derived - GET /installations/{installation-id}/last-reading
     U->>A: GET last-reading
     A->>S: same newest-reading helper as the composite
-    alt no reading stored
-      S-->>U: 404
+    alt no reading stored yet
+      S-->>U: 404 (40403)
     else reading found
       S-->>U: 200 the newest reading only
     end
@@ -30,9 +29,11 @@ sequenceDiagram
     Note over U,DB: Stretch - GET /districts/{district-id}/generation-summary
     U->>A: GET generation-summary
     A->>S: district must exist and be in scope
-    S->>DB: newest reading of every installation in the district
-    S->>DB: cumulative energy at the last reading before local midnight, per installation
-    S->>S: total current power = sum of newest power_kw
-    S->>S: energy today = sum of (newest energy_kwh minus energy_kwh at local midnight)
-    S-->>U: 200 totals (shape not decided yet)
+    S->>DB: ONE aggregation: the district's installations, each with 3 lookups (newest reading up to now, first and last reading today)
+    S->>S: today = Asia/Colombo day (+05:30) from local 00:00 to now
+    S->>S: current_power_kw = sum of newest power_kw
+    S->>S: today_energy_kwh = sum of (last energy_kwh today minus first energy_kwh today)
+    S-->>U: 200 plain object (no collection envelope)
+    Note over U,DB: Fields: district_id, date, timezone, as_of, installations_total, installations_reporting_today,<br/>current_power_kw, today_energy_kwh, newest_reading_at, oldest_latest_reading_at
+    Note over U,DB: Strong ETag, but as_of changes on every request, so it never returns 304
   end

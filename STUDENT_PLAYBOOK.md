@@ -1,7 +1,8 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
-> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. Do steps in order. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy ~25 Sep, final deploy 1 Oct).
-> Tags: `[YOU]` your decision · `[PROPOSAL]` suggestion until you confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper (now in the project; also put the PDF in `refs/whitepaper/`).
+> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy before 1 Oct, final deploy Thu 1 Oct).
+> **Where I am (2026-09-26):** build steps A–D are done (table below). Next: Part E (review and freeze), Part H (deployment), Parts F–G (report and viva).
+> Tags: `[YOU]` my decision · `[PROPOSAL]` a suggestion until I confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper.
 
 ---
 
@@ -10,344 +11,132 @@
 | Rule | Why |
 |---|---|
 | Claude Code writes **code**. I write **every word of the report** | Brief §10 + integrity policy |
-| Log every prompt in `ai-log.md` (chat prompts too) | Mandatory disclosure appendix |
+| Log every prompt in `ai-log.md` (chat prompts too) | Mandatory AI-disclosure appendix |
 | Small diffs, targeted edits, no full-file rewrites unless I ask | Easier to review and explain |
-| Explain-back before the next step | Unexplained artefact forfeits its marks at viva |
-| Never copy code from the classmate repo | Reference repos are for understanding only |
-| No secrets in git. Ever | `.env` ignored, `.env.example` committed |
-| Never keep credential files (for example Atlas's downloaded `.env`) in the repo folder, and never paste a password or connection string into a chat or a prompt | Claude Code once printed a password from such a file. Rotate anything exposed |
-| Local-first: develop, seed and test everything locally. No Azure resources during development except the planned smoke deploy and the final deploy | Limits Azure credit use; Azure readiness rules are in `PLAN.md` §12a |
-| Never share a ZIP that contains `.env`, and never upload one to a chat | The Atlas password had to be rotated after that happened |
+| Explain-back before the next step | An unexplained artefact forfeits its marks at the viva |
+| Never copy code from the classmate repos | Reference repos are for understanding only |
+| No secrets in git. Ever | `.env` ignored, `.env.example` committed; demo passwords are generated at seed time |
+| Never keep credential files in the repo folder, and never paste a password, key, token or connection string into a chat or a prompt | Claude Code once printed a password from such a file. Rotate anything exposed |
+| Never share a ZIP that contains `.env` or `scripts/seed-keys.txt`, and never upload one to a chat | The Atlas password had to be rotated after that happened |
+| Close `scripts/seed-keys.txt` in VS Code before prompting Claude Code | An open selection is sent with the prompt |
+| Local-first: no Azure resources during development except the planned smoke deploy and the final deploy | Limits Azure credit use (`PLAN.md` §12a) |
 | Brief > white paper > lecture notes > `PLAN.md` | If a prompt result contradicts them, the prompt result is wrong |
 
 ---
 
-## 1. The loop for every build step
+## 1. The loop for every step
 
 ```text
 1. git switch dev_hashini && git pull origin dev     (always work here; never on dev directly, never touch main)
-2. In VS Code terminal:  claude        then /clear   (fresh context per step)
-3. Plan mode first (Shift+Tab, or /plan): paste the step prompt. Read the plan.
-   Reject anything outside PLAN.md (extra libraries, extra endpoints, extra files).
+2. In the VS Code terminal:  claude   then /clear    (fresh context per step)
+3. Plan mode first (Shift+Tab): paste the step prompt. Read the plan.
+   Reject anything outside PLAN.md (extra libraries, endpoints, files).
 4. Approve → Claude edits. Read the diff:   git diff
-5. Run it + run the tests for this step:   npm run dev   /   npm test
-6. Explain-back: ask "Quiz me on <file>" (E1). If I can't answer, I don't commit.
-7. Claude Code appends the factual entry to ai-log.md (CLAUDE.md rule). You read it and fill the two review lines
-8. git add -p && git commit -m "type(scope): summary"
-9. git push origin dev_hashini → open MR into dev ("Create a merge commit"). Nothing deploys
-10. Phase end only: tag pN on dev (see "Tagging and deployment routine" below)
+5. Run it + the tests:   npm run dev   /   npm test
+6. Explain-back: "Quiz me on <file>" (E1). If I can't answer, I don't commit.
+7. Claude Code adds the factual ai-log.md entry (CLAUDE.md rule). I read it and fill the two review lines
+8. git status (no .env, no seed-keys.txt) → git add <files> → git commit -m "type(scope): summary"
+9. git push origin dev_hashini → pull request into dev ("Create a merge commit"). Nothing deploys
 ```
 
-Commands can change between Claude Code versions; confirm with `/help`.
-
-**Step prompt template** (paste, fill the brackets, keep the footer):
+**Step prompt template** (fill the brackets, keep the footer):
 
 ```text
-Task: [one sentence]. Read CLAUDE.md and PLAN.md §7–§9 first.
+Task: [one sentence]. Read CLAUDE.md and PLAN.md first.
 Scope: only [files/folders]. Output a file list and a plan first; wait for my OK.
 Constraints: small targeted diff; no new dependencies beyond PLAN.md §5; snake_case JSON;
-hyphenated lowercase URIs; res.json() only; no comments longer than one line.
-Done when: [exit test from PLAN.md §13].
+hyphenated lowercase URIs; res.json() only. Do not read .env or scripts/seed-keys.txt.
+Done when: [check].
 ```
 
-**`CLAUDE.md`** (repo root, create in step A4; or run `/init` and then replace with this):
+`CLAUDE.md` at the repo root is the only copy of Claude Code's rules. Change it there.
 
-```markdown
-# CLAUDE.md — SLSEA Solar Generation API (NB6007CEM CW1)
-
-## Sources and rules
-- Read PLAN.md and docs/design/my-decisions.md before any task.
-- Priority when sources conflict: (1) the current coursework brief; (2) entries marked DECIDED in docs/design/my-decisions.md, including my recorded deliberate deviations from the white paper (for example OQ-21); (3) the WSO2 white paper; (4) lecture notes S1-S8; (5) PLAN.md and any PROPOSAL. Never "fix" a DECIDED item to match the white paper. Name the conflict and stop.
-- NEVER write, rewrite or paraphrase report text. NEVER copy code from refs/.
-- OPEN decisions (PLAN.md section 15: OQ-26 to OQ-29 and the validation limits): do NOT choose silently. Stop and ask.
-- SECRETS: NEVER open, read, print, create, edit or copy .env, any *.env file, atlas-credentials* or any file that may hold a password, key or connection string. Not with Read, cat, awk, grep or any shell command. I create .env myself. To check that a variable is set, use a command that does not print it. If a secret was printed anywhere, say so immediately.
-- Small diffs. Show a plan and file list first. No secrets in code; no hard-coded fallback secrets.
-- After each change: state which requirement ID (PLAN.md section 2) it serves and how to test it.
-
-## Stack and model
-- Express 5 (5.2.x). Async route handlers may throw or reject; Express forwards the error to the error handler. Do NOT add async wrapper helpers. Route parameters use camelCase names (for example :installationId); the URI templates in the docs keep the hyphenated names. Disable the X-Powered-By header.
-- Model: Province > District > Substation > Installation > Reading, plus User. NO Device entity (meter_id is an installation attribute).
-- Installation stores substation_id; district_id/province_id are server-derived, stored read-only, never taken from the client.
-- energy_kwh is CUMULATIVE (running total). String IDs (INS-0001); Mongo _id hidden.
-- No timestamp tolerance or future-time rule. Do not add one.
-- Seed: 9 provinces, 25 districts, 40 substations, 240 installations, 15-minute readings for 7 days, ending at run time; a top-up script appends up to now.
-
-## Local-first development and Azure readiness
-- Do ALL development, database work and testing locally: Node 22 on my Mac, Atlas database slsea_local, tests against the local server with TZ=UTC. Do not deploy, create Azure resources or run az commands unless I ask for that task.
-- Keep Azure App Service (Linux, Node 22 LTS) in mind so the final deployment has no surprises:
-  - Listen only on process.env.PORT. All config comes from environment variables; there is no .env in production and dotenv must not override existing variables.
-  - "npm ci --omit=dev && npm start" must work from a clean clone using only env vars. Keep package-lock.json in sync; runtime dependencies belong in dependencies.
-  - File names and require paths must match exact case (Mac is case-insensitive, Linux is not).
-  - Write nothing to local disk. Log to stdout, never secrets.
-  - Never depend on the server timezone (Azure runs in UTC). Compute Asia/Colombo day boundaries explicitly.
-  - Do aggregation and paging in the database. Never load large collections into memory.
-  - Keep links and Location headers relative; do not assume http. Serve Swagger UI from the package (no CDN); OpenAPI servers is the relative /solar/v1.0.
-  - Malformed JSON fails inside express.json() before auth: the error handler must return the standard error body for it.
-
-## API
-- Base path /solar/v1.0 (GET /, /docs, /docs.json outside it). URIs: lowercase, hyphens, plural collections, nouns. JSON: snake_case, res.json().
-- Hierarchy is top-level and read-only, filtered by query (/districts?province_id=...). /substations.
-- Readings are append-only: POST only, and only under /installations/{installation-id}/readings. No PUT/PATCH/DELETE on readings. No global /readings.
-- GET-only readings collections also under /substations/{id}, /districts/{id}, /provinces/{id}. Path = which parent. Query from, to, sort, offset, limit = how to read it. Sort tie-break: installation_id.
-- Derived resources are noun sub-resources: /installations/{id}/last-reading, /districts/{id}/generation-summary. Never a URI segment called processing-functions.
-- POST /login issues tokens. Collections return {count, next, previous, data}; members are bare objects. 404 for a missing member; 200 + empty data for an empty collection.
-- Sort: sort=(timestamp DESC). Pagination: offset + limit.
-- 201 responses carry Location, Content-Location, ETag, Last-Modified.
-- One error body everywhere (white paper 11): {code (integer), message, description, moreInfo, error[] per field}.
-
-## Auth
-- Devices: X-API-Key, own installation only. Users: JWT Bearer with scopes + jurisdiction claims.
-- 401 = credentials missing or not accepted (+WWW-Authenticate). 403 = understood but refused. Unknown API key 401; valid key for another installation 403.
-- Writable: readings (device POST) and installations (admin POST/PUT/DELETE, scope solar:write, national). Everything else is read-only.
-
-## Git and environment
-- Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
-- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR at the planned smoke deploy (about 25-27 Sep) and at the final freeze (1 Oct). Azure deploys from it through a GitHub Actions workflow.
-- NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
-- Never force-push, squash or rewrite pushed history.
-- No deployment during development. Planned: a short throwaway smoke deploy (deleted afterwards) and the final deployment, both Azure App Service via GitHub Actions on push to deployment_dev, database slsea_dev (the final one is the submitted URL). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
-- Do not create or edit .github/workflows, Azure or deployment files, and never handle publish profiles or deployment credentials, unless I ask for that specific task.
-
-## AI log (ai-log.md)
-- When a task finishes (the step's done-when check has run), append ONE entry to ai-log.md before I commit. Write nothing to it during the task. Do not commit.
-- Entry fields: date and time; step id (for example D2); tool and model; branch; Prompt (my prompt(s) for the task, verbatim, secrets redacted); files created or changed (paths); checks run with the result (command and pass/fail, no secrets); requirement IDs served; Outcome (done / partial / failed) with one factual line on anything that failed or was corrected during the task.
-- End every entry with these two lines exactly, for me to fill: `Reviewed by me: (student to fill)` and `Accepted / changed / rejected: (student to fill)`. Never fill them and never invent my review.
-- Facts only. No claims about tests that were not run. Never include passwords, URIs, keys or anything from .env.
-- Append only. Never edit or delete earlier entries. Log a prompt from another tool or the Claude chat only when I ask.
-
-## Local course reference library
-- The course reference library is available locally at `refs/course-library/` (a git-ignored symlink to my course folder outside this repo).
-- It holds the current coursework brief, lecture materials, student notes, demonstrations, REST API design guidance, and reference Git repository information.
-- **The WSO2 REST API Design Guidelines v1 white paper is a key reference for this coursework.** Before making REST/API design decisions, consult `wso2_rest_api_design_guidelines-v1.pdf` in that folder.
-- Use the white paper particularly for: URI/resource design, collection and member resources, HTTP methods, status codes, pagination, filtering, sorting, conditional requests, headers, content negotiation, error responses, authentication/authorization, and other REST conventions covered by the coursework.
-- The coursework brief defines what the assignment requires. The white paper and the relevant lecture materials give the technical/design guidance for implementing those requirements.
-- Use the S1-S8 lecture PDFs and student notes to understand the concepts and approaches taught in the module.
-- `ref gits.rtf` describes the provided reference Git repositories. Use those repositories for learning and comparison where relevant.
-- The marking rubric in that folder is OUTDATED (module NIB304CEM, batch 24.1P). Use it only as a hint about possible assessment areas. Never use its marks, criteria or wording as current requirements. The current brief and its section 11 weights rule.
-- Do NOT copy code, report text, diagrams, documentation or other submitted content from the reference repositories or course materials.
-- Do NOT copy a reference implementation just because it uses a particular approach. Adapt the concepts to this project's requirements and documented decisions.
-- If sources appear to conflict, follow the priority list in Sources and rules, name the conflict, and do not silently make a major design decision.
-- The reference library is read-only. Do not modify, rename, delete or generate files inside it.
-- If the reference library cannot be accessed, say so clearly before starting a task that depends on it.
-```
+**ai-log entry format:** see "## Entry format" at the top of `ai-log.md`. Chat prompts (planning, reviews, coaching) are not visible to Claude Code: add those entries myself with `Tool/model: Claude (chat)`.
 
 ---
 
-## Tagging and deployment routine (local-first)
+## 2. Tagging and deployment routine
 
 ```text
-dev_hashini  →(MR after each step)→  dev            everything runs locally against slsea_local
-dev          →(release MR)→  deployment_dev  →  GitHub Actions  →  Azure    ONLY at the smoke deploy and the final deploy (Part H)
+dev_hashini  →(pull request after each step)→  dev            everything runs locally against slsea_local
+dev          →(release pull request)→  deployment_dev  →  GitHub Actions  →  Azure    ONLY at the smoke and final deploys (Part H)
 deployment_qa   kept as a best-practice marker, never deployed
 main            never used
 ```
 
-**After each build step (`dev_hashini` → `dev`)**
+**After a step:** push `dev_hashini`, open a pull request (base `dev`, compare `dev_hashini`), "Create a merge commit" (no squash), merge, then `git switch dev_hashini && git pull origin dev`. Run the tests **before** the pull request.
 
-```bash
-git add -p
-git commit -m "feat(scope): summary"
-git push origin dev_hashini
-git switch dev_hashini
-git pull origin dev
-```
-
-Between the push and the pull: on GitHub open a merge request (pull request), base `dev`, compare `dev_hashini`, choose "Create a merge commit" (no squash), and merge. Run the step's tests locally **before** the merge request. Nothing deploys.
-
-**At the end of a phase:** when the full local `npm test` and the phase exit test in `PLAN.md` §13 pass:
+**Phase tags:** when the full local `npm test` passes at the end of a phase:
 
 ```bash
 git fetch origin
-git tag p2 origin/dev
-git push origin p2
+git tag p8 origin/dev
+git push origin p8
 ```
 
-Tags `p1`…`p8` go on `dev`. Never move or delete a pushed tag; if you must redo a phase, tag again (`p2b`).
+Never move or delete a pushed tag; to redo, tag again (`p8b`). **Known mistake:** `p1`, `p2` and `p3` all point to `135e7e8` (fix pending; see `PLAN.md` §12).
 
-**Deployment** happens only twice, in Part H: the smoke deploy (about Fri 25 Sep, deleted afterwards) and the final deploy (Thu 1 Oct). Both use a release merge request `dev` → `deployment_dev`. If GitHub says "no history in common", delete `deployment_dev` and recreate it from `dev`.
-
-**Freeze:** after the final deploy and its live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check that `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev` shows no differences).
-
-No squash, no rebase of pushed history, no force-push.
+**Freeze:** after the final deploy and its live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev`). No squash, no rebase of pushed history, no force-push.
 
 ---
 
-## Part A — Setup (Mac + VS Code)
+## 3. Completed steps (19–26 Sep)
 
-### A1. Tools
+Prompts, checks and outcomes for each step are in `ai-log.md`.
 
-```bash
-# Homebrew: https://brew.sh (skip if installed)
-brew install git node
-node -v && npm -v && git --version
-git config --global user.name  "<your name>"
-git config --global user.email "<your GitHub email>"
-```
-
-VS Code: open the project folder (`code .`), use the integrated terminal (Ctrl+`) for `claude`. Use `curl` for API calls (or Thunder Client if you prefer a GUI). No other extensions needed.
-
-### A2. Accounts
-
-GitHub, MongoDB Atlas, Azure for Students (university email), Claude Pro.
-
-### A3. Local repo and branches (your GitHub repo is `hashiniRanasinghe/solar-api`)
-
-Workflow: **work on `dev_hashini`, merge into `dev` by merge request** (GitHub calls it a pull request). `deployment_dev` is updated only for the smoke deploy and the final deploy.
-
-Where you are (2026-09-20): the repo exists with `dev`, `dev_hashini`, `deployment_dev` and `deployment_qa`; the repo hygiene fixes are done. Still to check:
-
-1. GitHub → Settings → General → **default branch is `dev`**.
-2. **Collaborator:** `nirangadh` must have accepted the invitation. Screenshot the list after he does.
-3. `git fetch --prune && git branch -vv` shows `dev_hashini` and `origin/dev` in step (merge requests merged).
-4. If your plan allows branch protection for a private repo (the Student Pack's GitHub Pro should), protect `dev` and `deployment_dev` (merge request required). If GitHub shows a `main` branch, leave it alone.
-
-`ai-log.md` entry format (Claude Code writes the facts; you write the last two lines):
-
-```text
-## YYYY-MM-DD HH:MM - <step id>
-Tool/model: Claude Code, <model>
-Branch: dev_hashini
-Prompt: <verbatim, secrets redacted>
-Files: <paths created or changed>
-Checks: <command> -> pass/fail
-Requirement IDs: <from PLAN.md section 2>
-Outcome: done | partial | failed - <one factual line>
-Reviewed by me: (student to fill)
-Accepted / changed / rejected: (student to fill)
-```
-
-Prompts you type in the Claude chat (planning, reviews, coaching) are not visible to Claude Code. Add those entries yourself, one per session, in the same format with `Tool/model: Claude chat`.
-
-### A4. `CLAUDE.md` + reference repos (local only, git-ignored)
-
-Create `CLAUDE.md` from §1 above, then:
-
-```bash
-cd refs
-git clone -b dev https://github.com/nirangadh/NB6007CEM-Web-API-Development.git lecturer
-git clone https://github.com/PruthuviDe/WebAPIDev_Test.git classmate
-git clone -b dev/05-07-2026 https://github.com/gimnakatugampala/WebAPIDev-Test.git classmate-2   # early snapshot, taxi domain
-mkdir whitepaper rubric      # drop the white paper PDF and the rubric PDF here (OQ-01)
-cd ..
-git commit -am "docs: add CLAUDE.md" && git push
-```
-
-Also copy the white paper PDF into `refs/whitepaper/`. Both classmate repos are **understanding-only** references (taxi/police domain, different design choices, some traps: e.g. a global `/pings` route, base path `/v1/api/`). Never copy code. The lecturer repo holds lecture notes only — **the white paper is not in it**; use the uploaded PDF.
-
-### A5. Add the lecturer as collaborator (do in Phase 1)
-
-GitHub → repo → **Settings → Collaborators → Add people** → `nirangadh` (https://github.com/nirangadh). Screenshot it for the report. The lecturer sees the default branch first, so it must be `dev`.
+| Step | What | Commit(s) |
+|---|---|---|
+| A1–A5 | Tools, accounts, repo and branches, `CLAUDE.md`, reference repos in `refs/`, lecturer invited | 19–20 Sep |
+| B0–B3 | `my-decisions.md`; requirements, rubric and white-paper checks kept in `PLAN.md` §2, §4 and §17 (no separate files) | 19 Sep |
+| D1–D2 | Express skeleton, Atlas connection (fail fast, no secret in logs) | `aafa4df`, `aefd50f` |
+| — | Repo hygiene (`.gitignore`, docs folder move) | `64e5d99`, `caf6a1f` |
+| D3 | Production-mode rehearsal, Azure zero-cost validation (India South Central) | 21 Sep, `3454155` |
+| C1 | `docs/design/data-model.md` | `eba11c3` |
+| D4 | Mongoose models and indexes | `16f4590` |
+| D5 | Error contract (`AppError`, one error body, 404 catch-all) | `837f186` |
+| D4a | Seed part 1: hierarchy, demo users, device keys | `1d622b5` |
+| D4b | Seed part 2: 161,280 readings, integrity checks, `scripts/topup.js` | `db8f673` |
+| D6 | Hierarchy reads with paging, sorting, filters | `3a6a20c` |
+| D7–D8 | Composite, `last-reading`, readings history; readings under substation, district, province | `4436231`, `8abd826` |
+| D11 | Login, JWT, jurisdiction-scoped reads; device write path | `aae7476`, `bdb48f5` |
+| A8 | District generation summary (stretch) | `4fef776` |
+| D12–D14 | Conditional GET (strong ETag, 304), 406, private cache headers | `3c475ca` |
+| D11 revision | Device JWT replaces X-API-Key; scopes enforced on every route | `bdde540` |
+| D15 | Admin CRUD on installations, key issuance, `If-Match`/412, 405 on every read-only URI | `e8c691d` |
+| D17 | OpenAPI 3.0.3 at `/docs` and `/docs.json`, spec-parity tests | `00a8dfc` |
+| Fix | Demo passwords generated at seed time; `--rotate-credentials` (rotation run and proven 26 Sep) | `dd7882d` |
+| README | `README.md` without credentials | `60e8b07` |
+| Merge | All of the above into `dev` | `f77d772` |
 
 ---
 
-## Part B — Decisions and requirements (Phase 0)
+## Part E — Review and freeze (Phase 8, all local)
 
-### B0. Write `docs/design/my-decisions.md` **by hand, in your own words** (~45 min, no AI)
-
-Do this before you read my proposals in `PLAN.md`. Skeleton:
+**E1. Explain-back (per module)**
 
 ```text
-# My decisions
-1. Resources and hierarchy:
-2. Why no Device entity:
-3. Why readings are an append-only time series (and what breaks if not):
-4. Who reads what (jurisdiction rule) and how it is enforced:
-5. Who writes what (device rule) and how it is enforced:
-6. Pagination / sort / filter parameters:
-7. Envelope and error format:
-8. Which resources are writable besides readings (OQ-03):
-9. Jurisdiction filter — where it lives (OQ-04):
-10. 401 vs 403 for a valid key on the wrong installation (OQ-10):
-11. Anything I'm unsure about:
+Quiz me on <module>. One question at a time about what the code does and why it was designed that way.
+Don't give the answer until I reply, then correct me briefly.
 ```
 
-### B1. Requirements file
+**E2. Security review (Opus)**
 
 ```text
-Read PLAN.md §2 and docs/ (the brief). Create docs/requirements.md: keep the IDs, add a column
-"brief page", and list any requirement in the brief that PLAN.md §2 misses under "Unclear".
-Do not invent requirements. Do not write code.
+Review the repo for: auth bypass, missing scope checks, key/password storage, NoSQL injection, input
+validation, CORS, secrets in git history, error leakage, JWT settings. Table: issue | file:line |
+severity | suggested fix. Do not apply fixes. Do not read .env or scripts/seed-keys.txt.
 ```
 
-### B2. Rubric gap table (rubric PDF in `refs/rubric/`: it is an **outdated** rubric for NIB304CEM 24.1P — supplementary only, see `PLAN.md` §17; brief §11 weights and requirements win)
+**E3. Audit against the brief (Opus)**
 
 ```text
-Using refs/rubric and docs/requirements.md, create docs/rubric-gaps.md: per rubric area, what the
-rubric expects for top marks vs the evidence that exists in this repo (file paths). Mark missing
-evidence clearly. Do not edit any code.
+Audit the repo against PLAN.md §2 and §14 and the final rubric. Table: requirement | met? | evidence
+(file, test or endpoint) | gap. End with the top fixes ranked by marks gained. Do not edit files.
 ```
 
-### B3. Check my decisions against the white paper (needs `refs/whitepaper/`)
+Then: freeze the code, run the production-mode rehearsal (below), tag `p8` on `dev`.
 
-```text
-Compare docs/design/my-decisions.md with the white paper in refs/whitepaper. Also list every place
-where the lecture notes in refs/lecturer contradict the white paper (PLAN.md §4a is a starting list).
-Output a table: my decision | matches white paper? | section | conflict or gap. Do not rewrite my decisions
-and do not suggest code. Only flag differences. If a section is missing from refs/, say so.
-```
-
-Exit Phase 0: OQ-01…OQ-05 answered, `my-decisions.md` committed.
-
----
-
-## Part C — Design documents
-
-### C1. Data model first (Phase 2 start)
-
-```text
-Read docs/design/my-decisions.md and PLAN.md §8. Produce docs/design/data-model.md: entities, fields
-(snake_case), keys, relationships, scoping notes. No Device entity; meter_id on installation.
-Readings are a separate append-only collection. Mermaid ER diagram. Flag anything that breaks
-the brief §3 or a white paper rule. Do not write code.
-```
-
-### C2. OpenAPI grows with each phase `[PROPOSAL]`
-
-Each Part D step that adds an endpoint also adds that path to `docs/design/openapi.yaml` (parameters, schemas, status codes, headers, security schemes). Phase 7 verifies spec = routes.
-
-### C4. Diagrams (Phase 0b — done as sources)
-
-Diagram sources live in `docs/design/diagrams/` (index in its README). Keep them in step with `my-decisions.md`: change a decision, update the diagram in the same commit. Export for the report on your Mac when needed: `npx @mermaid-js/mermaid-cli -i <file>.mmd -o <file>.svg`, and check the rendering by eye.
-
-### C3. Architecture diagram (Phase 1 end)
-
-```text
-Create docs/design/architecture.md with the Mermaid diagram from PLAN.md §6 and one line per layer.
-Match the folders that exist in src/ right now. Do not add layers.
-```
-
----
-
-## Part D — Build (one prompt per step, commit after each)
-
-Use the §1 template footer on every prompt. Sonnet 5 unless marked.
-
-### Phase 1 — Walking skeleton
-
-**D1. Scaffold**
-
-```text
-Set up src/ as an Express app: app.js (exports app; mounts the API router under /solar/v1.0, GET / stays outside), server.js (listens on process.env.PORT),
-config/env.js (dotenv), folders routes/controllers/services/repositories/models/middleware/utils.
-GET / returns {status:"ok", environment: process.env.APP_ENV || "local"}. Scripts: start = node src/server.js, dev = node --watch src/server.js,
-test = node --test test/. Add .env.example (PORT, APP_ENV, MONGODB_URI placeholder). Dependencies only: express dotenv cors. Show file list first.
-```
-
-**D2. Atlas connection**
-
-```text
-Add config/db.js using mongoose and MONGODB_URI from .env (mongodb+srv:// URI). Fail fast with a
-clear message on connection failure; never print the URI. Start the server only after connect.
-Update .env.example. Targeted diff.
-```
-
-Atlas: create free M0 cluster → Database Access user → Network Access allow `0.0.0.0/0` (coursework) → copy the **SRV** connection string into `.env`.
-
-**D3. Local production-mode rehearsal + Azure zero-cost validation (Phase 1 exit)**
-
-Atlas: one M0 cluster. Two databases, named by the URI: **`slsea_local`** (your `.env`, all development) and **`slsea_dev`** (created at the smoke deploy). Network Access is already `0.0.0.0/0`.
-
-*Rehearsal — proves the app runs from repo contents only, as it will on Azure.* Create a git-ignored file outside the repo folder or named `.env.rehearsal` (it is covered by `.env.*`) with the same variables as `.env`, then:
+**Production-mode rehearsal** (proves the app runs from repo contents only, as on Azure). Use a git-ignored env file (for example `.env.rehearsal`, covered by `.env.*`):
 
 ```bash
 rm -rf /tmp/rehearsal
@@ -357,197 +146,15 @@ npm ci --omit=dev
 TZ=UTC NODE_ENV=production PORT=8080 node --env-file=/path/to/.env.rehearsal src/server.js
 ```
 
-In another terminal: `curl -i http://localhost:8080/` → 200 and `"environment":"local"`. Stop the server. Repeat this rehearsal at the end of Phase 4 and Phase 8. (Never let Claude Code open the env file.)
-
-*Zero-cost Azure validation* — Part H, step H0. It creates nothing.
-
-Exit Phase 1: the rehearsal passes, the validation screenshot is saved in `docs/evidence/`, lecturer accepted the invite, tag `p1` on `dev`.
-
-### Phase 2 — Model, seed, hierarchy reads
-
-**D4. Seed** (after C1)
-
-```text
-Write models for provinces, districts, substations, installations, generation_readings per
-docs/design/data-model.md, then scripts/seed.js: idempotent, deterministic RNG, batch insertMany.
-9 provinces, 25 districts, 40 substations, 240 installations, 7 days x 15-minute readings per
-installation ending at run time, half-sine diurnal curve 06:00-18:00 Asia/Colombo stored in UTC,
-cumulative non-decreasing energy_kwh. derive district_id/province_id from the substation chain (never hand-typed). Also seed demo users and per-installation device keys
-(store only hashes; print the plain keys once to a git-ignored file). Log counts at the end. Print the target database name before it writes anything. It must work with plain .env and with `node --env-file=<file> scripts/seed.js`.
-```
-
-Then add `scripts/seed-top-up.js` (append readings from each installation's newest reading up to now; safe to re-run; never wipes). Run against Atlas: `node scripts/seed.js`, later `node scripts/seed-top-up.js` before submission and before the viva. Check counts in the Atlas UI and that the newest reading per installation is recent.
-
-**D5. Error contract**
-
-```text
-Add utils/errors.js (AppError) and middleware/errorHandler.js. One JSON shape for every 4xx (white
-paper section 11): {code: integer, message, description, moreInfo, error: [{code, message}]}.
-Integer codes = HTTP status x 100 + n (e.g. 40001). Validation errors fill error[] per field.
-404 for unknown routes too. No stack traces to clients. List every status code and where it is produced.
-```
-
-**D6. Hierarchy reads + pagination util**
-
-```text
-Implement GET collection and GET member for /provinces, /districts, /substations per
-docs/design/openapi.yaml. Add utils/pagination.js: limit/offset (cap limit), collections return
-{count, next, previous, data}; members are bare objects. Missing member -> 404; empty collection -> 200.
-Add the paths to the OpenAPI file. Use the parameter names in my-decisions.md.
-```
-
-### Phase 3 — Installations and readings (read path)
-
-**D7. Installations + composite**
-
-```text
-Implement GET /installations and GET /installations/{installation-id}. The member returns the
-installation plus last_reading (one nested reading object, or null). Never embed the history.
-Never expose api_key_hash. One helper finds the latest reading (index installation_id+timestamp desc).
-```
-
-**D8. Last-reading + history**
-
-```text
-Implement GET /installations/{installation-id}/last-reading (noun, hyphenated; 404 if none; reuse the
-helper), GET /installations/{installation-id}/readings (scoped collection) and
-GET /installations/{installation-id}/readings/{reading-id}. No global /readings route.
-```
-
-### Phase 4 — Device write path
-
-**D9. Ingest**
-
-```text
-Implement POST /installations/{installation-id}/readings. installation_id comes from the path only.
-Validate power_kw, energy_kwh, voltage, timestamp (400 with details). Unique (installation_id,
-timestamp): duplicate -> 409. Success: 201 + Location (/installations/{id}/readings/{reading-id}) +
-Content-Location (same URI, body repeats the resource) + ETag + Last-Modified + the created reading. Wrong Content-Type -> 415. No PUT/PATCH/DELETE on readings (405 + Allow).
-```
-
-**D10. Device auth (use Opus 5)**
-
-```text
-Add middleware/authApiKey.js for the POST above only. Missing key -> 401 + WWW-Authenticate. Unknown key (no matching hash) -> 401.
-Key matches a DIFFERENT installation -> 403 (unique index on api_key_hash gives the lookup). Compare SHA-256 hashes with crypto.timingSafeEqual.
-Never log keys. Explain each decision in one short comment.
-```
-
-Exit Phase 4: `Location` resolves via GET; wrong-installation key → 403; tag `p4`.
-
-### Phase 5 — Users, JWT, jurisdiction (use Opus 5)
-
-**D11**
-
-```text
-Implement POST /login (processing-function resource, 200 + token; credentials -> JWT with sub, scope
-list e.g. solar:read / solar:write, role, jurisdiction_level, jurisdiction_id, short expiry). Add middleware/authJwt.js (401 + WWW-Authenticate) and middleware/scope.js: resolve the
-path parent or target resource (province, district, substation, installation) to its province/district and
-compare with the token (national: all; province: own province and below; district: own district and
-below). Design it so the readings-under-a-parent routes added in D12 reuse it. Apply to ALL GET routes that exist at this point.
-Out of scope -> 403. Collections are filtered to the caller's scope. JWT must not work on POST readings.
-Hash passwords with bcryptjs. JWT_SECRET from env only, no fallback value. Return a 401/403 matrix.
-```
-
-### Phase 6 — Query surface
-
-**D12. Filter, sort, paginate**
-
-```text
-Per my-decisions.md section 11 (path = which parent, query = how to read it):
-1) Add GET /substations/{substation-id}/readings, /districts/{district-id}/readings and
-/provinces/{province-id}/readings (GET only, no global /readings). One shared service: find the installation
-ids under the path parent (derived ids on installations), then query their readings. Same query as the
-installation history: from, to (ISO 8601, inclusive), sort=(timestamp DESC) / (timestamp ASC), offset, limit.
-Always append installation_id as the sort tie-break so pages neither repeat nor skip rows. Do NOT copy
-jurisdiction ids onto readings.
-2) Catalogue filters as query parameters: /installations?province_id&district_id&substation_id,
-/districts?province_id, /substations?district_id&province_id.
-Validate every value; 400 with error[] on bad input; reject non-string query values (NoSQL operator
-injection). Apply the D11 scope middleware to these new routes: the check runs on the PATH PARENT (missing parent -> 404 first; province route for a district user -> 403). Update OpenAPI.
-```
-
-**D13. Conditional GET**
-
-```text
-Add ETag + Last-Modified on all GET routes. If-None-Match takes precedence over If-Modified-Since
-(white paper 10.4): unchanged -> 304, empty body.
-Add Cache-Control. Show a curl pair that proves 200 then 304. Tell me whether you rely on Express's
-built-in ETag or your own hash, and why.
-```
-
-**D14. Negotiation**
-
-```text
-Accept that excludes application/json -> 406 (even though only one media type exists, white paper 10.1). Request Content-Type not application/json on
-POST/PUT -> 415. Use the standard error body.
-```
-
-### Phase 7 — Admin CRUD, summary, Swagger
-
-**D15. Installation CRUD**
-
-```text
-Implement POST /installations (201 + Location), PUT /installations/{installation-id} (whole-document
-replace, not merge; If-Match stale -> 412), DELETE (second call -> 404; readings are retained).
-Roles: admin = JWT with scope solar:write (national); reader write attempt -> 403; a device key on these
-routes -> 401. POST takes name, meter_id, substation_id, capacity_kw; the server sets installation_id,
-created_at, updated_at and the derived district_id/province_id (recomputed on PUT if substation_id changes;
-client-supplied derived ids are ignored). Duplicate meter_id -> 409; unknown substation_id -> 400.
-No PATCH. Do not choose how a new installation gets its device key: that is OPEN (OQ-28), ask me. Update OpenAPI.
-```
-
-**D16. District generation summary (stretch)**
-
-```text
-Implement GET /districts/{district-id}/generation-summary: current total power_kw (latest reading per
-installation) and today's total energy_kwh across installations in the district. Scope + conditional
-GET apply. One aggregation query, no per-installation loop.
-```
-
-**D17. Swagger**
-
-```text
-Serve Swagger UI at /docs and the raw spec at /docs.json from docs/design/openapi.yaml
-(swagger-ui-express + yaml). servers: the relative URL /solar/v1.0 only (one spec works on every environment; no localhost). Describe the two auth schemes and list demo
-credentials as demo-only. Check every real route against the spec; list mismatches.
-```
+In another terminal: `curl -i http://localhost:8080/` → 200 and `"environment"` as set. Also open `http://localhost:8080/docs`. Stop the server. Never let Claude Code open the env file.
 
 ---
 
-## Part E — Review (Phase 8, all local)
-
-**E1. Explain-back (per module)**
-
-```text
-Quiz me on <module>. One question at a time about what the code does and why it was designed that way.
-Don't give the answer until I reply, then correct me briefly.
-```
-
-**E2. Security review (Opus 5)**
-
-```text
-Review the repo for: auth bypass, missing scope checks, key/password storage, NoSQL injection, input
-validation, CORS, secrets in git history, error leakage, JWT settings. Table: issue | file:line |
-severity | suggested fix. Do not apply fixes.
-```
-
-**E3. Audit against the brief (Opus 5)**
-
-```text
-Audit the repo against docs/requirements.md and PLAN.md §14. Table: requirement | met? | evidence
-(file or endpoint) | gap. End with the top fixes ranked by marks gained.
-```
-
-Then: freeze the code, run the production-mode rehearsal (D3), tag `p8` on `dev`. Deployment is Part H.
-
----
-
-## Part F — Report (I write it; Phase 9)
+## Part F — Report (I write it; 30 Sep – 3 Oct)
 
 The AI never writes, rewrites or paraphrases my report text.
 
-**F1. Evidence checklist (chat)** — use `PLAN.md` §11; ask the coach to fill gaps as a checklist only.
+**F1. Evidence checklist (chat)** — `PLAN.md` §11; ask the coach to list gaps only.
 
 **F2. Contradiction check (chat)**
 
@@ -557,11 +164,11 @@ evidence, and rubric gaps. Do not rewrite anything.
 ```
 
 **F3. Final checks**
-- Word count 2250–2750 (exclude declaration, AI appendix, diagrams, tables, code listings, references)
+- Word count 2250–2750 (excluding declaration, AI appendix, diagrams, tables, code listings, references)
 - All six sections present and identifiable
 - Turnitin < 15% and AI score < 15% (screening only)
-- Signed declaration attached; AI appendix built from `ai-log.md`
-- No `localhost` in the report or spec
+- Signed declaration attached; AI appendix built from `ai-log.md`; demo passwords and one device key in the appendix
+- No `localhost` in the report or spec; tokens cropped out of screenshots
 
 ---
 
@@ -575,61 +182,53 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 ```
 
 **G2. Final checklist**
-- [ ] The final Azure URL (the one submitted) is running the commit tagged `submission` on `deployment_dev`, works and `environment` says `dev` (warm it up 2 minutes before)
-- [ ] The final Azure app and plan are still running (keep them until marking and the viva are done); the smoke-deploy resources are deleted
+- [ ] The submitted Azure URL runs the commit tagged `submission` on `deployment_dev`, works, and `environment` says `dev` (warm it up 2 minutes before)
+- [ ] The final Azure app and plan are still running; the smoke-deploy resources are deleted
 - [ ] `slsea_dev` was topped up shortly before submission and before the viva
-- [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev` (Compare shows no differences)
-- [ ] `/docs` loads; demo credentials work
+- [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev`
+- [ ] `/docs` loads; demo logins from the report appendix work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
 - [ ] I can explain every file in `src/`, `scripts/`, `test/`
-- [ ] I can answer: why no Device entity · why append-only · why no global `/readings` · why 201 + `Location` · 401 vs 403 · why composite and `last-reading` both exist · how jurisdiction is enforced · why not Level 3
+- [ ] I can answer: why no Device entity · why append-only · why no global `/readings` · why 201 + `Location` · 401 vs 403 · why a device JWT instead of an API key · why composite and `last-reading` both exist · how jurisdiction is enforced · why 403 before 404 · why not Level 3
 
 ---
 
-## Part H — Azure deployment (smoke deploy ~Fri 25 Sep; final deploy Thu 1 Oct)
+## Part H — Azure deployment (smoke deploy before 1 Oct; final deploy Thu 1 Oct)
 
 Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) first.
 
-### H0. Zero-cost validation (Sun 20 Sep, ~10 min, creates nothing)
-
-```text
-Azure portal → Create a resource → Web App
-  Subscription: Azure for Students   Resource group: new (e.g. rg-solar-api)
-  Name: solar-api-dev (suffix if taken)   Publish: Code   Runtime stack: Node 22 LTS   Operating system: Linux
-  Region: try Central India, then South India, then Southeast Asia
-  Pricing plan: Basic B1 — READ the estimated monthly price
-Deployment tab: note the "Basic authentication" option.   Monitoring: Application Insights = No.
-Review + create → wait for "Validation passed" → STOP. Do NOT click Create.
-```
-
-Save a screenshot (hide your email) in `docs/evidence/`, and note the region, the price estimate and any error (OQ-33). Check GitHub → repo → Settings → Actions is allowed.
+**H0. Zero-cost validation — done 21 Sep** (India South Central, `docs/evidence/azure-validation.md`).
 
 ### H1. Pre-flight (day before each deploy)
 
-- [ ] Production-mode rehearsal passes (D3)
-- [ ] Local suite green with `TZ=UTC`
-- [ ] `package.json` has a `start` script and `engines`; `package-lock.json` in sync
-- [ ] The deploy workflow (H2) is on `dev` by merge request
+- [ ] Production-mode rehearsal passes (Part E)
+- [ ] Local suite green (`npm test`)
+- [ ] `package.json` has `start` and `engines`; `package-lock.json` in sync
+- [ ] The deploy workflow (H2) is on `dev`
+- [ ] Atlas storage checked (M0 512 MB; about 220 MB used on 26 Sep); trim before seeding `slsea_dev`
+- [ ] The Atlas database user password was rotated after the ZIP exposure, and `.env` updated
 - [ ] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code)
 
-### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`; write it on Thu 24 Sep)
+### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`)
 
 ```text
 Task: add ONE GitHub Actions workflow that deploys to Azure App Service. Read CLAUDE.md first.
 File: .github/workflows/deploy-deployment-dev.yml. Trigger: push to branch deployment_dev, plus workflow_dispatch.
 permissions: contents read only. One job on ubuntu-latest: actions/checkout@v4, actions/setup-node@v4 with node 22,
 npm ci --omit=dev, then azure/webapps-deploy@v3 with app-name: ${{ vars.AZURE_WEBAPP_NAME }},
-publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: .
+publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: . (the docs/ folder must be included).
 No secret values anywhere in the file, no tests or lint steps, no other workflows. Do not read or create .env or the publish profile.
 Show the file and a plan first; wait for my OK.
 ```
 
-Review, log, commit on `dev_hashini`, merge request into `dev`. Azure's Deployment Center must not commit its own workflow.
+Review, log, commit on `dev_hashini`, pull request into `dev`. Azure's Deployment Center must not commit its own workflow.
 
 ### H3. Create the web app (Azure portal, ~20 min)
 
 ```text
-Create a resource → Web App (same choices as H0). Smoke deploy: try the Free (F1) plan first; if it is blocked use Basic B1. Final: Basic B1.
+Create a resource → Web App: Azure for Students, new resource group, name solar-api-dev (suffix if taken),
+Publish: Code, Runtime: Node 22 LTS, OS: Linux, Region: India South Central.
+Smoke deploy: Free (F1) first; if blocked, Basic B1. Final: Basic B1.
 Deployment tab: continuous deployment OFF.   Basic authentication: Enable (for the publish-profile method).
 After creation:
 Settings → Environment variables: MONGODB_URI (…/slsea_dev), JWT_SECRET (a NEW value: openssl rand -hex 32), NODE_ENV=production, APP_ENV=dev
@@ -641,22 +240,22 @@ GitHub repo → Settings → Secrets and variables → Actions:
 Cost Management + Billing → Budgets: create a budget alert (for example US$20)
 ```
 
-### H4. Release, verify, seed
+### H4. Release, seed, verify
 
 ```bash
-# GitHub: merge request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
-# GitHub → Actions: wait for the run to turn green; Azure → Log stream: look for "Connected to database: slsea_dev"
+# GitHub: pull request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
+# GitHub → Actions: wait for green; Azure → Log stream: look for "Connected to database: slsea_dev"
+node --env-file=.env.deploy scripts/seed.js --dry-run     # check it prints slsea_dev
+node --env-file=.env.deploy scripts/seed.js               # new passwords and keys go to scripts/seed-keys.txt
 curl -i https://<app-name>.azurewebsites.net/
-node --env-file=.env.deploy scripts/seed.js
-BASE_URL=https://<app-name>.azurewebsites.net npm test
 ```
 
-Copy the real hostname from the portal (it may carry a suffix). Save the `curl -i` output. The seed prints the database name first: check it says `slsea_dev`.
+Copy the real hostname from the portal. Then run the **live smoke checklist** in `PLAN.md` §10 (the automated suite runs in-process and cannot target a URL). Save the `curl -i` output in `docs/evidence/`.
 
 ### H5. Smoke deploy: record and delete
 
-1. Write findings (region, authentication method, timings, problems) to `docs/evidence/` (OQ-32, OQ-33).
-2. **Delete the resource group** (removes app and plan). Remove the GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE`. Check Cost Management shows no running resources.
+1. Write findings (region, authentication method, timings, problems) to `docs/evidence/` (OQ-32).
+2. **Delete the resource group** (app and plan). Remove the GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE`. Check Cost Management shows nothing running.
 
 ### H6. Final deploy (Thu 1 Oct)
 
@@ -668,7 +267,7 @@ git tag submission origin/deployment_dev
 git push origin submission
 ```
 
-Top-up the seed, take the report screenshots (env values hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
+Top up the seed (`node --env-file=.env.deploy scripts/topup.js`), take the report screenshots (values and tokens hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
 
 ### H7. Fallback if the workflow cannot authenticate
 
@@ -680,33 +279,38 @@ git archive --format=zip -o /tmp/solar-api.zip origin/deployment_dev
 az webapp deploy --resource-group <rg> --name <app-name> --src-path /tmp/solar-api.zip --type zip
 ```
 
-Check the Azure CLI docs for current option names before relying on this. If Azure is blocked altogether, the app is portable to another host.
+Check the Azure CLI docs for current option names before relying on this.
 
 ---
 
 ## Appendix — cheat sheet
 
-```bash
-BASE=http://localhost:3000/solar/v1.0        # while developing (the API path prefix is /solar/v1.0)
-# after a deploy: BASE=https://<app-name>.azurewebsites.net/solar/v1.0
-curl -i $BASE/installations                                            # 401 (no token)
-TOKEN=$(curl -s -X POST $BASE/login -H 'Content-Type: application/json' \
-  -d '{"username":"<demo-user>","password":"<demo-pass>"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token')
-curl -i -H "Authorization: Bearer $TOKEN" "$BASE/installations?limit=5"
-curl -i -X POST $BASE/installations/INS-0001/readings -H "X-API-Key: <key>" \
-  -H 'Content-Type: application/json' \
-  -d '{"timestamp":"2026-09-19T10:00:00Z","power_kw":3.2,"energy_kwh":1234.5,"voltage":231.0}'
-curl -i -H "If-None-Match: <etag>" -H "Authorization: Bearer $TOKEN" $BASE/installations/INS-0001   # 304
-```
+Secrets are typed with `read -s`, never on the command line. Full examples in `README.md`.
 
-(The response field carrying the token is `[PROPOSAL]` — adjust `access_token` to whatever `my-decisions.md` says. `/` and `/docs` are outside the `/solar/v1.0` prefix.)
+```bash
+BASE=http://localhost:3000/solar/v1.0        # after a deploy: https://<app-name>.azurewebsites.net/solar/v1.0
+curl -i $BASE/installations                                   # 401 (no token)
+
+read -r -p 'username: ' U; read -rs -p 'password: ' P; echo
+TOKEN=$(printf '{"username":"%s","password":"%s"}' "$U" "$P" | curl -s -X POST $BASE/login \
+  -H 'Content-Type: application/json' --data @- | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token'); unset P
+curl -i -H "Authorization: Bearer $TOKEN" "$BASE/installations?limit=5"
+curl -i -H "If-None-Match: <etag>" -H "Authorization: Bearer $TOKEN" $BASE/installations/INS-0001   # 304
+
+read -r -p 'installation_id: ' I; read -rs -p 'device_key: ' K; echo
+DTOKEN=$(printf '{"installation_id":"%s","device_key":"%s"}' "$I" "$K" | curl -s -X POST $BASE/login \
+  -H 'Content-Type: application/json' --data @- | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token'); unset K
+curl -i -X POST $BASE/installations/$I/readings -H "Authorization: Bearer $DTOKEN" -H 'Content-Type: application/json' \
+  -d '{"timestamp":"<UTC on a 15-minute boundary, newer than the last reading>","power_kw":3.2,"energy_kwh":<not lower than the last>,"voltage":231.0}'
+```
 
 | Problem | Check |
 |---|---|
-| Azure app fails to start | Check Log stream. `package.json` has a `start` script and the server uses `process.env.PORT`; Node runtime version matches |
-| DB errors only on Azure | App settings hold the right `MONGODB_URI`; Atlas Network Access is `0.0.0.0/0`; use the `mongodb+srv://` URI |
-| First request very slow (deployed) | Free F1 plan sleeps; Basic with Always On does not. Warm the app 2 minutes before the viva |
-| Works on my Mac, fails on Azure | Case-sensitive file names (`require` paths), timezone (Azure is UTC), missing env var, wrong Node version. Re-run the production-mode rehearsal |
-| Seed looks stale ("last reading" is days old) | Run the top-up script against the right database (check the name it prints) |
-| 401 vs 403 confusion | 401 = credential missing or not accepted (+`WWW-Authenticate`) `[WP §9]`. 403 = understood but refused |
-| `git push` rejected | `git pull --rebase`, resolve, push. Never force-push shared history |
+| `curl` gives `000` | The server is not running: `npm start` (or a stale one is: stop it and restart) |
+| Azure app fails to start | Log stream. `start` script present, server uses `process.env.PORT`, Node version matches, `JWT_SECRET` set |
+| DB errors only on Azure | `MONGODB_URI` app setting; Atlas Network Access `0.0.0.0/0`; `mongodb+srv://` URI |
+| First request very slow (deployed) | Free F1 sleeps; Basic with Always On does not. Warm the app before the viva |
+| Works on the Mac, fails on Azure | File-name case in `require` paths, timezone (Azure is UTC), missing env var, wrong Node version. Re-run the rehearsal |
+| "Last reading" is days old | Run `scripts/topup.js` against the right database (check the name it prints) |
+| 401 vs 403 confusion | 401 = credential missing or not accepted (+`WWW-Authenticate`). 403 = understood but refused (scope, jurisdiction, another installation) |
+| `git push` rejected | `git pull`, resolve, push. Never force-push shared history |

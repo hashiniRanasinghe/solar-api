@@ -1,11 +1,10 @@
 %% 04c-request-pipeline.mmd - Order of checks and where each status code comes from
-%% Basis: WP §9 (status codes), §10.1 (406), §10.4 (304), §10.5 (412), §11 (error body); my-decisions §8-§12
-%% Status: order on POST readings is DECIDED (2026-09-26, revised for device JWT): 405, 406, 415, 401, 403 scope (40303), 403 not own (40302), 400, 409. Read routes: 406, 401, 403 scope (40303), then 403/404 by jurisdiction, then 400.
-%% OQ-26 DECIDED: POST readings has no 404 (unknown installation -> 403).
-%% SUPERSEDED 2026-09-26: 412 is still a PROPOSAL.
-%% 406 and 304 DECIDED (2026-09-26, OQ-29): 406 on every /solar/v1.0 route incl. /login; strong content ETag; 304 only after auth and scope pass.
-%% 412 DECIDED (2026-09-26, OQ-24): optional If-Match on installation PUT and DELETE. Order on those routes: 405, 406, 415 (PUT), 401, 403 scope, 403/404 by jurisdiction and existence, 412, 400, 409.
-%% 405 DECIDED (2026-09-26): every URI that exists answers an unsupported method with 405 + Allow, before 406 and 401.
+%% Basis: WP §9 (status codes), §10.1 (406), §10.4 (304), §10.5 (412), §11 (error body); my-decisions §8-§13
+%% Order on POST readings (DECIDED): 405, 406, 415, 401, 403 scope (40303), 403 not own (40302), 400, 409. No 404 on this route (OQ-26).
+%% Order on read routes (DECIDED): 405, 406, 401, 403 scope (40303), then 403/404 by jurisdiction and existence, then 400.
+%% Order on installation PUT and DELETE (DECIDED): 405, 406, 415 (PUT), 401, 403 scope, 403/404 by jurisdiction and existence, 412, 400, 409.
+%% POST /login has no bearer check: 405, 406, 415, then 400, then 401 (bad credentials).
+%% 406 on every /solar/v1.0 route incl. /login; strong content ETag; 304 only after auth and scope pass (OQ-29).
 flowchart TD
   R["Incoming request"] --> RT{"Route and method known?"}
   RT -- "no route (with a valid token; without one: 401)" --> E404["404 + error body (40401)"]

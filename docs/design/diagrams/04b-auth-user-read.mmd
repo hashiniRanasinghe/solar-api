@@ -1,10 +1,6 @@
 %% 04b-auth-user-read.mmd - Authentication and authorization: user login and jurisdiction-scoped read
 %% Basis: BRIEF §2, §5 (jurisdiction-scoped reads); WP §12.2 (bearer token with scopes), §9; LEC S7 (403 for another jurisdiction)
-%% SUPERSEDED 2026-09-26: Scope rules, collection narrowing and parent-record visibility are PROPOSALS.
-%% Decisions: my-decisions §10. JWT + POST /login confirmed by you. Scope rules, collection narrowing and
-%% parent-record visibility are DECIDED (2026-09-26). Own JWT, NOT a full OAuth flow.
-%% SUPERSEDED 2026-09-26: the load-then-404-then-403 order below (scoped users now get 403 before 404; national users 404).
-%% SUPERSEDED 2026-09-26: an explicit filter naming another jurisdiction gives 403 (now 200 with count 0).
+%% Decisions: my-decisions §10 (JWT + POST /login, scopes, collection narrowing, 403 before 404 for scoped users, ancestors 403). Own JWT, NOT a full OAuth flow.
 sequenceDiagram
   autonumber
   participant U as User
@@ -13,13 +9,13 @@ sequenceDiagram
   U->>A: POST /solar/v1.0/login with username and password (devices use installation_id and device_key, diagram 04a)
   A->>DB: find user and compare bcrypt hash
   alt credentials not accepted
-    A-->>U: 401 + WWW-Authenticate Bearer realm solar + error body
+    A-->>U: 401 (40103) + WWW-Authenticate Bearer realm solar + error body
   else accepted
-    A-->>U: 200 + signed JWT (scope, jurisdiction_level, jurisdiction_id, short expiry)
+    A-->>U: 200 + signed JWT (scope, jurisdiction_level, jurisdiction_id, 1 hour)
   end
   U->>A: GET /solar/v1.0/installations/{installation-id} with Authorization Bearer JWT
   alt token missing, invalid or expired
-    A-->>U: 401 + WWW-Authenticate
+    A-->>U: 401 (40101 / 40102) + WWW-Authenticate
   else token lacks scope solar:read (for example a device token)
     A-->>U: 403 (40303) + WWW-Authenticate error insufficient_scope
   else token valid
@@ -32,6 +28,6 @@ sequenceDiagram
       A-->>U: 404 (40402)
     end
   end
-  Note over U,A: Collections are narrowed to the caller scope. An explicit filter naming another jurisdiction gives 200 with count 0, not 403 (DECIDED)
-  Note over U,A: Readings under a substation, district or province: the scope check runs on the PATH PARENT (OQ-04). A province route is broader than a district user, so 403
-  Note over U,A: User tokens never carry readings:write, so POST readings gives 403 (40303). Scope installations:write (admin, national) is only for installation POST, PUT, DELETE (OQ-03 decided)
+  Note over U,A: Collections are narrowed to the caller scope. An explicit filter naming another jurisdiction gives 200 with count 0, not 403
+  Note over U,A: Readings under a substation, district or province: the scope check runs on the PATH PARENT (OQ-04). A parent above the user (a district user's own province) gives 403
+  Note over U,A: User tokens never carry readings:write, so POST readings gives 403 (40303). Scope installations:write (admin) is only for installation POST, PUT, DELETE
