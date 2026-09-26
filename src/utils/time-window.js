@@ -56,4 +56,20 @@ function parseTimeWindow(query, errors) {
   return Object.keys(bounds).length > 0 ? { timestamp: bounds } : {};
 }
 
-module.exports = { parseTimeWindow, parseUtcTimestamp };
+// The Asia/Colombo calendar day that contains now (a time in ms). Sri Lanka is
+// fixed at UTC+05:30 with no daylight saving, so the day is computed from the
+// offset and never from the server timezone. Returns the local date
+// (YYYY-MM-DD) and the UTC instant of local 00:00.
+const COLOMBO_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function colomboDay(now) {
+  const local = now + COLOMBO_OFFSET_MS;
+  const localMidnight = local - (((local % DAY_MS) + DAY_MS) % DAY_MS);
+  return {
+    date: new Date(localMidnight).toISOString().slice(0, 10),
+    start: new Date(localMidnight - COLOMBO_OFFSET_MS),
+  };
+}
+
+module.exports = { parseTimeWindow, parseUtcTimestamp, colomboDay };

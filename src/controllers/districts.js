@@ -18,4 +18,9 @@ async function listReadings(req, res) {
   res.json({ count, next, previous, data: items });
 }
 
-module.exports = { list, get, listReadings };
+// A single derived resource: a plain object, not a collection envelope.
+async function generationSummary(req, res) {
+  res.json(await service.generationSummary(req.params.districtId, req.user));
+}
+
+module.exports = { list, get, listReadings, generationSummary };

@@ -31,4 +31,11 @@ async function listReadings(id, query, user) {
   return readings.listForInstallations(ids, parsed);
 }
 
-module.exports = { list, get, listReadings };
+// The district must be in scope (403) and exist (404). now is injectable so
+// tests can fix the clock; the route always uses the current time.
+async function generationSummary(id, user, now = Date.now()) {
+  await get(id, user);
+  return readings.districtSummary(id, now);
+}
+
+module.exports = { list, get, listReadings, generationSummary };

@@ -1,7 +1,7 @@
 const readingsRepository = require('../repositories/readings');
 const { parseListQuery } = require('./list-query');
 const { AppError, FIELD_ERROR } = require('../utils/errors');
-const { parseUtcTimestamp } = require('../utils/time-window');
+const { parseUtcTimestamp, colomboDay } = require('../utils/time-window');
 const { readingId } = require('../utils/reading-id');
 
 // Same query on every readings collection: from, to, sort, offset, limit.
@@ -34,6 +34,37 @@ async function newestReading(installationId) {
 
 async function getOne(installationId, readingId) {
   return readingsRepository.findOne(installationId, readingId);
+}
+
+// Generation summary of one district (stretch A8), computed in the database.
+// "Today" is the Asia/Colombo day from local 00:00 up to now.
+// - current_power_kw: sum of power_kw of each installation's newest reading at
+//   or before now. The newest and oldest of those timestamps are returned so a
+//   client can see stale meters; there is no hidden staleness cut-off.
+// - today_energy_kwh: per installation, energy_kwh of its last reading today
+//   minus that of its first reading today (0 with fewer than two), summed.
+//   Valid because energy_kwh is cumulative, and solar output is zero around
+//   midnight, so nothing is lost between the last reading before 00:00 and the
+//   first after it.
+const round3 = (value) => Math.round(value * 1000) / 1000;
+
+async function districtSummary(districtId, now) {
+  const { date, start } = colomboDay(now);
+  const asOf = new Date(now);
+  const totals = await readingsRepository.districtGenerationSummary(districtId, start, asOf);
+  return {
+    district_id: districtId,
+    date,
+    timezone: 'Asia/Colombo',
+    as_of: asOf.toISOString(),
+    installations_total: totals ? totals.installations_total : 0,
+    installations_reporting_today: totals ? totals.installations_reporting_today : 0,
+    current_power_kw: totals ? round3(totals.current_power_kw) : 0,
+    today_energy_kwh: totals ? round3(totals.today_energy_kwh) : 0,
+    newest_reading_at: totals && totals.newest_reading_at ? totals.newest_reading_at.toISOString() : null,
+    oldest_latest_reading_at:
+      totals && totals.oldest_latest_reading_at ? totals.oldest_latest_reading_at.toISOString() : null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,4 +168,4 @@ async function create(installation, body) {
   }
 }
 
-module.exports = { parseQuery, listForInstallations, newestReading, getOne, create };
+module.exports = { parseQuery, listForInstallations, newestReading, getOne, districtSummary, create };
