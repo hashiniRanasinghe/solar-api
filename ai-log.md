@@ -3,6 +3,7 @@
 Every prompt (Claude Code and chat) is logged here, in the same commit as the change it produced.
 It becomes the AI-disclosure appendix of the report.
 
+
 Entry format (Claude Code writes the facts; I fill the last two lines):
 
 ## YYYY-MM-DD HH:MM - <step id>
@@ -21,7 +22,13 @@ Accepted / changed / rejected: (student to fill)
 ## 2026-09-19 - planning (Claude chat)
 Tool/model: Claude (chat)
 Prompt: planning, decisions, diagrams and process design for the coursework (PLAN.md, STUDENT_PLAYBOOK.md, docs/design/my-decisions.md, docs/design/diagrams/*).
-What I accepted / changed / rejected: (fill in after my review)
+Branch: not recorded at the time [added 2026-09-26]
+Files: PLAN.md, STUDENT_PLAYBOOK.md, docs/design/my-decisions.md, docs/design/diagrams/*.mmd (14) and docs/design/diagrams/README.md [added 2026-09-26]
+Checks: Mermaid parser syntax check on all 14 diagram sources (layout not viewed) [added 2026-09-26]
+Requirement IDs: M6 (data model documented before resources and URIs); design basis for the other IDs [added 2026-09-26]
+Outcome: done - committed in 8370227 (docs: add plan, playbook, decisions, diagrams) [added 2026-09-26]
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
 
 ---
 
@@ -29,6 +36,12 @@ What I accepted / changed / rejected: (fill in after my review)
 Tool/model: Claude Code (Sonnet 5)
 Prompt: build D1+D2 as one small diff: package.json (dependencies only: express, dotenv, cors, mongoose; start/dev/test scripts), src/app.js (exports app; GET / outside the base path returns {status, environment}; empty router mounted at /solar/v1.0), src/server.js (listens on PORT, starts only after connectDB succeeds), src/config/env.js, src/config/db.js (mongoose connect on MONGODB_URI; on failure print a clear message with no URI or credential and exit non-zero; on success log only the database name), .env.example (placeholders only). Follow-up prompt: add "engines": {"node": ">=18"} to package.json; add serverSelectionTimeoutMS: 10000 to the mongoose.connect options; make sure the catch block never logs err, err.message, or any connection detail (rejected one corrupted diff draft; asked for and applied a corrected one that logs err.name plus a generic hint only).
 What I accepted / changed / rejected: accepted the initial D1/D2 skeleton as-is. On the follow-up, rejected the first diff draft (asked to redo it), then accepted the corrected version: added "engines": {"node": ">=18"} to package.json; added serverSelectionTimeoutMS: 10000 to mongoose.connect in src/config/db.js; changed the catch block to log only err.name plus "check MONGODB_URI, the database user password and Atlas Network Access" (never err, err.message, or connection details). Verified locally: GET / returns 200, missing MONGODB_URI exits with a clear no-secret message.
+Branch: dev_hashini [added 2026-09-26]
+Files: package.json, src/app.js, src/server.js, src/config/env.js, src/config/db.js, .env.example [added 2026-09-26]
+Checks: GET / returned 200 {"status":"ok","environment":"local"}; with MONGODB_URI unset the server exited with "Database connection failed: MONGODB_URI is not set." and printed no secret [added 2026-09-26]
+Requirement IDs: G1 (foundation), G7 [added 2026-09-26]
+Outcome: done - commits aafa4df (express app and mongoose connection) and aefd50f (fail fast in 10s, log err.name only, engines) [added 2026-09-26]
+Reviewed by me: (student to fill)
 
 ---
 
@@ -48,13 +61,15 @@ Accepted / changed / rejected: (student to fill)
 ## 2026-09-20 - local-first plan and Azure decision (Claude chat)
 Tool/model: Claude (chat)
 Branch: dev_hashini
-Prompt: change hosting from Render to Azure App Service; develop and test everything locally with a smoke deploy and a final deploy; update CLAUDE.md, PLAN.md, STUDENT_PLAYBOOK.md, docs/design/my-decisions.md and the diagrams (draft summary, edit to match my own prompts)
+Prompt; the earlier line was a placeholder summary, not my prompt]: (1) hosting, after Render asked for a card check: "is there any other free service i do have the git hub student pac as well"; choice "Azure App Service using my student credit (Basic plan, no card)". (2) "Update the plan based on this approach: Do all development, server setup, database work, and testing locally. Do not deploy to Azure during development. Complete and test everything locally first. Once the code is stable/frozen, do the final Azure deployment. Keep Azure deployment requirements in mind during development so we don't face issues later. This approach is mainly to minimize Azure credit/usage. First, review the ZIP, coursework, and references and give me the updated development plan. Do not make major changes yet. When we start making changes, do not give me the whole project as a ZIP. Give me only the files that need changes, one by one, and clearly explain what changed in each file. If you disagree with this approach or see any coursework/technical issue, tell me before we proceed." (3) choices: local database "Mac (VS Code + Node.js + Swagger) -> Internet -> MongoDB Atlas"; deployment "GitHub Actions workflow"; early checks "Zero-cost validation now, plus a short throwaway smoke deploy around 25-27 Sep". (4) "give the CLAUDE.md, PLAN.md, STUDENT_PLAYBOOK.md - updated full files"; "do we need anyother changes".
 Files: CLAUDE.md, PLAN.md, STUDENT_PLAYBOOK.md, docs/design/my-decisions.md, docs/design/diagrams/*, .claude/settings.json, .gitignore
 Checks: Mermaid parser passed for all 14 diagrams (syntax only); a clean "npm ci --omit=dev" and both start-up failure paths were run on the committed files with dummy credentials
 Requirement IDs: G1, G3 (deployment planning)
 Outcome: done - committed in 5e3bd12 and beb5070
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
+
+---
 
 ## 2026-09-21 - Phase 1 exit: rehearsal and tag p1 (manual, guided by Claude chat)
 Tool/model: manual commands, guided by Claude chat
@@ -82,6 +97,8 @@ Outcome: done - data-model.md written and revised per both diffs; PLAN.md §8 an
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
 
+---
+
 ## 2026-09-21 14:47 - D4 (first half): Mongoose models for the six collections (Claude Code)
 Tool/model: Claude Code (Sonnet 5)
 Branch: dev_hashini
@@ -93,6 +110,8 @@ Requirement IDs: M1, M2, M4, M6
 Outcome: done - all six models match data-model.md sections 1-2 exactly: field-level unique/index on business IDs and the derived substation_id/district_id/province_id fields, no field-level unique or index on api_key_hash (partial unique index only, via schema.index), unique compound (installation_id, timestamp) index on generation_readings with no separate desc index and no timestamps option, created_at/updated_at via the timestamps option on installations only, enum-constrained role/jurisdiction_level on users, no numeric min/max anywhere, toJSON transform stripping _id/__v/api_key_hash/password_hash on every schema, versionKey false. No hooks computing derived ids were added.
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
+
+---
 
 ## 2026-09-22 10:34 - D5: error contract (Claude Code)
 Tool/model: Claude Code (Sonnet 5)
@@ -107,6 +126,8 @@ Outcome: done, with one corrected deviation - the requested test script `TZ=UTC 
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
 
+---
+
 ## 2026-09-22 11:19 - D4a: seed script part 1 - hierarchy, demo users, device keys (Claude Code)
 Tool/model: Claude Code (Sonnet 5)
 Branch: dev_hashini
@@ -119,6 +140,8 @@ Requirement IDs: M1, M2, M3, M4, M6, M5 (PLAN.md's ID for the seed-scale/FK-cons
 Outcome: done, with two decisions escalated to the student before writing any code (both answered "recommended" before implementation): (1) bcryptjs was listed in PLAN.md section 5 as the planned password-hashing library but was never actually installed (only cors/dotenv/express/mongoose were dependencies) - installed it for real per the student's instruction; (2) the existing .gitignore has a bare `seed-keys.txt` pattern (matches that filename at any path) that does not cover a path like scripts/output/device-keys.local.json - per the student's instruction, used scripts/seed-keys.txt instead so no .gitignore edit was needed. Also used the real Sri Lankan province/district names and their real parent relationships (public administrative data, not code or report text) instead of inventing arbitrary ones, since Sri Lanka has exactly 9 provinces and 25 districts, matching the brief's numbers exactly, and gives naturally uneven (not fabricated-random) district-per-province counts for free; substation and installation counts per parent use a seeded PRNG (mulberry32, fixed seed) since those aren't real public entities.
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
+
+---
 
 ## 2026-09-26 08:31 - D4b: seed part 2 - generation readings and top-up script (Claude Code)
 Tool/model: Claude Code (Opus 5.5)
@@ -134,6 +157,8 @@ Outcome: done, with one failure found and corrected - the first seed run and the
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
 
+---
+
 ## 2026-09-26 09:12 - D6: hierarchy read endpoints with pagination and sorting (Claude Code)
 Tool/model: Claude Code (Opus 5.5)
 Branch: dev_hashini
@@ -144,5 +169,98 @@ Files edited: src/utils/errors.js (invalidQuery, resourceNotFound, FIELD_ERROR c
 Checks run: `npm test` (TZ=UTC node --test) - 13/13 pass (5 existing errors tests + 8 new hierarchy tests against slsea_local, connected with autoIndex off so no writes): counts 9/25/40/240; districts limit=10 links at offset 0/10/20 and past the end; next/previous keep province_id and sort and the next link can be followed; filters on districts, substations and installations return only matching rows, unknown province_id gives 200 count 0; provinces sort by name ASC/DESC and installations sort by capacity_kw DESC with installation_id tie-break; 10 bad-query cases give 400/40002 with the expected error[] code, and two bad params together report both; four unknown members give 404/40402; no api_key_hash or _id in installation page or member bodies - pass. Manual run of src/server.js on a local port with curl: districts?province_id=PV-01&limit=2, installations sorted by capacity_kw DESC, limit=500 -> 400/40002, provinces/PV-99 -> 404/40402 - pass. .env not read.
 Requirement IDs: A1, A5, V1, V2, V3
 Outcome: done. Nothing failed. OpenAPI paths (mentioned in playbook D6) not added: docs/design/openapi.yaml does not exist and the prompt scoped it out. next/previous links percent-encode the sort value (for example sort=%28name+DESC%29), which Express decodes back to (name DESC).
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+
+
+---
+
+## 2026-09-19 - D2 first attempt: credential exposure incident (Claude Code) [added 2026-09-26]
+Tool/model: Claude Code (Sonnet 5)
+Branch: dev_hashini
+Prompt (partly garbled in the saved transcript; gaps marked [...]): Task: add the MongoDB connection (D2). Read CLAUDE.md and docs/design/my-decisions.md first. Add config/db.js using mongoose (the only new dependency) and MONGODB_URI from .env [...]. Fail fast with a clear [message on f]ailure and exit non-zero; never print the URI or any credential. Start the server only [after the connection succ]eeds; on success log only the database name. Update .env.example w[ith a placeholder] URI (no real values). Keep GET / working. Show the file list and [a plan first; wait for my] OK. Small targeted diff. Done when: npm run de[v logs the datab]ase name and GET / returns 200; with a wrong password it exits with a clear message and no secrets.
+Files: .gitignore (created at the repo root by Claude Code without being asked, because atlas-credentials.env was unprotected)
+Checks: none (task stopped)
+Requirement IDs: none (security incident)
+Outcome: failed and stopped - while investigating, Claude Code ran an awk command on atlas-credentials.env that printed a real Atlas password into the session output, then reported it immediately and advised rotating the password. The task was restarted after /clear as the D1/D2 entry. Safeguards added afterwards: CLAUDE.md SECRETS rule (no shell access to secret files either), .claude/settings.json read denials, root .gitignore patterns (commit 7d261c9). Password rotation after this incident: not recorded.
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-19 - Phase 1 explain-back exercises (Claude Code, read-only) [added 2026-09-26]
+Tool/model: Claude Code (Sonnet 5)
+Branch: dev_hashini
+Prompt: 12 read-only explain-back exercises from the playbook (explain src/config/db.js line by line and quiz me; trace npm run dev to the first GET /; failure paths; middleware order; ten examiner questions; white-paper deviations; branch strategy; deployment risks; how CLAUDE.md protects secrets; requirement IDs satisfied; request lifecycle; ten-bullet summary). Follow-ups: "Go in listed order (1 -> 12)", "did u answerd all", "answer all", "you pick which three to test me on".
+Files: none changed
+Checks: none
+Requirement IDs: none (viva preparation)
+Outcome: done - after "answer all", Claude Code wrote reference answers to all 12 exercises itself instead of quizzing me. Checked 2026-09-26: the answer to exercise 6 says the lecture guidance outranks the white paper; that is wrong (brief cover, PLAN.md section 4a and CLAUDE.md: the white paper is the design authority; OQ-21 is a recorded deliberate deviation). The answer to exercise 9 does not mention the D2 password incident above. Exercises 7 and 8 describe Render, which was replaced by Azure on 2026-09-20.
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-19 to 2026-09-26 - study aids (Claude chat) [added 2026-09-26]
+Tool/model: Claude (chat)
+Branch: n/a (not in the repo)
+Prompt: requests for end-of-day progress reports ("prepare the Day N progress report"), plain-English explanations of technical terms ("I appreciate it if u can add technical terms like mongoose models and indexes in simple english"), a study PDF ("Create a detailed PDF that covers the relevant architecture and design information available in the project ... for me to study and understand the complete architecture and design of the project"), and a check of the finalized rubric against my decisions.
+Files: none in the repo (day-01 to day-04 reports; "SLSEA_Solar_API_Architecture_and_Design_Study_Guide.pdf", 76 pages, generated from the repo on 2026-09-21)
+Checks: the study guide was built only from the repo and the brief; its diagrams were rendered from the repo's Mermaid sources
+Requirement IDs: none (study aids for the viva; not report text)
+Outcome: done - used as AI-aids for understanding and viva preparation. They are AI-written; none of their text is used as report text.
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-21 - OQ-34: Express 4 vs 5 test and upgrade to Express 5 (Claude chat + manual) [added 2026-09-26]
+Tool/model: Claude (chat) ran the comparison in its own sandbox; the upgrade was run manually
+Branch: dev_hashini
+Prompt: "Decide OQ-34: Express 4 or 5" (from the Day 3 plan); "what is ur suggestion"; "done".
+Files: package.json, package-lock.json (commit 4d4f23f); PLAN.md, docs/design/my-decisions.md, CLAUDE.md (commit c57ddce)
+Checks: Claude chat test on the committed skeleton: with Express 4.22.3 an async route that throws left the request hanging (timeout) with an unhandled rejection; with Express 5.2.1 the same route reached the error middleware and returned 500; the skeleton's GET / returned 200 under Express 5
+Requirement IDs: V5 (foundation for the error contract)
+Outcome: done - upgraded to express ^5.2.1; OQ-34 recorded as DECIDED; CLAUDE.md forbids async wrapper helpers.
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-21 - Azure zero-cost validation (H0) and OQ-33 (manual, guided by Claude chat) [added 2026-09-26]
+Tool/model: manual (Azure portal), guided by Claude chat; Claude chat also web-searched how Azure for Students billing ends when the credit runs out
+Branch: dev_hashini
+Prompt: step-by-step guidance in the chat; screenshots of the Create Web App review page and the pricing page shared with Claude chat
+Files: docs/evidence/azure-validation.md, docs/evidence/azure-validation-2026-09-21.png, PLAN.md, docs/design/my-decisions.md (commit 3454155)
+Checks: the Create Web App wizard reached Review + create with Node 22 LTS on Linux, India South Central, Basic B1 (1.75 GB); the pricing page showed Basic B1 US$0.018/hour (US$13.14/month) and Free F1 available; the web app and App Service plan were not created
+Requirement IDs: G1 (deployment planning)
+Outcome: done - OQ-33 closed (India South Central). Whether the empty resource group rg-solar-api was created is not recorded.
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-21 - documentation fixes from the Claude chat repo review (Claude chat + manual) [added 2026-09-26]
+Tool/model: Claude (chat) supplied exact edits; applied manually
+Branch: dev_hashini
+Prompt: "Continue" (finish the study-guide review), which listed problems found in the repo with exact fixes
+Files: PLAN.md (G1 requirement row, OQ-33 row, section 12 typo, section 18 paragraph), docs/evidence/azure-validation.md (price) (commit 5c4e81c)
+Checks: none (documentation only)
+Requirement IDs: none (documentation accuracy)
+Outcome: done
+Reviewed by me: (student to fill)
+Accepted / changed / rejected: (student to fill)
+
+---
+
+## 2026-09-24 - Superpowers plugin and read-only project audit (Claude Code) [added 2026-09-26]
+Tool/model: Claude Code (Sonnet 5), run after installing the Superpowers community plugin (obra/superpowers)
+Branch: dev_hashini
+Prompt: Task: audit the project so far against the coursework brief and the module reference material. This is a read-only analysis - do not write, edit, or create any file, and do not write report prose. Read, in this order: CLAUDE.md; the coursework brief (refs/course-library); the white paper (refs/course-library); PLAN.md in full; docs/design/my-decisions.md in full; docs/design/data-model.md; docs/design/diagrams/README.md; then the actual current code: src/**, scripts/**, test/**, package.json. Produce a structured analysis with these sections: 1. Requirement coverage: for each row in PLAN.md section 2 (the requirement checklist) and section 14 (traceability), state whether it is DESIGNED (in the docs) and separately whether it is BUILT (real code exists and runs), not just one combined status. Cite the specific file/section for each claim - no unsourced claims. 2. Brief compliance check: re-read the brief directly (not just PLAN.md's summary of it) and flag anything the brief requires that PLAN.md, my-decisions.md, or the current code does not yet address, or addresses differently than the brief states. Do not flag something as a gap if it is already logged as an OPEN question (OQ-n) in my-decisions.md - instead just list which OQ it maps to. 3. Consistency check between documents: find any place where PLAN.md, my-decisions.md, data-model.md, or the diagrams disagree with each other or with the actual code (e.g. a decision recorded as DECIDED that the code does not yet implement, or implements differently). 4. Rubric risk (brief section 11's mark weighting): for each of the 8 marked dimensions, give a one-line honest status - not just "on track" - and name the single biggest risk to that dimension's marks given how many days remain before 4 Oct. 5. What is NOT yet started at all, plainly listed, no hedging. Be blunt and specific. Do not soften findings to sound reassuring. If something cannot be verified from the repo as it exists right now, say "cannot verify" rather than assuming. Output as a plain markdown report in your response, not as a file. Do not touch .env. Do not modify ai-log.md - this is analysis, not a build step, so it does not need a log entry.
+Files: none changed (read-only)
+Checks: n/a
+Requirement IDs: all (audit)
+Outcome: done - report in the session only. Findings: no correctness or secret-handling problems in the built code; docs/design/data-model.md section 7 is stale (it lists PLAN.md section 8 edits as not made although they were made on 2026-09-21); ai-log review lines unfilled; API design, coverage, security, deployment and report not yet built. The prompt said not to log this session; that was a disclosure gap, corrected by this entry.
 Reviewed by me: (student to fill)
 Accepted / changed / rejected: (student to fill)
