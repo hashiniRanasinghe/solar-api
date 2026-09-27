@@ -194,6 +194,6 @@ From `docs/design/my-decisions.md` §16:
 
 ## Deployment
 
-**Status: pending (planned 1 Oct).** Azure App Service (Linux, Node 22 LTS), deployed by one GitHub Actions workflow on push to `deployment_dev`, database `slsea_dev`. App settings (names only): `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV`, `APP_ENV`; Azure sets `PORT`. Start: `npm ci --omit=dev && npm start`. The `docs/` folder must be in the deploy package (the spec is read at start-up).
+**Status: pending (planned 1 Oct).** Azure App Service (Linux, Node 22 LTS), deployed by one GitHub Actions workflow on push to `deployment_dev`, database `slsea_dev`. App settings (names only): `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV`, `APP_ENV`, `SCM_DO_BUILD_DURING_DEPLOYMENT=false` (the workflow already runs `npm ci`, so Azure must not build again); Azure sets `PORT`. Start: `npm ci --omit=dev && npm start`. The `docs/` folder must be in the deploy package (the spec is read at start-up).
 
 Branches: `dev_hashini` (work) → merge request → `dev` (default branch) → release merge request → `deployment_dev` (deploys).

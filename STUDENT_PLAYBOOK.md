@@ -147,7 +147,7 @@ In another terminal: `curl -i http://localhost:8080/` → 200 and `"environment"
 
 The AI never writes, rewrites or paraphrases my report text.
 
-**F1. Evidence checklist** — `PLAN.md` §11: every claim in each section has a screenshot, `curl -i` output, test or file behind it.
+**F1. Evidence checklist** — `PLAN.md` §11: every claim in each section has a screenshot, `curl -i` output, test or file behind it. Screenshots and `curl -i` output are captured on the deployed HTTPS URL, not on localhost.
 
 **F2. Contradiction check** — every status code, header, field name and rule in the report matches the code, `docs/openapi.yaml` and `my-decisions.md`. Any AI help used for this check is disclosed in the appendix.
 
@@ -182,12 +182,12 @@ Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) fi
 
 ### H1. Pre-flight (day before each deploy)
 
-- [ ] Production-mode rehearsal passes (Part E)
-- [ ] Local suite green (`npm test`)
+- [x] Production-mode rehearsal passes (Part E): fresh clone of `dev`, 27 Sep
+- [x] Local suite green (`npm test`): 142 passed, 27 Sep
 - [ ] `package.json` has `start` and `engines`; `package-lock.json` in sync
 - [ ] The deploy workflow (H2) is on `dev`
-- [ ] Atlas storage checked (M0 512 MB; about 220 MB used on 26 Sep); trim before seeding `slsea_dev`
-- [ ] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code)
+- [x] Atlas storage checked (M0 512 MB): 27 Sep, `sample_mflix` dropped, `slsea_local` 22.28 MB; no trim needed before seeding `slsea_dev`
+- [x] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code); 27 Sep, the seed dry run printed `slsea_dev`
 
 ### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`)
 
@@ -211,7 +211,8 @@ Publish: Code, Runtime: Node 22 LTS, OS: Linux, Region: India South Central.
 Smoke deploy: Free (F1) first; if blocked, Basic B1. Final: Basic B1.
 Deployment tab: continuous deployment OFF.   Basic authentication: Enable (for the publish-profile method).
 After creation:
-Settings → Environment variables: MONGODB_URI (…/slsea_dev), JWT_SECRET (a NEW value: openssl rand -hex 32), NODE_ENV=production, APP_ENV=dev
+Settings → Environment variables: MONGODB_URI (…/slsea_dev), JWT_SECRET (a NEW value: openssl rand -hex 32), NODE_ENV=production, APP_ENV=dev,
+  SCM_DO_BUILD_DURING_DEPLOYMENT=false (the workflow already runs npm ci, so Azure must not build again)
 Settings → Configuration → General settings: HTTPS Only = On.   Always on = On (Basic plan).
 Overview → Download publish profile (keep it OUT of the repo folder; delete it after the next step)
 GitHub repo → Settings → Secrets and variables → Actions:
@@ -247,7 +248,7 @@ git tag submission origin/deployment_dev
 git push origin submission
 ```
 
-Top up the seed (`node --env-file=.env.deploy scripts/topup.js`), take the report screenshots (values and tokens hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
+Top up the seed (`node --env-file=.env.deploy scripts/topup.js`), take the report screenshots and `curl -i` output on the deployed HTTPS URL, not localhost (values and tokens hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
 
 ### H7. Fallback if the workflow cannot authenticate
 

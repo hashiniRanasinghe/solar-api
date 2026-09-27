@@ -39,7 +39,7 @@ Where a lecture note and the white paper disagree, the white paper is the design
 |---|---|
 | Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] final deploy 1 Oct |
 | Live OpenAPI/Swagger from the deployment (`/docs`) | local done (`docs/openapi.yaml`, `test/openapi.test.js`); live pending the deploy |
-| Repo shared with the module leader as collaborator; incremental commits | [ ] invitation sent to `nirangadh`; acceptance to confirm and screenshot |
+| Repo shared with the module leader as collaborator; incremental commits | [ ] `nirangadh` accepted the invitation 27 Sep |
 | Report 2250–2750 words with the six required sections | [ ] |
 | Signed declaration + AI-disclosure appendix (from `ai-log.md`) | [ ] |
 | Viva: any artefact I cannot explain forfeits its marks | [ ] |
@@ -56,7 +56,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 |---|---|---|---|---|
 | G1 | Public HTTPS API on Azure App Service, populated with seed data and operational at submission time (one GitHub Actions workflow) | §7.1, §12, §13 | Deployment | [ ] |
 | G2 | Live OpenAPI (Swagger) surface served from the deployment | §7.2 | Deployment / API design | done (local) · `test/openapi.test.js` |
-| G3 | Git repo shared with the module leader; incremental commit history | §7.3, §12, §13 | Deployment | history yes; collaborator acceptance to confirm |
+| G3 | Git repo shared with the module leader; incremental commit history | §7.3, §12, §13 | Deployment | history yes; collaborator accepted 27 Sep |
 | G4 | Report 2250–2750 words, 6 identifiable sections | §8, §12 | Report | [ ] |
 | G5 | Signed declaration + AI-disclosure appendix | §7.4, §10 | Gate | [ ] |
 | G6 | Viva attended; every artefact explainable | §9, §10 | Gate | [ ] |
@@ -254,7 +254,7 @@ Full detail: `docs/design/data-model.md`. Public ids are string business ids (`P
 
 **Seed (`scripts/seed.js`)** `[BRIEF §4]` `[YOU]`: 9 provinces, 25 districts, 40 substations, 240 installations, 15-minute readings for 7 days (161,280), ending at run time; deterministic RNG, batch inserts, half-sine daylight curve 06:00–18:00 Asia/Colombo stored in UTC, cumulative non-decreasing `energy_kwh`, integrity checks. It also seeds 4 demo users and one device key per installation; plain passwords and keys go only to the git-ignored `scripts/seed-keys.txt` (never printed; OQ-15: the report appendix, not the README or Swagger). `--dry-run`, `--reset`, `--rotate-credentials`. **Freshness:** `scripts/topup.js` appends readings from each installation's newest reading up to now (safe to re-run); run it before submission and before the viva. No background generator on the server. Night readings are 0 kW by design.
 
-**Atlas storage (M0, 512 MB):** about 220 MB used on 26 Sep (`slsea_local` + `slsea_test`). Seeding `slsea_dev` adds a similar amount, so check the storage and trim before that seed (§12b).
+**Atlas storage (M0, 512 MB):** checked 27 Sep: the `sample_mflix` sample database was dropped and `slsea_local` is 22.28 MB, so no trim is needed before seeding `slsea_dev` (§12b).
 
 ---
 
@@ -292,7 +292,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Seed integrity | Counts, derived ids match their parents, 672 readings per installation, 15-minute boundaries, no energy decrease | printed by `scripts/seed.js` (PASS/FAIL) |
 | Production-mode rehearsal | The app runs from repo contents only, as on Azure | fresh clone, `npm ci --omit=dev`, `TZ=UTC NODE_ENV=production PORT=8080 node --env-file=<git-ignored file> src/server.js`; run again in Phase 8 |
 | Live smoke check (deploys) | The automated suite cannot target a URL (no `BASE_URL`), so the live check is a short curl checklist | `GET /` (200, `environment: dev`), `/docs` loads, login 200, one read 200, 401 without a token, 403 across jurisdictions, 304 with `If-None-Match`, one device POST 201 with a fresh timestamp. Save the `curl -i` output in `docs/evidence/` |
-| Manual evidence | `curl -i` outputs and Swagger screenshots for the report | `docs/evidence/` (crop tokens; no `localhost` in the report) |
+| Manual evidence | `curl -i` outputs and Swagger screenshots for the report | Captured on the deployed HTTPS URL, not on localhost; saved in `docs/evidence/` (crop tokens; no `localhost` in the report) |
 
 ---
 
@@ -308,7 +308,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | `ai-log.md` | Every AI prompt (chat + Claude Code); source of the AI-disclosure appendix |
 | `docs/evidence/` | Azure validation, curl transcripts, screenshots |
 
-**Report evidence checklist (evidence only — I write all prose):**
+**Report evidence checklist (evidence only — I write all prose):** Swagger screenshots and `curl -i` output are captured on the deployed HTTPS URL (`https://<app-name>.azurewebsites.net`), not on localhost.
 
 | Section | Evidence to have ready |
 |---|---|
@@ -362,7 +362,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Format | `type(scope): summary` — `feat`, `fix`, `docs`, `test`, `chore`, `refactor` |
 | Secrets | `.env`, `.env.*`, `*.env`, `atlas-credentials*`, `refs/`, `*.zip`, `seed-keys.txt`, publish profiles are git-ignored. Never share a ZIP that contains `.env` or `seed-keys.txt`. Rotate anything exposed |
 | Reference repos | In `refs/` only; never copy code |
-| Collaborator | Lecturer `nirangadh`: invitation sent; screenshot the list once accepted |
+| Collaborator | Lecturer `nirangadh`: accepted 27 Sep |
 | AI log | Claude Code appends factual entries (CLAUDE.md rule); I fill the review lines and add chat sessions |
 
 **Risks to know:** a marker looking for `main` finds nothing, so the default branch must be `dev`; `deployment_qa` may prompt a viva question ("kept as a marker of a QA stage; this assignment deploys one environment"); the release merge is manual, so forgetting it leaves the live URL behind `dev`; deployment risk sits in the last week.
@@ -394,8 +394,8 @@ The brief does not require automated tests. They are for my confidence, viva evi
 **Step 1: smoke deploy (Mon 28 Sep).**
 
 1. Local: the production-mode rehearsal passes; the workflow file has reached `dev`.
-2. Atlas: check storage (M0 512 MB); trim before seeding `slsea_dev` if needed.
-3. Azure: create the resource group and web app (F1 first, B1 if blocked), Node 22 LTS, Linux, India South Central. Basic authentication **on** for the publish-profile method. App settings: `MONGODB_URI` (database `slsea_dev`), `JWT_SECRET` (a **new** value, `openssl rand -hex 32`), `NODE_ENV=production`, `APP_ENV=dev`. HTTPS Only **on**; Always On **on** (B1).
+2. Atlas: storage checked 27 Sep (M0 512 MB; `sample_mflix` dropped, `slsea_local` 22.28 MB); no trim needed before seeding `slsea_dev`.
+3. Azure: create the resource group and web app (F1 first, B1 if blocked), Node 22 LTS, Linux, India South Central. Basic authentication **on** for the publish-profile method. App settings: `MONGODB_URI` (database `slsea_dev`), `JWT_SECRET` (a **new** value, `openssl rand -hex 32`), `NODE_ENV=production`, `APP_ENV=dev`, `SCM_DO_BUILD_DURING_DEPLOYMENT=false` (the workflow already runs `npm ci`, so Azure must not build again). HTTPS Only **on**; Always On **on** (B1).
 4. GitHub: secret `AZURE_WEBAPP_PUBLISH_PROFILE` (delete the downloaded file afterwards; never commit it), variable `AZURE_WEBAPP_NAME`.
 5. Release merge `dev` → `deployment_dev`. Watch the Actions run and the Azure log stream. Open the URL.
 6. Seed `slsea_dev` from the Mac with a git-ignored env file: `node --env-file=.env.deploy scripts/seed.js` (it prints the database name first; new passwords and keys go to `scripts/seed-keys.txt`).

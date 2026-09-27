@@ -36,6 +36,7 @@ Formatting note: reformatted for readability on 2026-09-26: each entry has a hea
 | 23 | 2026-09-27 10:29 | Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code) | Set the four outputs (requirements table, rubric bands, consistency list, fixes ranked by marks per hour); read-only (no fixes, no database writes, no commit); evidence to be checked, not taken from PLAN |  |
 | 24 | 2026-09-27 11:00 | Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code) | Chose the conceptual-model section and diagram 03a, wrote the access-control decision text, listed the consistency fixes; approved the diff with all 5 extras; chose mermaid.parse (option B) for the diagram check |  |
 | 25 | 2026-09-27 11:06 | H2: GitHub Actions deploy workflow for deployment_dev (Claude Code) | Set the workflow content (trigger, read-only permissions, one job, npm ci --omit=dev, publish profile by secret and app name by variable, package .); left OQ-32 OPEN until the smoke deploy; added persist-credentials: false; nothing else |  |
+| 26 | 2026-09-27 12:18 | H1 pre-flight docs update: no Atlas trim, SCM_DO_BUILD_DURING_DEPLOYMENT=false, evidence on the deployed URL (Claude Code) | Supplied the 27 Sep facts (sample_mflix dropped, slsea_local 22.28 MB, .env.deploy dry run showed slsea_dev, fresh-clone rehearsal of dev passed, collaborator accepted, workflow written, evidence on the deployed site); docs only; tick only items the facts prove; follow-up: no collaborator screenshot needed, ran npm test myself (142 passed) |  |
 
 ## Entry format
 
@@ -761,4 +762,46 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 - **Checks run:** YAML parsed with the repository's `yaml` package in strict mode with unique keys - no errors or warnings; structure asserted with node:assert (two triggers, branch deployment_dev, permissions exactly contents: read, one job, the four steps in order, persist-credentials false, node-version 22, the three deploy inputs exactly as specified) - pass. grep for Mongo URIs, password fields, publishUrl, PEM headers, JWTs, long hex and long base64 - none found; the only expressions are `${{ vars.AZURE_WEBAPP_NAME }}` and `${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}`. The only file in .github/workflows is this one, and it is not git-ignored. actionlint was not run (not installed). The workflow has not run (deployment_dev not updated). .env and the publish profile were not read or created.
 - **Note:** OQ-32 (workflow authentication) stays OPEN in my-decisions §16 and PLAN §15 until the smoke deploy, by the student's choice; the file uses the publish profile, and if that fails in the university tenant the file changes then (OIDC or the ZIP fallback in the runbook).
 - **Requirement IDs:** G1 (deployment by one GitHub Actions workflow), G2 (docs/ in the deploy package)
+- **Outcome:** done.
+
+### 2026-09-27 12:18 - H1 pre-flight docs update: no Atlas trim, SCM_DO_BUILD_DURING_DEPLOYMENT=false, evidence on the deployed URL (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Docs-only update. Do not change src/, scripts/ or test/. Do not read .env, any *.env file or scripts/seed-keys.txt.
+>
+> Facts from today (27 Sep), confirmed by me:
+> - I dropped sample_mflix in Atlas. slsea_local is 22.28 MB, so no trim is needed before seeding slsea_dev.
+> - I created .env.deploy (target slsea_dev) and the dry run showed slsea_dev.
+> - A fresh-clone rehearsal of dev passed (npm ci, 0 vulnerabilities, GET / ok, /docs 200, HSTS and nosniff present).
+> - The collaborator nirangadh accepted.
+> - The deploy workflow .github/workflows/deploy-deployment-dev.yml is written.
+> - Report evidence (Swagger screenshots and curl output) will be captured on the deployed site, not on localhost.
+>
+> Do:
+> 1. grep the docs for "trim" and remove or correct every instruction to trim the database before seeding. Show me each line before and after.
+> 2. In the Azure deployment steps (find where the app settings are listed), add SCM_DO_BUILD_DURING_DEPLOYMENT=false with a one-line reason: the workflow already runs npm ci, so Azure must not build again.
+> 3. Where the docs plan evidence capture, make it say it is done on the deployed URL (https), not localhost.
+> 4. Tick only the checklist items that the facts above prove. List each item you tick. Do not tick anything else.
+> 5. Add one ai-log entry and its Contents row, following CLAUDE.md. Leave "My review" empty.
+> Show me a short list of changed files at the end. Do not commit.
+
+**Prompt 2:**
+
+> Small follow-up, docs only. Do not read .env, any *.env file or scripts/seed-keys.txt.
+> 1. Remove "screenshot to take" from the collaborator status in PLAN.md (§1, G3, §12). It should just say accepted 27 Sep. No screenshot is needed.
+> 2. I ran npm test just now: 142 passed. Tick "Local suite green (npm test)" in playbook H1.
+> 3. Add this to ai-log entry 26 (no new entry). Do not commit.
+
+#### Result
+
+- **Files created:** none
+- **Files edited:** PLAN.md (§6 Atlas storage note and §12b step 2: no trim needed; §12b step 3 app settings: `SCM_DO_BUILD_DURING_DEPLOYMENT=false` with its reason; §10 manual-evidence row and §11 report evidence checklist: captured on the deployed HTTPS URL, not localhost; §1 gate, G3 and §12 collaborator rows: accepted 27 Sep, still unticked; "screenshot to take" removed after prompt 2), STUDENT_PLAYBOOK.md (H1: four items ticked - Atlas storage checked, `.env.deploy` exists, production-mode rehearsal passes, and after prompt 2 local suite green (`npm test`, 142 passed, run by the student); H3 app settings: `SCM_DO_BUILD_DURING_DEPLOYMENT=false`; F1 and H6: evidence on the deployed HTTPS URL), README.md (Deployment app settings: `SCM_DO_BUILD_DURING_DEPLOYMENT=false`)
+- **Checks run:** `grep -niI trim` over the tracked Markdown files before and after - every database-trim instruction replaced (the remaining hit in docs/design/my-decisions.md §214 is about trimming string values, unchanged); replacement script asserted each target string matched exactly once - pass; the workflow file was read to confirm it runs `npm ci --omit=dev` - pass. Claude Code ran no code or tests (docs only); the student reported `npm test` 142 passed. .env, *.env and scripts/seed-keys.txt were not read.
+- **Note:** At the start of the task the editor selection sent one line of scripts/seed-keys.txt into the session context; Claude Code reported it to the student and did not repeat or store the value.
+- **Requirement IDs:** G1 (deployment runbook and pre-flight), G3 (collaborator status), G4 (report evidence plan)
 - **Outcome:** done.
