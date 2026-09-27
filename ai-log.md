@@ -35,6 +35,7 @@ Formatting note: reformatted for readability on 2026-09-26: each entry has a hea
 | 22 | 2026-09-27 10:20 | Phase 8 (E1): security fixes from the review (Claude Code) | Decided each fix: 32-byte secret, one secret per environment instead of iss/aud, headers without CSP or helmet, exp required, 413/41301, no-store on login, CORS stays open, chmod 600; parser errors before 405/406/401; checked review item 10 and my local secret myself |  |
 | 23 | 2026-09-27 10:29 | Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code) | Set the four outputs (requirements table, rubric bands, consistency list, fixes ranked by marks per hour); read-only (no fixes, no database writes, no commit); evidence to be checked, not taken from PLAN |  |
 | 24 | 2026-09-27 11:00 | Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code) | Chose the conceptual-model section and diagram 03a, wrote the access-control decision text, listed the consistency fixes; approved the diff with all 5 extras; chose mermaid.parse (option B) for the diagram check |  |
+| 25 | 2026-09-27 11:06 | H2: GitHub Actions deploy workflow for deployment_dev (Claude Code) | Set the workflow content (trigger, read-only permissions, one job, npm ci --omit=dev, publish profile by secret and app name by variable, package .); left OQ-32 OPEN until the smoke deploy; added persist-credentials: false; nothing else |  |
 
 ## Entry format
 
@@ -730,4 +731,34 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 - **Checks run:** `node --test test/openapi.test.js` - 9/9 pass. Diagram check (option B): mermaid 11.17.2 and jsdom 30.1.1 installed in the session scratchpad only (package.json and package-lock.json unchanged); `mermaid.parse` - 03a-conceptual-model.mmd parses as "er", 03-er-model.mmd (control) parses as "er", and a deliberately broken erDiagram is rejected (negative control). grep: no "136" left in PLAN.md or README.md. The drafts were built on copies in the scratchpad and the diff was shown before any repository file was written. No code or test file changed, so npm test was not run. .env and scripts/seed-keys.txt not read.
 - **Note:** the heading of entry 21 says "Phase 8 (E2): security review", taken from that task's prompt; STUDENT_PLAYBOOK.md names the security review E1 and the audit E2 (as PLAN §13 now does). Entry 21 is not edited (the log is append-only).
 - **Requirement IDs:** M1, M6 (conceptual model before the physical one), S2 (access-control trade-off recorded for the report), G2 (spec: login header), V5 (413 documented consistently)
+- **Outcome:** done.
+
+### 2026-09-27 11:06 - H2: GitHub Actions deploy workflow for deployment_dev (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: add ONE GitHub Actions workflow that deploys to Azure App Service (playbook H2). Read CLAUDE.md first.
+> File: .github/workflows/deploy-deployment-dev.yml. Trigger: push to branch deployment_dev, plus workflow_dispatch.
+> permissions: contents read only. One job on ubuntu-latest: actions/checkout@v4, actions/setup-node@v4 with node 22,
+> npm ci --omit=dev, then azure/webapps-deploy@v3 with app-name: ${{ vars.AZURE_WEBAPP_NAME }},
+> publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: . (the docs/ folder must be included).
+> No secret values anywhere in the file, no tests or lint steps, no other workflows. Do not read or create .env or the publish profile.
+> Show the file and a plan first; wait for my OK. After my OK: validate the YAML syntax, add the ai-log entry with its Contents row ("My review" empty) and show git status. Do not commit.
+
+**Prompt 2:**
+
+> OK. 1: leave OQ-32 OPEN until the smoke deploy. 2: yes, add persist-credentials: false to actions/checkout@v4. 3: nothing else.
+> Write the file, validate the YAML, grep for secret-looking values, add the ai-log entry with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** .github/workflows/deploy-deployment-dev.yml (on: push to deployment_dev and workflow_dispatch; permissions contents: read; one job `deploy` on ubuntu-latest: actions/checkout@v4 with persist-credentials: false, actions/setup-node@v4 with node-version 22, `npm ci --omit=dev`, azure/webapps-deploy@v3 with app-name `${{ vars.AZURE_WEBAPP_NAME }}`, publish-profile `${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}`, package `.`; header comments name the variable, the secret and the Azure app settings by name only)
+- **Files edited:** none besides this log
+- **Checks run:** YAML parsed with the repository's `yaml` package in strict mode with unique keys - no errors or warnings; structure asserted with node:assert (two triggers, branch deployment_dev, permissions exactly contents: read, one job, the four steps in order, persist-credentials false, node-version 22, the three deploy inputs exactly as specified) - pass. grep for Mongo URIs, password fields, publishUrl, PEM headers, JWTs, long hex and long base64 - none found; the only expressions are `${{ vars.AZURE_WEBAPP_NAME }}` and `${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}`. The only file in .github/workflows is this one, and it is not git-ignored. actionlint was not run (not installed). The workflow has not run (deployment_dev not updated). .env and the publish profile were not read or created.
+- **Note:** OQ-32 (workflow authentication) stays OPEN in my-decisions §16 and PLAN §15 until the smoke deploy, by the student's choice; the file uses the publish profile, and if that fails in the university tenant the file changes then (OIDC or the ZIP fallback in the runbook).
+- **Requirement IDs:** G1 (deployment by one GitHub Actions workflow), G2 (docs/ in the deploy package)
 - **Outcome:** done.
