@@ -1,7 +1,7 @@
 %% 10-roles-and-permissions.mmd - Who may do what (authorization matrix as a diagram)
 %% Basis: BRIEF §2 (write-read split), §5 (writable resources, jurisdiction-scoped reads); WP §9 (401 vs 403); LEC S7, S8
 %% Decisions: my-decisions §9, §10, §13. DECIDED: OQ-03 writable set and roles, OQ-10 401 vs 403, device JWT and scopes, 405 on every read-only URI.
-%% Risk to explain: brief §2 calls SLSEA users "read-clients"; the admin writes installations, never readings.
+%% Interpretation: brief §2 calls SLSEA users "read-clients"; the admin writes installations, never readings.
 flowchart LR
   DEV["Device<br/>JWT scope readings:write<br/>sub = installation id"]
   RDR["Reader<br/>JWT scope solar:read<br/>national, province or district"]
