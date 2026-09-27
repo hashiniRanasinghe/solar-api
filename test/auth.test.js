@@ -3,6 +3,7 @@
 // bcrypt hash is made here from a test-only password; no seeded password is used.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const http = require('node:http');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -128,6 +129,33 @@ test('malformed, wrongly signed, unsigned, expired or badly claimed tokens give 
   }
 });
 
+function signByHand(payload) {
+  const part = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const unsignedToken = `${part({ alg: 'HS256', typ: 'JWT' })}.${part(payload)}`;
+  const signature = crypto.createHmac('sha256', JWT_SECRET).update(unsignedToken).digest('base64url');
+  return `${unsignedToken}.${signature}`;
+}
+
+test('a correctly signed token without exp, or with a non-number exp, gives 401/40102', async () => {
+  const userClaims = { role: 'reader', jurisdiction_level: 'national', scope: 'solar:read' };
+  const tokens = {
+    userNoExp: jwt.sign(userClaims, JWT_SECRET, { algorithm: 'HS256', subject: 'x' }),
+    deviceNoExp: jwt.sign({ role: 'device', scope: 'readings:write' }, JWT_SECRET, {
+      algorithm: 'HS256',
+      subject: 'INS-0001',
+    }),
+    // jwt.sign refuses a string exp, so this one is signed by hand (HS256).
+    stringExp: signByHand({ ...userClaims, sub: 'x', exp: String(Math.floor(Date.now() / 1000) + 3600) }),
+  };
+  for (const [name, token] of Object.entries(tokens)) {
+    assert.notEqual(typeof jwt.decode(token).exp, 'number', name);
+    const res = await getWithAuth(`${API}/provinces`, `Bearer ${token}`);
+    assert.equal(res.statusCode, 401, name);
+    assertErrorBody(res.body, 401, 40102);
+    assert.equal(res.headers['www-authenticate'], INVALID_TOKEN_CHALLENGE, name);
+  }
+});
+
 test('login with missing or non-string fields gives 400/40010 with per-field items', async () => {
   const cases = [
     [{ username: 'a' }, [40012]],
@@ -213,6 +241,7 @@ test('login success returns a bearer token that works on GET /provinces', async 
   assert.deepEqual(Object.keys(res.body).sort(), ['access_token', 'expires_in', 'token_type']);
   assert.equal(res.body.token_type, 'Bearer');
   assert.equal(res.body.expires_in, 3600);
+  assert.equal(res.headers['cache-control'], 'no-store');
   assert.equal(mock.mock.callCount(), 1);
   assert.ok(!res.raw.includes('password'));
 

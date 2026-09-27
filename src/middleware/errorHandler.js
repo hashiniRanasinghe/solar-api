@@ -7,6 +7,10 @@ function errorHandler(err, req, res, next) {
     appError = err;
   } else if (err.type === 'entity.parse.failed') {
     appError = AppError.malformedJson();
+  } else if (err.type === 'entity.too.large') {
+    appError = AppError.payloadTooLarge();
+  } else if (err.type === 'charset.unsupported' || err.type === 'encoding.unsupported') {
+    appError = AppError.unsupportedMediaType();
   } else {
     appError = AppError.unexpected();
   }

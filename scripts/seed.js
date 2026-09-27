@@ -334,6 +334,9 @@ function writeKeysFile(deviceKeys, demoUsers) {
     JSON.stringify({ device_keys: deviceKeys, demo_users: demoUsers }, null, 2),
     { mode: 0o600 }
   );
+  // mode applies only when the file is created; an existing file keeps its
+  // permissions, so they are set again on every write.
+  fs.chmodSync(OUTPUT_FILE, 0o600);
 }
 
 // New passwords for every seeded user and new device keys for every

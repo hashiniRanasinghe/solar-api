@@ -23,7 +23,7 @@ cp .env.example .env      # then fill in the values yourself; never commit .env
 | Variable | Purpose | Required |
 |---|---|---|
 | `MONGODB_URI` | MongoDB connection string; the database name in it selects the database (`slsea_local` for local work) | yes |
-| `JWT_SECRET` | Signs and verifies the HS256 tokens; the server refuses to start without it | yes |
+| `JWT_SECRET` | Signs and verifies the HS256 tokens. Must be at least 32 bytes (for example `openssl rand -hex 32`); the server refuses to start without it or with a shorter value. Use a different value in each environment | yes |
 | `PORT` | Port to listen on (default `3000`; Azure sets it) | no |
 | `APP_ENV` | Name returned by `GET /` as `environment` (default `local`) | no |
 
@@ -149,7 +149,7 @@ There is no global `/readings` and no `/devices`. Readings are append-only: PUT,
 | Errors | One body everywhere: `{code, message, description, moreInfo, error[]}`; `code` = HTTP status x 100 + n (for example 40001). Code table: `/docs` (spec description) and `docs/design/my-decisions.md` §12 |
 | Conditional GET | Strong ETag on every GET; `If-None-Match` (or `If-Modified-Since` where `Last-Modified` is sent) gives 304 with an empty body. Protected reads send `Cache-Control: private, no-cache` and `Vary: Authorization` |
 | Writes | 201 carries `Location`, `ETag`, `Last-Modified` (and `Content-Location` on readings). Optional `If-Match` on installation PUT/DELETE; stale = 412 |
-| 405 / 406 / 415 | Unsupported method on a known URI = 405 with `Allow`; `Accept` without `application/json` = 406; write body not `application/json` = 415 |
+| 405 / 406 / 413 / 415 | Unsupported method on a known URI = 405 with `Allow`; `Accept` without `application/json` = 406; write body not `application/json` = 415. While the body is read, before any other check: over 100 KB = 413 (41301), unsupported charset or encoding = 415, malformed JSON = 400 (40001) |
 | Jurisdiction | National sees all; provincial its province and below; district its district and below. Collections are narrowed to the caller's scope. Province and district users get 403 before 404, so they cannot learn whether an id outside their jurisdiction exists |
 
 ## Project structure
@@ -157,9 +157,9 @@ There is no global `/readings` and no `/devices`. Readings are append-only: PUT,
 | Path | Role |
 |---|---|
 | `src/server.js` | Checks `JWT_SECRET`, connects to the database, listens on `PORT` |
-| `src/app.js` | Express app: CORS, JSON body parser, `GET /`, docs, `/solar/v1.0` router, 404, error handler |
+| `src/app.js` | Express app: security headers, CORS, JSON body parser, `GET /`, docs, `/solar/v1.0` router, 404, error handler |
 | `src/routes/` | URI + method to middleware and controller; 405 guards |
-| `src/middleware/` | Cross-cutting checks: 406, 415, bearer token, scope, own installation, cache headers, errors |
+| `src/middleware/` | Cross-cutting checks: 405, 406, 415, bearer token, scope, own installation, cache headers, security headers, errors |
 | `src/controllers/` | HTTP in and out; thin |
 | `src/services/` | Rules: jurisdiction scope, query parsing, readings, summary, login |
 | `src/repositories/` | The only code that queries MongoDB |
@@ -169,7 +169,7 @@ There is no global `/readings` and no `/devices`. Readings are append-only: PUT,
 | `scripts/` | Seed, top-up and their helpers (`scripts/lib/`) |
 | `test/` | `node --test` suites |
 | `docs/openapi.yaml` | The OpenAPI spec served at `/docs` |
-| `docs/design/` | `my-decisions.md` (design decisions), `data-model.md` (data model), `diagrams/` (12 Mermaid sources; index in `PLAN.md` §18) |
+| `docs/design/` | `my-decisions.md` (design decisions), `data-model.md` (data model), `diagrams/` (13 Mermaid sources; index in `PLAN.md` §18) |
 | `docs/evidence/` | Evidence for the report |
 | `ai-log.md` | AI usage log; the source of the AI-disclosure appendix |
 
@@ -184,7 +184,7 @@ From `docs/design/my-decisions.md` §16:
 - The Azure credit is finite (delete the plan after marking).
 - No old-version redirect.
 - No country-wide readings list.
-- One national admin role only.
+- Only a national admin is seeded (no `/users` endpoints to create province- or district-level admins); the code limits any admin to its own subtree.
 - A wrong device clock can store odd timestamps.
 - The DELETE readings check is not atomic.
 - Installation ids stop at INS-9999.

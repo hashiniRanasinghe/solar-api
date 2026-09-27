@@ -31,6 +31,11 @@ Formatting note: reformatted for readability on 2026-09-26: each entry has a hea
 | 18 | 2026-09-26 15:57 | D13: OpenAPI (Swagger) surface at /docs and /docs.json; 415 on POST /login (Claude Code) | Fixed the code, not the spec, for `/login` 415; telemetry off; asked to log the diagram 04b repair |  |
 | 19 | 2026-09-26 16:37 | D4a repair: demo passwords generated at seed time; --rotate-credentials (Claude Code) | Paused the README; chose generated passwords + `--rotate-credentials`; ran the rotation myself (401/200/401/200) |  |
 | 20 | 2026-09-26 16:42 | README.md; OQ-15 revised; section 16 known limits placed correctly (Claude Code) | Split and reworded the §16 limits; set `engines` to ≥22.19; checked the extra endpoint rows |  |
+| 21 | 2026-09-27 10:04 | Phase 8 (E2): security review, read-only (Claude Code) | Set the ten review areas and the output table; read-only (no fixes, no database writes, no commit); secrets reported by file, commit and type only |  |
+| 22 | 2026-09-27 10:20 | Phase 8 (E1): security fixes from the review (Claude Code) | Decided each fix: 32-byte secret, one secret per environment instead of iss/aud, headers without CSP or helmet, exp required, 413/41301, no-store on login, CORS stays open, chmod 600; parser errors before 405/406/401; checked review item 10 and my local secret myself |  |
+| 23 | 2026-09-27 10:29 | Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code) | Set the four outputs (requirements table, rubric bands, consistency list, fixes ranked by marks per hour); read-only (no fixes, no database writes, no commit); evidence to be checked, not taken from PLAN |  |
+| 24 | 2026-09-27 11:00 | Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code) | Chose the conceptual-model section and diagram 03a, wrote the access-control decision text, listed the consistency fixes; approved the diff with all 5 extras; chose mermaid.parse (option B) for the diagram check |  |
+| 25 | 2026-09-27 11:06 | H2: GitHub Actions deploy workflow for deployment_dev (Claude Code) | Set the workflow content (trigger, read-only permissions, one job, npm ci --omit=dev, publish profile by secret and app name by variable, package .); left OQ-32 OPEN until the smoke deploy; added persist-credentials: false; nothing else |  |
 
 ## Entry format
 
@@ -598,3 +603,162 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 - **Checks run:** every file path named in the README exists (test -e; 14 diagram .mmd files counted). Seed flags taken from scripts/seed.js and scripts/lib/credentials.js; `node scripts/seed.js --dry-run` run earlier in this session (exit 0). Endpoint table, scopes, success codes, query parameters and security scheme extracted from docs/openapi.yaml with a script; sort whitelists and defaults from src/services. Local server started on PORT 3999 against slsea_local: GET / 200 {"status":"ok","environment":"local"}; GET /docs 301 to /docs/; the README's login pipeline with a wrong username/password gave 401 with WWW-Authenticate: Bearer realm="solar" and the token extraction printed "undefined"; GET /districts without a token 401. A successful login and the device POST curl example were not run by Claude Code (no credentials read). npm test not re-run (no code changed since the 136/136 run in the entry above). .env, .env.example and scripts/seed-keys.txt not read.
 - **Requirement IDs:** G1 (deployment section, pending), G2 (points to /docs and /docs.json), G3 (repository documentation for the module leader), S1-S3 (authentication, scopes and jurisdiction documented; no credential committed)
 - **Outcome:** done. Correction to the entry above (2026-09-26 16:37, committed in dd7882d): it says the two new known limits were added to my-decisions section 16, but the edit had landed in section 13 (the "Known limit (2026-09-26): moving an installation..." line), because the section 16 line is the last line of the file with no trailing newline and the identical sentence in section 13 was the only match; this was not checked before reporting. Found at the start of this task and repaired as listed under Files edited. Also noted for the student, not changed: section 16 still lists "no key rotation", although scripts/seed.js --rotate-credentials now rotates seeded device keys (no API for rotation); the README copies the section 16 wording as it stands.
+
+---
+
+### 2026-09-27 10:04 - Phase 8 (E2): security review, read-only (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 security review (playbook E2). READ-ONLY: do not create, edit or delete any file except the ai-log entry at the end; do not run the seed, rotation, topup or anything that writes to a database; do not commit. Do not read .env, any *.env, or scripts/seed-keys.txt. Read CLAUDE.md, docs/design/my-decisions.md (§9, §10, §12, §13, §16) and the final rubric's Security section first.
+>
+> Review src/, scripts/, package.json, .gitignore and docs/openapi.yaml for:
+> 1. Auth bypass: any route reachable without the right token or scope; the order of checks per route vs my-decisions (405, 406, 415, 401, 403...).
+> 2. Scope and jurisdiction: can a device read, a reader write, a district user reach another district (paths, query filters, next/previous links, the generation summary, reading-by-id under another installation)?
+> 3. Tokens: JWT algorithm pinned (no "none"/alg confusion), expiry checked, secret only from env, no fallback secret, what claims are trusted.
+> 4. Credentials: password hashing (bcrypt cost), device key hashing and constant-time compare, unknown-id timing, nothing secret logged or returned (api_key_hash, password_hash, device_key after the 201).
+> 5. Input: NoSQL operator injection (objects/arrays where strings are expected, in query, body and path), type checks, ranges, body size, regex use.
+> 6. Errors: stack traces or internal messages leaking to the client; the 500 path.
+> 7. HTTP: CORS setting, security headers (X-Powered-By off, others missing?), Cache-Control on authenticated and 201 responses.
+> 8. Secrets in the repo: tracked files and git history (git log -p --all -S for "mongodb+srv", "password", "JWT_SECRET", "BEGIN"), without printing any value you find: report only file, commit and type.
+> 9. Dependencies: npm audit --omit=dev (report only).
+> 10. Known limits already in my-decisions §16: confirm each is still true; do not re-report them as new findings.
+>
+> Output: one table: # | Issue | file:line | Severity (High = exploitable now / Medium = needs another mistake / Low = hardening) | How you proved it (a code path or a command; no secrets) | Suggested fix (one line). Then a list of things you checked and found OK. Do not apply any fix.
+>
+> Then add the ai-log entry (CLAUDE.md format, Contents row with "My review" empty) and show git status.
+
+#### Result
+
+- **Files created:** none in the repository (one probe script in the session scratchpad, outside the repository)
+- **Files edited:** ai-log.md (this entry and its Contents row only)
+- **Checks run:** read CLAUDE.md, my-decisions §8-§16, the final rubric (Security dimension), every file in src/, scripts/seed.js (credential parts), scripts/lib/credentials.js, package.json, .gitignore, docs/openapi.yaml (security parts). `npm audit --omit=dev` - 0 vulnerabilities. In-memory probe of src/app.js (no database, throwaway JWT_SECRET, run outside the repository so no .env was loaded): alg "none", HS512 and wrong-secret tokens 401 (40102); expired token 401; a signed HS256 token without an `exp` claim was accepted; device token on GET /provinces 403 (40303); a 200 KB JSON body and `charset=latin1` both gave 500 (50001); `username: {"$ne": null}` at login gave 400 (40010); Express query parser is "simple" (`province_id[$ne]=x` stays a plain string key; a repeated parameter becomes an array and is refused); `cors()` answers any Origin with `*`; no X-Content-Type-Options, HSTS, X-Frame-Options or CSP headers; X-Powered-By absent. Git history (45 commits) searched for Mongo URIs, `JWT_SECRET` assignments, PEM blocks, bcrypt hashes, JWTs and 64-hex values, reporting only file, commit and a masked shape: the one Mongo URI with credentials has a placeholder password; no PEM, hash or token found; ai-log.md:346 has `JWT_SECRET` followed by a 4-letter value that could not be classified (the inspection command was denied by the Claude Code permission classifier, so it was not pursued). .env, .env.example and scripts/seed-keys.txt not read; no database connection made; npm test not run (no code changed).
+- **Findings (10, none applied):** Medium: no minimum length for JWT_SECRET; no `iss`/`aud`, so a token is valid in any environment sharing the secret; HTTPS not enforced by the app (depends on the Azure HTTPS Only setting). Low: token without `exp` accepted; body-parser 413/415 errors become 500; no `Cache-Control: no-store` on the POST /login token response; no security headers; CORS allows any origin; seed-keys.txt mode 0600 applies only when the file is first created. To check by the student: ai-log.md:346.
+- **Requirement IDs:** S1, S2, S3, S4 (reviewed; no gaps found in authentication, scope or jurisdiction enforcement), G1 (HTTPS for the deployment)
+- **Outcome:** done. One check incomplete: ai-log.md:346 could not be classified because the command was denied.
+
+### 2026-09-27 10:20 - Phase 8 (E1): security fixes from the review (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 security fixes from today's review (E1). Read CLAUDE.md, docs/design/my-decisions.md §9-§12 and §16 first. Show the file list and plan first; wait for my OK. Do not read .env, any *.env or scripts/seed-keys.txt. Do not commit.
+>
+> My decisions (record in my-decisions as DECIDED · YOU (2026-09-27)):
+> 1. src/server.js: refuse to start when Buffer.byteLength(JWT_SECRET) < 32, with a clear message that never prints the value. README: say the secret must be at least 32 bytes (openssl rand -hex 32).
+> 2. No iss/aud claims. Record: each environment uses its own JWT_SECRET (Azure gets a new one), so a token from one environment is not valid in another.
+> 3+7. One small middleware (no new dependency, no helmet): X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Strict-Transport-Security: max-age=31536000 on every response. No CSP (it would break Swagger UI; record that). Keep X-Powered-By off.
+> 4. verifyToken: reject a token whose exp is missing or not a number (401, 40102).
+> 5. errorHandler: body-parser errors keep their 4xx status with the standard body: payload too large -> 413 with a NEW code 41301 "Payload too large"; unsupported charset/encoding -> 415 (41501). Add 41301 to the error-code table in my-decisions §12 and in docs/openapi.yaml info.description, and a 413 response on the POST/PUT operations that take a body.
+> 6. POST /login response: Cache-Control: no-store.
+> 8. CORS stays open (*). Record the reason: bearer tokens only, no cookies, so no CSRF; the API is meant to be called by dashboards and other clients.
+> 9. scripts/seed.js: fs.chmodSync(OUTPUT_FILE, 0o600) after every write of seed-keys.txt.
+>
+> Tests: add a test for 1 (start-up refusal, if testable without a real secret), 3/7 (headers present), 4 (token without exp -> 401), 5 (413/41301 and 415/41501 with the standard body), 6 (no-store on login). npm test must pass; openapi.test.js must still pass.
+> Also note in the ai-log entry: "Review item 10 (ai-log.md:346) checked by the student: it is the test command `JWT_SECRET= node src/server.js` (empty value), not a secret."
+> Then add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+**Prompt 2:**
+
+> OK, go. Answers: 1. Yes, 413/415 from express.json() come before 405/406/401 like malformed JSON; record it in my-decisions §8 next to the malformed-JSON rule and in the 04c diagram note. 2. I checked my local JWT_SECRET myself: it is at least 32 bytes. 3. Yes, assert on the message (and that the dummy value is not printed).
+> After writing: run npm test and show the pass/fail count, then add ai-log entry #22 with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** src/middleware/security-headers.js (nosniff, X-Frame-Options DENY, HSTS max-age=31536000 on every response; no CSP), test/startup.test.js (spawns src/server.js in a temporary directory with a 31-byte dummy JWT_SECRET, and with none: exit 1, the JWT_SECRET message on stderr, dummy value not printed)
+- **Files edited:** src/server.js (refuses to start when JWT_SECRET is under 32 bytes; message names the rule and `openssl rand -hex 32`, never the value or its length), src/app.js (security headers mounted first), src/services/auth.js (verifyToken: exp missing or not a number → 401/40102), src/utils/errors.js (AppError.payloadTooLarge, 413/41301), src/middleware/errorHandler.js (entity.too.large → 413/41301; charset.unsupported, encoding.unsupported → 415/41501), src/controllers/auth.js (Cache-Control: no-store on the login response), scripts/seed.js (fs.chmodSync 600 in writeKeysFile, which does both the seed and the --rotate-credentials write), docs/openapi.yaml (41301 row in the code table, a sentence on 413/415 while the body is read, components/responses/PayloadTooLarge, '413' on POST /login, POST /installations, PUT /installations/{installation-id}, POST …/readings), docs/design/my-decisions.md (DECIDED · YOU (2026-09-27): §8 table 413 on the four body operations and no-store on POST /login; §8 lines for body-reading errors before 405/406/401, security headers without CSP, CORS open with the reason, no-store on login; §10 lines for the 32-byte secret, one secret per environment instead of iss/aud, exp required; §12 code 41301; §16 seed-keys.txt set to 600 on every write), docs/design/diagrams/04c-request-pipeline.mmd (comment: parser errors 400/413/415 come before the route checks), README.md (JWT_SECRET row: at least 32 bytes, `openssl rand -hex 32`, a different value per environment), test/auth.test.js (token without exp, device token without exp, and a hand-signed token with a string exp → 401/40102; login success asserts Cache-Control: no-store), test/errors.test.js (200 KB body → 413/41301 and charset=latin1 → 415/41501 with the standard body; security headers on 200, 401, 404, /docs and OPTIONS, no X-Powered-By, no CSP)
+- **Checks run:** `npm test` - 142/142 pass (after one fix, see Outcome); `node --test test/openapi.test.js` - 9/9 pass; `node --check scripts/seed.js` - pass (the seed was not run, so the chmod was not exercised against a real file). .env, .env.example and scripts/seed-keys.txt not read; the local JWT_SECRET length was checked by the student, not by Claude Code.
+- **Note:** Review item 10 (ai-log.md:346) checked by the student: it is the test command `JWT_SECRET= node src/server.js` (empty value), not a secret.
+- **Note:** my-decisions §8 had no malformed-JSON line (40001 was only in the §12 code list; the rule itself is in CLAUDE.md), so one new §8 line covers malformed JSON, 413 and the parser 415 together.
+- **Requirement IDs:** S1, S2, S4 (token handling: secret length, exp required), V5 (one error schema: 413/415 instead of 500), G1 (HSTS for the HTTPS deployment), A5 (headers)
+- **Outcome:** done. First full run 141/142: the new test built its string-exp token with jwt.sign, which refuses a non-number exp; the test now signs that token by hand with HMAC-SHA256, and the rerun passed 142/142.
+
+### 2026-09-27 10:29 - Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 audit against the brief (playbook E2). READ-ONLY: do not create, edit or delete any file except the ai-log entry at the end; no database writes; do not commit. Do not read .env, any *.env or scripts/seed-keys.txt. Read CLAUDE.md, the brief (refs/course-library/NB6007CEM_Coursework_Brief.pdf, especially §3, §5, §6, §7, App. A), the final rubric (NB6007CEM_Marking_Rubric.pdf, all 8 dimensions), PLAN.md §2 and §14, and docs/design/my-decisions.md first.
+>
+> 1. Requirements table: every requirement in PLAN §2 and every item in brief App. A: ID | requirement | met? (yes / partial / no / pending deploy) | evidence (file:line, test name, or endpoint) | gap. Check the evidence exists; do not trust PLAN's status column.
+> 2. Rubric table: for each of the 8 dimensions, the band the current evidence supports (First / Upper second / ...) quoting the band words it meets, and what is missing for the next band. Say which items only the deployment or the report can provide.
+> 3. Consistency: list any place where README, docs/openapi.yaml, my-decisions.md, PLAN.md, diagrams or ai-log.md contradict the code or each other (status codes, error codes, field names, check order, test counts, dates).
+> 4. End with the top fixes ranked by marks gained per hour of work, marking each as code / docs / deploy / report.
+> Do not apply any fix. Then add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+#### Result
+
+- **Files created:** none in the repository (one read-only count script in the session scratchpad)
+- **Files edited:** ai-log.md (this entry and its Contents row only)
+- **Checks run:** read the brief (all pages), the final rubric (all 8 dimensions), PLAN §2, §6, §7, §9, §10, §14, my-decisions, README, docs/openapi.yaml (parsed: 20 operations and their response codes and headers), diagrams 03 and 04c, data-model.md headings, and every test name. Read-only tests: `TZ=UTC node --test --test-concurrency=1` over all files except admin-crud and device-write (these write to slsea_test, so they were not run) - 90/90 pass; the other 52 tests were last run in entry 22 (142/142). Read-only database query on slsea_local (counts and dates only): 240 installations with readings, 674-676 readings each, 161,762 in total, oldest 2026-09-19T03:00Z, newest 2026-09-26T03:45Z (about 25 hours before the query), 4 users, 0 installations without a device key. Git history: 44 commits over 19-27 Sep. .env, .env.example and scripts/seed-keys.txt not read; nothing written to any database.
+- **Findings, in short:** no code requirement from PLAN §2 or brief App. A is unmet locally; pending: G1 deployment, G2 live Swagger, G3 collaborator confirmation, G4-G6 report, declaration and viva, R1-R6. Rubric gaps named: no deployment yet (Deployment, Functionality, "HTTPS throughout"), no report, no recorded scope-vs-attribute-based access-control trade-off (Security First band), the data model documents are MongoDB-shaped rather than implementation-independent (Architecture First band), local readings end on 26 Sep (top-up needed before marking). Eight documentation inconsistencies listed (PLAN test counts 136/12 suites vs 142/13; PLAN status, §6, §7 and §9 not updated for E1; README 413 and security-header gaps; spec lacks the login no-store header; my-decisions §8 table rows list 405/406 inconsistently; README "one national admin role only" vs §13/§16).
+- **Requirement IDs:** all of PLAN §2 (audited)
+- **Outcome:** done. The write tests (admin-crud, device-write) were not re-run in this task because the prompt forbade database writes.
+
+### 2026-09-27 11:00 - Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1** (sent twice; the second copy was identical and came before any OK):
+
+> Task: documentation-only fixes from the audit (entry 23). No code or tests change. Read CLAUDE.md, docs/design/my-decisions.md, docs/design/data-model.md and PLAN.md first. Show the diff before writing; wait for my OK. Do not read .env or scripts/seed-keys.txt. Do not commit.
+>
+> 1. docs/design/data-model.md: add a first section "Conceptual model (implementation-independent)": entities (Province, District, Substation, Installation, Generation reading, User), their attributes in plain terms (no _id, no indexes, no derived ids, no collection names), relationships with cardinalities (1 to many down the chain; a User is linked to 0 or 1 Province or District by jurisdiction), the rules: a reading belongs to exactly one installation and is never changed; meter_id is an attribute of an installation; energy is a running total. Rename the rest as "Physical model (MongoDB)". Add a small Mermaid erDiagram for the conceptual model in a new file docs/design/diagrams/03a-conceptual-model.mmd (entities, key attributes, cardinalities only) and check it parses.
+> 2. docs/design/my-decisions.md §10: add DECIDED · YOU (2026-09-27): "Access control combines scopes and attributes. Scopes (solar:read, readings:write, installations:write) decide what kind of action a token may take; the jurisdiction attributes in the token (jurisdiction_level, jurisdiction_id) are compared with the resource's district_id/province_id to decide where. Trade-off: full attribute-based access control (more attributes such as time, device state or per-installation grants, evaluated by a policy engine) would be finer-grained but harder to test and audit; this API keeps three fixed scopes and one jurisdiction rule in services/scope.js, fully tested. Limit: it cannot express per-installation read grants without new code."
+> 3. Fix the audit's consistency list: PLAN test counts (142 tests, 13 suites) and the status line (Phase 8 security fixes done 27 Sep); PLAN §6 tree (security-headers), §7 (413 on the body operations and in Global behaviour; no-store on /login), §9 (32-byte secret, exp required, security headers, open CORS with the reason); README 413 in the behaviour table, security headers in the structure rows, admin wording as in my-decisions §13; docs/openapi.yaml: Cache-Control: no-store header on the POST /login 200 response; my-decisions §8 table: add 405 and 406 to the POST …/readings row; §12 heading date "Codes in use (2026-09-27)"; PLAN §13 Phase 8 row: "security review (E1), audit (E2)" to match the playbook.
+> Then run node --test test/openapi.test.js (spec changed), add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+**Prompt 2:**
+
+> OK, apply the diff from your previous message including all 5 extras. Diagram check: B (mermaid.parse only). Record the #21 heading note in entry #24. Then run node --test test/openapi.test.js, add entry #24 with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** docs/design/diagrams/03a-conceptual-model.mmd (conceptual erDiagram: six entities, key attributes, 1-to-many chain, User 0 or 1 Province or District; no storage ids, indexes or derived ids)
+- **Files edited:** docs/design/data-model.md (new section 1 "Conceptual model (implementation-independent)" with entities, relationships and cardinalities, and four rules; the rest renamed section 2 "Physical model (MongoDB)" with subsections 2.1-2.5, collection headings one level down, the two "(§5)" references changed to "(§2.5)"), docs/design/my-decisions.md (§8 POST …/readings row gains 405 and 406; §10 new DECIDED · YOU (2026-09-27) line on scopes and attributes, text as in Prompt 1; §12 "Codes in use (2026-09-27)"), PLAN.md (status line: 142 tests in 13 suites, Phase 8 security review, fixes and audit done 27 Sep with commit 477d7d6, the rest of Phase 8 still open; §6 tree: security-headers and the errorHandler body-parser note, 13 suites, 142 tests; §7: no-store and 413 (41301) on /login, 413 on rows 12-14, body-reading errors and security headers in Global behaviour; §9: 32-byte secret and one secret per environment in the Secrets row, new Tokens, Headers and CORS rows; §10 and §17: 142 tests; §13 Phase 8 row "security review (E1), audit (E2)"; §18 new row for 03a), README.md (405/406/413/415 behaviour row; security headers in the src/app.js row; 405 and security headers in the src/middleware/ row; 13 Mermaid sources; admin wording as in my-decisions §13/§16), docs/openapi.yaml (Cache-Control: no-store header on the POST /login 200 response, defined inline). Extras beyond the prompt, approved in Prompt 2: the fourth conceptual rule (district and province follow from the substation), README "13 Mermaid sources" and the PLAN §18 row, the errorHandler note in the PLAN §6 tree, 405 in the README middleware row, commit 477d7d6 in the PLAN status line.
+- **Checks run:** `node --test test/openapi.test.js` - 9/9 pass. Diagram check (option B): mermaid 11.17.2 and jsdom 30.1.1 installed in the session scratchpad only (package.json and package-lock.json unchanged); `mermaid.parse` - 03a-conceptual-model.mmd parses as "er", 03-er-model.mmd (control) parses as "er", and a deliberately broken erDiagram is rejected (negative control). grep: no "136" left in PLAN.md or README.md. The drafts were built on copies in the scratchpad and the diff was shown before any repository file was written. No code or test file changed, so npm test was not run. .env and scripts/seed-keys.txt not read.
+- **Note:** the heading of entry 21 says "Phase 8 (E2): security review", taken from that task's prompt; STUDENT_PLAYBOOK.md names the security review E1 and the audit E2 (as PLAN §13 now does). Entry 21 is not edited (the log is append-only).
+- **Requirement IDs:** M1, M6 (conceptual model before the physical one), S2 (access-control trade-off recorded for the report), G2 (spec: login header), V5 (413 documented consistently)
+- **Outcome:** done.
+
+### 2026-09-27 11:06 - H2: GitHub Actions deploy workflow for deployment_dev (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: add ONE GitHub Actions workflow that deploys to Azure App Service (playbook H2). Read CLAUDE.md first.
+> File: .github/workflows/deploy-deployment-dev.yml. Trigger: push to branch deployment_dev, plus workflow_dispatch.
+> permissions: contents read only. One job on ubuntu-latest: actions/checkout@v4, actions/setup-node@v4 with node 22,
+> npm ci --omit=dev, then azure/webapps-deploy@v3 with app-name: ${{ vars.AZURE_WEBAPP_NAME }},
+> publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: . (the docs/ folder must be included).
+> No secret values anywhere in the file, no tests or lint steps, no other workflows. Do not read or create .env or the publish profile.
+> Show the file and a plan first; wait for my OK. After my OK: validate the YAML syntax, add the ai-log entry with its Contents row ("My review" empty) and show git status. Do not commit.
+
+**Prompt 2:**
+
+> OK. 1: leave OQ-32 OPEN until the smoke deploy. 2: yes, add persist-credentials: false to actions/checkout@v4. 3: nothing else.
+> Write the file, validate the YAML, grep for secret-looking values, add the ai-log entry with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** .github/workflows/deploy-deployment-dev.yml (on: push to deployment_dev and workflow_dispatch; permissions contents: read; one job `deploy` on ubuntu-latest: actions/checkout@v4 with persist-credentials: false, actions/setup-node@v4 with node-version 22, `npm ci --omit=dev`, azure/webapps-deploy@v3 with app-name `${{ vars.AZURE_WEBAPP_NAME }}`, publish-profile `${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}`, package `.`; header comments name the variable, the secret and the Azure app settings by name only)
+- **Files edited:** none besides this log
+- **Checks run:** YAML parsed with the repository's `yaml` package in strict mode with unique keys - no errors or warnings; structure asserted with node:assert (two triggers, branch deployment_dev, permissions exactly contents: read, one job, the four steps in order, persist-credentials false, node-version 22, the three deploy inputs exactly as specified) - pass. grep for Mongo URIs, password fields, publishUrl, PEM headers, JWTs, long hex and long base64 - none found; the only expressions are `${{ vars.AZURE_WEBAPP_NAME }}` and `${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}`. The only file in .github/workflows is this one, and it is not git-ignored. actionlint was not run (not installed). The workflow has not run (deployment_dev not updated). .env and the publish profile were not read or created.
+- **Note:** OQ-32 (workflow authentication) stays OPEN in my-decisions §16 and PLAN §15 until the smoke deploy, by the student's choice; the file uses the publish profile, and if that fails in the university tenant the file changes then (OIDC or the ZIP fallback in the runbook).
+- **Requirement IDs:** G1 (deployment by one GitHub Actions workflow), G2 (docs/ in the deploy package)
+- **Outcome:** done.

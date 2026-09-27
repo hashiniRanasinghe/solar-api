@@ -1,7 +1,7 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
 > Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy before 1 Oct, final deploy Thu 1 Oct).
-> **Where I am (2026-09-26):** build steps A–D are done (table below). Next: Part E (review and freeze), Part H (deployment), Parts F–G (report and viva).
+> **Where I am (2026-09-27):** build steps A–D are done (table below); phase tags fixed; Atlas password rotated. Next: Part E (review and freeze), Part H (deployment), Parts F–G (report and viva).
 > Tags: `[YOU]` my decision · `[PROPOSAL]` a suggestion until I confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper.
 
 ---
@@ -10,15 +10,15 @@
 
 | Rule | Why |
 |---|---|
-| Claude Code writes **code**. I write **every word of the report** | Brief §10 + integrity policy |
-| Log every prompt in `ai-log.md` (chat prompts too) | Mandatory AI-disclosure appendix |
+| Code is generated with Claude Code **under my direction**: I set the scope, approve or reject each plan, read every diff and run the checks. I write **every word of the report** | Brief §10 (generation permitted, disclosure mandatory) + integrity policy |
+| Log every Claude Code prompt in `ai-log.md`; list any other AI help (chat planning, reviews) in the report's AI-disclosure appendix | Disclosure is mandatory (brief §10) |
 | Small diffs, targeted edits, no full-file rewrites unless I ask | Easier to review and explain |
-| Explain-back before the next step | An unexplained artefact forfeits its marks at the viva |
+| I explain each change in my own words before the next step | An unexplained artefact forfeits its marks at the viva |
 | Never copy code from the classmate repos | Reference repos are for understanding only |
 | No secrets in git. Ever | `.env` ignored, `.env.example` committed; demo passwords are generated at seed time |
-| Never keep credential files in the repo folder, and never paste a password, key, token or connection string into a chat or a prompt | Claude Code once printed a password from such a file. Rotate anything exposed |
+| Never keep credential files in the repo folder, and never paste a password, key, token or connection string into a chat or a prompt | A password was exposed this way once. Rotate anything exposed |
 | Never share a ZIP that contains `.env` or `scripts/seed-keys.txt`, and never upload one to a chat | The Atlas password had to be rotated after that happened |
-| Close `scripts/seed-keys.txt` in VS Code before prompting Claude Code | An open selection is sent with the prompt |
+| Close `scripts/seed-keys.txt` in VS Code before prompting | An open selection is sent with the prompt |
 | Local-first: no Azure resources during development except the planned smoke deploy and the final deploy | Limits Azure credit use (`PLAN.md` §12a) |
 | Brief > white paper > lecture notes > `PLAN.md` | If a prompt result contradicts them, the prompt result is wrong |
 
@@ -33,8 +33,8 @@
    Reject anything outside PLAN.md (extra libraries, endpoints, files).
 4. Approve → Claude edits. Read the diff:   git diff
 5. Run it + the tests:   npm run dev   /   npm test
-6. Explain-back: "Quiz me on <file>" (E1). If I can't answer, I don't commit.
-7. Claude Code adds the factual ai-log.md entry (CLAUDE.md rule). I read it and fill the two review lines
+6. I explain the change in my own words. If I can't, I don't commit.
+7. The factual ai-log.md entry is added (CLAUDE.md rule). I check it and add my review in its Contents row
 8. git status (no .env, no seed-keys.txt) → git add <files> → git commit -m "type(scope): summary"
 9. git push origin dev_hashini → pull request into dev ("Create a merge commit"). Nothing deploys
 ```
@@ -51,7 +51,7 @@ Done when: [check].
 
 `CLAUDE.md` at the repo root is the only copy of Claude Code's rules. Change it there.
 
-**ai-log entry format:** see "## Entry format" at the top of `ai-log.md`. Chat prompts (planning, reviews, coaching) are not visible to Claude Code: add those entries myself with `Tool/model: Claude (chat)`.
+**ai-log entry format:** see "## Entry format" at the top of `ai-log.md`.
 
 ---
 
@@ -74,7 +74,7 @@ git tag p8 origin/dev
 git push origin p8
 ```
 
-Never move or delete a pushed tag; to redo, tag again (`p8b`). **Known mistake:** `p1`, `p2` and `p3` all point to `135e7e8` (fix pending; see `PLAN.md` §12).
+Never move or delete a pushed tag; to redo, tag again (`p8b`). Exception (`DECIDED · YOU`, 2026-09-27): `p2` and `p3` were created by mistake on the same commit as `p1` (`135e7e8`) and marked no phase, so I deleted them and added annotated tags `p4` = `5f4b246` (phases 2–4) and `p7` = `f77d772` (phases 5–7). The rule applies from now on (see `PLAN.md` §12).
 
 **Freeze:** after the final deploy and its live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev`). No squash, no rebase of pushed history, no force-push.
 
@@ -112,14 +112,7 @@ Prompts, checks and outcomes for each step are in `ai-log.md`.
 
 ## Part E — Review and freeze (Phase 8, all local)
 
-**E1. Explain-back (per module)**
-
-```text
-Quiz me on <module>. One question at a time about what the code does and why it was designed that way.
-Don't give the answer until I reply, then correct me briefly.
-```
-
-**E2. Security review (Opus)**
+**E1. Security review**
 
 ```text
 Review the repo for: auth bypass, missing scope checks, key/password storage, NoSQL injection, input
@@ -127,7 +120,7 @@ validation, CORS, secrets in git history, error leakage, JWT settings. Table: is
 severity | suggested fix. Do not apply fixes. Do not read .env or scripts/seed-keys.txt.
 ```
 
-**E3. Audit against the brief (Opus)**
+**E2. Audit against the brief**
 
 ```text
 Audit the repo against PLAN.md §2 and §14 and the final rubric. Table: requirement | met? | evidence
@@ -154,14 +147,9 @@ In another terminal: `curl -i http://localhost:8080/` → 200 and `"environment"
 
 The AI never writes, rewrites or paraphrases my report text.
 
-**F1. Evidence checklist (chat)** — `PLAN.md` §11; ask the coach to list gaps only.
+**F1. Evidence checklist** — `PLAN.md` §11: every claim in each section has a screenshot, `curl -i` output, test or file behind it.
 
-**F2. Contradiction check (chat)**
-
-```text
-Here is my draft section. Flag only: claims that contradict the code or OpenAPI spec, missing
-evidence, and rubric gaps. Do not rewrite anything.
-```
+**F2. Contradiction check** — every status code, header, field name and rule in the report matches the code, `docs/openapi.yaml` and `my-decisions.md`. Any AI help used for this check is disclosed in the appendix.
 
 **F3. Final checks**
 - Word count 2250–2750 (excluding declaration, AI appendix, diagrams, tables, code listings, references)
@@ -174,14 +162,7 @@ evidence, and rubric gaps. Do not rewrite anything.
 
 ## Part G — Viva prep
 
-**G1. Mock viva (chat)**
-
-```text
-Act as the lecturer running my viva on this API. One question at a time across design, security,
-deployment and code. Follow up on weak answers. After 10 questions, give a table of strong and weak areas.
-```
-
-**G2. Final checklist**
+**G1. Final checklist**
 - [ ] The submitted Azure URL runs the commit tagged `submission` on `deployment_dev`, works, and `environment` says `dev` (warm it up 2 minutes before)
 - [ ] The final Azure app and plan are still running; the smoke-deploy resources are deleted
 - [ ] `slsea_dev` was topped up shortly before submission and before the viva
@@ -193,7 +174,7 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 
 ---
 
-## Part H — Azure deployment (smoke deploy before 1 Oct; final deploy Thu 1 Oct)
+## Part H — Azure deployment (smoke deploy Mon 28 Sep; final deploy Thu 1 Oct)
 
 Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) first.
 
@@ -206,7 +187,6 @@ Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) fi
 - [ ] `package.json` has `start` and `engines`; `package-lock.json` in sync
 - [ ] The deploy workflow (H2) is on `dev`
 - [ ] Atlas storage checked (M0 512 MB; about 220 MB used on 26 Sep); trim before seeding `slsea_dev`
-- [ ] The Atlas database user password was rotated after the ZIP exposure, and `.env` updated
 - [ ] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code)
 
 ### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`)

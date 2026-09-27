@@ -141,6 +141,10 @@ function verifyToken(token) {
   } catch {
     throw AppError.invalidToken();
   }
+  // jwt.verify accepts a token without exp; every token issued here has one.
+  if (typeof claims.exp !== 'number') {
+    throw AppError.invalidToken();
+  }
   return claims.role === 'device' ? readDeviceClaims(claims) : readUserClaims(claims);
 }
 

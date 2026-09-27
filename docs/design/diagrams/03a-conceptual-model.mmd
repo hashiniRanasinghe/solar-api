@@ -1,0 +1,41 @@
+%% 03a-conceptual-model.mmd - Conceptual model (implementation-independent)
+%% Basis: BRIEF §3 (five-entity hierarchy plus User; no Device entity; append-only readings; cumulative energy); LEC S1
+%% Entities, key attributes and cardinalities only: no storage ids, no indexes, no derived ids, no collection names.
+%% The physical MongoDB model is diagram 03 (03-er-model.mmd) and docs/design/data-model.md section 2.
+erDiagram
+  PROVINCE ||--o{ DISTRICT : "contains"
+  DISTRICT ||--o{ SUBSTATION : "contains"
+  SUBSTATION ||--o{ INSTALLATION : "connects"
+  INSTALLATION ||--o{ GENERATION_READING : "reports (append-only)"
+  USER }o--o| PROVINCE : "jurisdiction (province level)"
+  USER }o--o| DISTRICT : "jurisdiction (district level)"
+
+  PROVINCE {
+    string identifier
+    string name
+  }
+  DISTRICT {
+    string identifier
+    string name
+  }
+  SUBSTATION {
+    string identifier
+    string name
+  }
+  INSTALLATION {
+    string identifier
+    string name
+    string meter_id "attribute, not a Device"
+    number capacity_kw
+  }
+  GENERATION_READING {
+    datetime timestamp "device event time"
+    number power_kw "instantaneous"
+    number energy_kwh "running total, never decreases"
+    number voltage
+  }
+  USER {
+    string username
+    string role "reader or admin"
+    string jurisdiction_level "national, province or district"
+  }
