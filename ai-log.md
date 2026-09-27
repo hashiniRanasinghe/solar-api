@@ -31,6 +31,8 @@ Formatting note: reformatted for readability on 2026-09-26: each entry has a hea
 | 18 | 2026-09-26 15:57 | D13: OpenAPI (Swagger) surface at /docs and /docs.json; 415 on POST /login (Claude Code) | Fixed the code, not the spec, for `/login` 415; telemetry off; asked to log the diagram 04b repair |  |
 | 19 | 2026-09-26 16:37 | D4a repair: demo passwords generated at seed time; --rotate-credentials (Claude Code) | Paused the README; chose generated passwords + `--rotate-credentials`; ran the rotation myself (401/200/401/200) |  |
 | 20 | 2026-09-26 16:42 | README.md; OQ-15 revised; section 16 known limits placed correctly (Claude Code) | Split and reworded the §16 limits; set `engines` to ≥22.19; checked the extra endpoint rows |  |
+| 21 | 2026-09-27 10:04 | Phase 8 (E2): security review, read-only (Claude Code) | Set the ten review areas and the output table; read-only (no fixes, no database writes, no commit); secrets reported by file, commit and type only |  |
+| 22 | 2026-09-27 10:20 | Phase 8 (E1): security fixes from the review (Claude Code) | Decided each fix: 32-byte secret, one secret per environment instead of iss/aud, headers without CSP or helmet, exp required, 413/41301, no-store on login, CORS stays open, chmod 600; parser errors before 405/406/401; checked review item 10 and my local secret myself |  |
 
 ## Entry format
 
@@ -600,3 +602,77 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 - **Outcome:** done. Correction to the entry above (2026-09-26 16:37, committed in dd7882d): it says the two new known limits were added to my-decisions section 16, but the edit had landed in section 13 (the "Known limit (2026-09-26): moving an installation..." line), because the section 16 line is the last line of the file with no trailing newline and the identical sentence in section 13 was the only match; this was not checked before reporting. Found at the start of this task and repaired as listed under Files edited. Also noted for the student, not changed: section 16 still lists "no key rotation", although scripts/seed.js --rotate-credentials now rotates seeded device keys (no API for rotation); the README copies the section 16 wording as it stands.
 
 ---
+
+### 2026-09-27 10:04 - Phase 8 (E2): security review, read-only (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 security review (playbook E2). READ-ONLY: do not create, edit or delete any file except the ai-log entry at the end; do not run the seed, rotation, topup or anything that writes to a database; do not commit. Do not read .env, any *.env, or scripts/seed-keys.txt. Read CLAUDE.md, docs/design/my-decisions.md (§9, §10, §12, §13, §16) and the final rubric's Security section first.
+>
+> Review src/, scripts/, package.json, .gitignore and docs/openapi.yaml for:
+> 1. Auth bypass: any route reachable without the right token or scope; the order of checks per route vs my-decisions (405, 406, 415, 401, 403...).
+> 2. Scope and jurisdiction: can a device read, a reader write, a district user reach another district (paths, query filters, next/previous links, the generation summary, reading-by-id under another installation)?
+> 3. Tokens: JWT algorithm pinned (no "none"/alg confusion), expiry checked, secret only from env, no fallback secret, what claims are trusted.
+> 4. Credentials: password hashing (bcrypt cost), device key hashing and constant-time compare, unknown-id timing, nothing secret logged or returned (api_key_hash, password_hash, device_key after the 201).
+> 5. Input: NoSQL operator injection (objects/arrays where strings are expected, in query, body and path), type checks, ranges, body size, regex use.
+> 6. Errors: stack traces or internal messages leaking to the client; the 500 path.
+> 7. HTTP: CORS setting, security headers (X-Powered-By off, others missing?), Cache-Control on authenticated and 201 responses.
+> 8. Secrets in the repo: tracked files and git history (git log -p --all -S for "mongodb+srv", "password", "JWT_SECRET", "BEGIN"), without printing any value you find: report only file, commit and type.
+> 9. Dependencies: npm audit --omit=dev (report only).
+> 10. Known limits already in my-decisions §16: confirm each is still true; do not re-report them as new findings.
+>
+> Output: one table: # | Issue | file:line | Severity (High = exploitable now / Medium = needs another mistake / Low = hardening) | How you proved it (a code path or a command; no secrets) | Suggested fix (one line). Then a list of things you checked and found OK. Do not apply any fix.
+>
+> Then add the ai-log entry (CLAUDE.md format, Contents row with "My review" empty) and show git status.
+
+#### Result
+
+- **Files created:** none in the repository (one probe script in the session scratchpad, outside the repository)
+- **Files edited:** ai-log.md (this entry and its Contents row only)
+- **Checks run:** read CLAUDE.md, my-decisions §8-§16, the final rubric (Security dimension), every file in src/, scripts/seed.js (credential parts), scripts/lib/credentials.js, package.json, .gitignore, docs/openapi.yaml (security parts). `npm audit --omit=dev` - 0 vulnerabilities. In-memory probe of src/app.js (no database, throwaway JWT_SECRET, run outside the repository so no .env was loaded): alg "none", HS512 and wrong-secret tokens 401 (40102); expired token 401; a signed HS256 token without an `exp` claim was accepted; device token on GET /provinces 403 (40303); a 200 KB JSON body and `charset=latin1` both gave 500 (50001); `username: {"$ne": null}` at login gave 400 (40010); Express query parser is "simple" (`province_id[$ne]=x` stays a plain string key; a repeated parameter becomes an array and is refused); `cors()` answers any Origin with `*`; no X-Content-Type-Options, HSTS, X-Frame-Options or CSP headers; X-Powered-By absent. Git history (45 commits) searched for Mongo URIs, `JWT_SECRET` assignments, PEM blocks, bcrypt hashes, JWTs and 64-hex values, reporting only file, commit and a masked shape: the one Mongo URI with credentials has a placeholder password; no PEM, hash or token found; ai-log.md:346 has `JWT_SECRET` followed by a 4-letter value that could not be classified (the inspection command was denied by the Claude Code permission classifier, so it was not pursued). .env, .env.example and scripts/seed-keys.txt not read; no database connection made; npm test not run (no code changed).
+- **Findings (10, none applied):** Medium: no minimum length for JWT_SECRET; no `iss`/`aud`, so a token is valid in any environment sharing the secret; HTTPS not enforced by the app (depends on the Azure HTTPS Only setting). Low: token without `exp` accepted; body-parser 413/415 errors become 500; no `Cache-Control: no-store` on the POST /login token response; no security headers; CORS allows any origin; seed-keys.txt mode 0600 applies only when the file is first created. To check by the student: ai-log.md:346.
+- **Requirement IDs:** S1, S2, S3, S4 (reviewed; no gaps found in authentication, scope or jurisdiction enforcement), G1 (HTTPS for the deployment)
+- **Outcome:** done. One check incomplete: ai-log.md:346 could not be classified because the command was denied.
+
+### 2026-09-27 10:20 - Phase 8 (E1): security fixes from the review (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 security fixes from today's review (E1). Read CLAUDE.md, docs/design/my-decisions.md §9-§12 and §16 first. Show the file list and plan first; wait for my OK. Do not read .env, any *.env or scripts/seed-keys.txt. Do not commit.
+>
+> My decisions (record in my-decisions as DECIDED · YOU (2026-09-27)):
+> 1. src/server.js: refuse to start when Buffer.byteLength(JWT_SECRET) < 32, with a clear message that never prints the value. README: say the secret must be at least 32 bytes (openssl rand -hex 32).
+> 2. No iss/aud claims. Record: each environment uses its own JWT_SECRET (Azure gets a new one), so a token from one environment is not valid in another.
+> 3+7. One small middleware (no new dependency, no helmet): X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Strict-Transport-Security: max-age=31536000 on every response. No CSP (it would break Swagger UI; record that). Keep X-Powered-By off.
+> 4. verifyToken: reject a token whose exp is missing or not a number (401, 40102).
+> 5. errorHandler: body-parser errors keep their 4xx status with the standard body: payload too large -> 413 with a NEW code 41301 "Payload too large"; unsupported charset/encoding -> 415 (41501). Add 41301 to the error-code table in my-decisions §12 and in docs/openapi.yaml info.description, and a 413 response on the POST/PUT operations that take a body.
+> 6. POST /login response: Cache-Control: no-store.
+> 8. CORS stays open (*). Record the reason: bearer tokens only, no cookies, so no CSRF; the API is meant to be called by dashboards and other clients.
+> 9. scripts/seed.js: fs.chmodSync(OUTPUT_FILE, 0o600) after every write of seed-keys.txt.
+>
+> Tests: add a test for 1 (start-up refusal, if testable without a real secret), 3/7 (headers present), 4 (token without exp -> 401), 5 (413/41301 and 415/41501 with the standard body), 6 (no-store on login). npm test must pass; openapi.test.js must still pass.
+> Also note in the ai-log entry: "Review item 10 (ai-log.md:346) checked by the student: it is the test command `JWT_SECRET= node src/server.js` (empty value), not a secret."
+> Then add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+**Prompt 2:**
+
+> OK, go. Answers: 1. Yes, 413/415 from express.json() come before 405/406/401 like malformed JSON; record it in my-decisions §8 next to the malformed-JSON rule and in the 04c diagram note. 2. I checked my local JWT_SECRET myself: it is at least 32 bytes. 3. Yes, assert on the message (and that the dummy value is not printed).
+> After writing: run npm test and show the pass/fail count, then add ai-log entry #22 with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** src/middleware/security-headers.js (nosniff, X-Frame-Options DENY, HSTS max-age=31536000 on every response; no CSP), test/startup.test.js (spawns src/server.js in a temporary directory with a 31-byte dummy JWT_SECRET, and with none: exit 1, the JWT_SECRET message on stderr, dummy value not printed)
+- **Files edited:** src/server.js (refuses to start when JWT_SECRET is under 32 bytes; message names the rule and `openssl rand -hex 32`, never the value or its length), src/app.js (security headers mounted first), src/services/auth.js (verifyToken: exp missing or not a number → 401/40102), src/utils/errors.js (AppError.payloadTooLarge, 413/41301), src/middleware/errorHandler.js (entity.too.large → 413/41301; charset.unsupported, encoding.unsupported → 415/41501), src/controllers/auth.js (Cache-Control: no-store on the login response), scripts/seed.js (fs.chmodSync 600 in writeKeysFile, which does both the seed and the --rotate-credentials write), docs/openapi.yaml (41301 row in the code table, a sentence on 413/415 while the body is read, components/responses/PayloadTooLarge, '413' on POST /login, POST /installations, PUT /installations/{installation-id}, POST …/readings), docs/design/my-decisions.md (DECIDED · YOU (2026-09-27): §8 table 413 on the four body operations and no-store on POST /login; §8 lines for body-reading errors before 405/406/401, security headers without CSP, CORS open with the reason, no-store on login; §10 lines for the 32-byte secret, one secret per environment instead of iss/aud, exp required; §12 code 41301; §16 seed-keys.txt set to 600 on every write), docs/design/diagrams/04c-request-pipeline.mmd (comment: parser errors 400/413/415 come before the route checks), README.md (JWT_SECRET row: at least 32 bytes, `openssl rand -hex 32`, a different value per environment), test/auth.test.js (token without exp, device token without exp, and a hand-signed token with a string exp → 401/40102; login success asserts Cache-Control: no-store), test/errors.test.js (200 KB body → 413/41301 and charset=latin1 → 415/41501 with the standard body; security headers on 200, 401, 404, /docs and OPTIONS, no X-Powered-By, no CSP)
+- **Checks run:** `npm test` - 142/142 pass (after one fix, see Outcome); `node --test test/openapi.test.js` - 9/9 pass; `node --check scripts/seed.js` - pass (the seed was not run, so the chmod was not exercised against a real file). .env, .env.example and scripts/seed-keys.txt not read; the local JWT_SECRET length was checked by the student, not by Claude Code.
+- **Note:** Review item 10 (ai-log.md:346) checked by the student: it is the test command `JWT_SECRET= node src/server.js` (empty value), not a secret.
+- **Note:** my-decisions §8 had no malformed-JSON line (40001 was only in the §12 code list; the rule itself is in CLAUDE.md), so one new §8 line covers malformed JSON, 413 and the parser 415 together.
+- **Requirement IDs:** S1, S2, S4 (token handling: secret length, exp required), V5 (one error schema: 413/415 instead of 500), G1 (HSTS for the HTTPS deployment), A5 (headers)
+- **Outcome:** done. First full run 141/142: the new test built its string-exp token with jwt.sign, which refuses a non-number exp; the test now signs that token by hand with HMAC-SHA256, and the rerun passed 142/142.

@@ -23,7 +23,7 @@ cp .env.example .env      # then fill in the values yourself; never commit .env
 | Variable | Purpose | Required |
 |---|---|---|
 | `MONGODB_URI` | MongoDB connection string; the database name in it selects the database (`slsea_local` for local work) | yes |
-| `JWT_SECRET` | Signs and verifies the HS256 tokens; the server refuses to start without it | yes |
+| `JWT_SECRET` | Signs and verifies the HS256 tokens. Must be at least 32 bytes (for example `openssl rand -hex 32`); the server refuses to start without it or with a shorter value. Use a different value in each environment | yes |
 | `PORT` | Port to listen on (default `3000`; Azure sets it) | no |
 | `APP_ENV` | Name returned by `GET /` as `environment` (default `local`) | no |
 

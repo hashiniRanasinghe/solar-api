@@ -224,6 +224,16 @@ class AppError extends Error {
     );
   }
 
+  // Body larger than express.json() accepts (100 KB).
+  static payloadTooLarge() {
+    return new AppError(
+      413,
+      1,
+      'Payload too large',
+      'The request body is larger than the server accepts.'
+    );
+  }
+
   static unsupportedMediaType() {
     return new AppError(
       415,

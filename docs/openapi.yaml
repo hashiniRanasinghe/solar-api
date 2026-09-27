@@ -48,6 +48,9 @@ info:
       before any other check. Readings are append-only: no PUT, PATCH or DELETE.
     - An `Accept` header that does not allow `application/json` gives **406** (40601).
       A write whose `Content-Type` is not `application/json` gives **415** (41501).
+      A body over 100 KB gives **413** (41301), and an unsupported charset or encoding
+      gives **415** (41501). Both are checked while the body is read, before any other
+      check, like malformed JSON (400, 40001).
     - Any unexpected server failure gives **500** (50001) with the same error body;
       it is not listed per operation.
 
@@ -106,6 +109,7 @@ info:
     | 40905 | Installation has readings (DELETE refused) |
     | 40906 | No installation id could be assigned |
     | 41201 | Precondition failed (`If-Match` does not match) |
+    | 41301 | Payload too large (body over 100 KB) |
     | 41501 | Unsupported media type |
     | 50001 | Unexpected error |
 servers:
@@ -200,6 +204,7 @@ paths:
                 moreInfo: /docs
                 error: []
         '406': { $ref: '#/components/responses/NotAcceptable' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
 
   /provinces:
@@ -574,6 +579,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
 
   /installations/{installation-id}:
@@ -653,6 +659,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
     delete:
       tags: [Installations]
@@ -816,6 +823,7 @@ paths:
                 description: A reading with this timestamp is already stored for the installation.
                 moreInfo: /docs
                 error: []
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '415': { $ref: '#/components/responses/UnsupportedMediaType' }
 
   /installations/{installation-id}/readings/{reading-id}:
@@ -1115,6 +1123,17 @@ components:
             code: 40601
             message: Not acceptable
             description: This API only returns application/json. Send an Accept header that allows it.
+            moreInfo: /docs
+            error: []
+    PayloadTooLarge:
+      description: The request body is larger than 100 KB (41301).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: 41301
+            message: Payload too large
+            description: The request body is larger than the server accepts.
             moreInfo: /docs
             error: []
     UnsupportedMediaType:

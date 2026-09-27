@@ -4,6 +4,7 @@
 %% Order on read routes (DECIDED): 405, 406, 401, 403 scope (40303), then 403/404 by jurisdiction and existence, then 400.
 %% Order on installation PUT and DELETE (DECIDED): 405, 406, 415 (PUT), 401, 403 scope, 403/404 by jurisdiction and existence, 412, 400, 409.
 %% POST /login has no bearer check: 405, 406, 415, then 400, then 401 (bad credentials).
+%% Before all of these, while express.json() reads the body (any URI): malformed JSON 400 (40001), body over 100 KB 413 (41301), unsupported charset/encoding 415 (41501). DECIDED 2026-09-27.
 %% 406 on every /solar/v1.0 route incl. /login; strong content ETag; 304 only after auth and scope pass (OQ-29).
 flowchart TD
   R["Incoming request"] --> RT{"Route and method known?"}

@@ -101,3 +101,66 @@ test('an async route that throws gives 500 / 50001 with no stack in the body', a
   assert.ok(!res.body.includes('secret internal detail'));
   assert.ok(!res.body.includes(' at '));
 });
+
+function assertStandardBody(parsed, code) {
+  assert.equal(parsed.code, code);
+  assert.equal(typeof parsed.message, 'string');
+  assert.equal(typeof parsed.description, 'string');
+  assert.equal(parsed.moreInfo, '/docs');
+  assert.ok(Array.isArray(parsed.error));
+}
+
+test('a body over 100 KB gives 413 / 41301 with the standard body, before the route checks', async (t) => {
+  const server = await listen(app);
+  t.after(() => server.close());
+
+  const body = JSON.stringify({ username: 'x'.repeat(200 * 1024), password: 'y' });
+  const res = await request(
+    server,
+    { method: 'POST', path: '/solar/v1.0/login', headers: { 'content-type': 'application/json' } },
+    body,
+  );
+
+  assert.equal(res.statusCode, 413);
+  assertStandardBody(JSON.parse(res.body), 41301);
+});
+
+test('an unsupported charset gives 415 / 41501 with the standard body', async (t) => {
+  const server = await listen(app);
+  t.after(() => server.close());
+
+  const res = await request(
+    server,
+    { method: 'POST', path: '/solar/v1.0/login', headers: { 'content-type': 'application/json; charset=latin1' } },
+    '{}',
+  );
+
+  assert.equal(res.statusCode, 415);
+  assertStandardBody(JSON.parse(res.body), 41501);
+});
+
+test('security headers are on every response: 200, 401, 404, /docs and OPTIONS', async (t) => {
+  const server = await listen(app);
+  t.after(() => server.close());
+
+  const responses = {
+    root: await request(server, { method: 'GET', path: '/' }),
+    unauthenticated: await request(server, { method: 'GET', path: '/solar/v1.0/provinces' }),
+    notFound: await request(server, { method: 'GET', path: '/no-such-route' }),
+    docs: await request(server, { method: 'GET', path: '/docs/' }),
+    preflight: await request(server, {
+      method: 'OPTIONS',
+      path: '/solar/v1.0/installations',
+      headers: { origin: 'https://example.org', 'access-control-request-method': 'POST' },
+    }),
+  };
+  for (const [name, res] of Object.entries(responses)) {
+    assert.equal(res.headers['x-content-type-options'], 'nosniff', name);
+    assert.equal(res.headers['x-frame-options'], 'DENY', name);
+    assert.equal(res.headers['strict-transport-security'], 'max-age=31536000', name);
+    assert.equal(res.headers['x-powered-by'], undefined, name);
+    assert.equal(res.headers['content-security-policy'], undefined, name);
+  }
+  assert.equal(responses.unauthenticated.statusCode, 401);
+  assert.equal(responses.notFound.statusCode, 404);
+});
