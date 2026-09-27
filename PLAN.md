@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 142 tests in 13 suites pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Phase 8 security review, fixes and audit done 27 Sep (commit `477d7d6`). Not done yet: the rest of Phase 8 (explain-back, production-mode rehearsal, code freeze), the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
+> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 142 tests in 13 suites pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Phase 8 security review, fixes and audit done 27 Sep (commit `477d7d6`); production-mode rehearsal passed 27 Sep; deploy workflow merged into `dev` 27 Sep. Not done yet: the rest of Phase 8 (explain-back, code freeze), the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback. Brief §14 ("make good the original submission") does not apply.
 
@@ -141,7 +141,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Base path + version | New `[WP §5.4, §5.5]` | `/{feature-code}/v{major}.{minor}/…` → `/solar/v1.0` (OQ-22) |
 | Processing-function naming | Conflict, decided `[YOU]`: lecture form | WP: verb names, not sub-resources. Lecture: noun sub-resource (OQ-21) |
 | Bearer + scopes | Confirmed `[WP §12.2]` | Token carries scopes; insufficient scope → the request fails (403) |
-| Richardson level | Note `[WP §1]` | §1 says "Level 1" but lists Level 2 features, and §2 says "Level 2". Cite carefully |
+| Richardson level | Note `[WP §1]` | §1 says "Level 1" but lists Level 2 features, and §2 says "Level 2". The white paper is inconsistent on this point |
 
 ### 4a. Where lecture notes and the white paper disagree
 
@@ -226,7 +226,7 @@ All paths are relative to `/solar/v1.0`; `/`, `/docs`, `/docs.json` stay outside
 
 **Same query on every readings collection** (`from`, `to`, `sort=(timestamp DESC)`, `offset`, `limit`); ties broken by `installation_id`. Rule (OQ-04): *path = which parent; query = how to read it*. Rejected: `GET /readings?district_id=` (phantom global collection), filters only on `/installations`, copying jurisdiction ids onto every reading.
 
-**Deliberately absent (defend at viva):** global `/readings` · `/devices` · PUT/PATCH/DELETE on readings · any PATCH · writes on province/district/substation · `/users` endpoints (users are seeded).
+**Deliberately absent** (reasons in my-decisions.md): global `/readings` · `/devices` · PUT/PATCH/DELETE on readings · any PATCH · writes on province/district/substation · `/users` endpoints (users are seeded).
 
 **Global behaviour:** `res.json()` everywhere · 406 on a non-JSON `Accept` · 415 on a non-JSON write body · while the body is read, before any other check: 400 (40001) malformed JSON, 413 (41301) over 100 KB, 415 (41501) unsupported charset or encoding · `nosniff`, `X-Frame-Options: DENY` and HSTS on every response · 400 with per-field `error[]` (422 not used) · 304 on `If-None-Match` (precedence) or `If-Modified-Since` · 412 on a stale `If-Match` · every 401 carries `WWW-Authenticate: Bearer realm="solar"`; a missing scope gives 403 with `error="insufficient_scope"` · one error body, codes = HTTP status × 100 + n · 405 + `Allow` on a known URI with an unsupported method · empty collection 200, missing member 404.
 
@@ -301,7 +301,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Artefact | Purpose |
 |---|---|
 | `README.md` | What it is, local run/seed/test, authentication, demo usernames (no passwords), endpoint table, known limits; live URL added at deployment |
-| `docs/design/my-decisions.md` | My decisions with their status and the superseded history (viva ammunition) |
+| `docs/design/my-decisions.md` | My decisions with their status and the superseded history |
 | `docs/design/data-model.md` | Collections, fields, indexes, derived-id rule, what is not stored |
 | `docs/design/diagrams/*.mmd` | 12 Mermaid sources (§18) |
 | `docs/openapi.yaml` | The contract; hand-written, documents what the code does; served at `/docs` and `/docs.json` |
@@ -365,7 +365,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Collaborator | Lecturer `nirangadh`: accepted 27 Sep |
 | AI log | Claude Code appends factual entries (CLAUDE.md rule); I fill the review lines and add chat sessions |
 
-**Risks to know:** a marker looking for `main` finds nothing, so the default branch must be `dev`; `deployment_qa` may prompt a viva question ("kept as a marker of a QA stage; this assignment deploys one environment"); the release merge is manual, so forgetting it leaves the live URL behind `dev`; deployment risk sits in the last week.
+**Risks:** a marker looking for `main` finds nothing, so the default branch must be `dev`; `deployment_qa` is kept as a marker of a QA stage; this assignment deploys one environment; the release merge is manual, so forgetting it leaves the live URL behind `dev`; deployment risk sits in the last week.
 
 ---
 
@@ -425,13 +425,13 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | 8 | Hardening: security review (E1), audit (E2), explain-back, production-mode rehearsal, **code freeze** | next |
 | 4b | **Smoke deploy** (runbook §12b), then delete the Azure resources | Mon 28 Sep (moved from 25 Sep because 23–25 Sep were lost) |
 | 9 | **Final deploy** on Azure: release merge, tag `submission`, seed, live checks, screenshots | Thu 1 Oct |
-| 10 | Report (I write it) and viva prep | 30 Sep – 3 Oct |
+| 10 | Report (I write it) and final checks | 30 Sep – 3 Oct |
 
 **Remaining timeline** (deadline **Sun 4 Oct 2026**; LMS time of day to note):
 
 | Date | Work |
 |---|---|
-| Sun 27 Sep | Done: Atlas database user password rotated (exposed in an earlier ZIP) and `.env` updated, the app connects; phase tags fixed (`p4`, `p7`). To do: fill my ai-log review lines; write the deploy workflow; Phase 8 security review and audit |
+| Sun 27 Sep | Done: Atlas database user password rotated (exposed in an earlier ZIP) and `.env` updated, the app connects; phase tags fixed (`p4`, `p7`); Phase 8 security review, fixes and audit done; production-mode rehearsal passed; deploy workflow merged into `dev`. To do: fill my ai-log review lines |
 | Mon 28 Sep | Smoke deploy |
 | Tue 29 – Wed 30 Sep | Phase 8 finish: explain-back, rehearsal, **code freeze**; report drafting starts |
 | Thu 1 Oct | **Final deploy** |

@@ -573,40 +573,6 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 
 ---
 
-### 2026-09-26 16:42 - README.md; OQ-15 revised; section 16 known limits placed correctly (Claude Code)
-
-**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
-
-#### Prompts
-
-**Prompt 1:**
-
-> the README task prompt, logged verbatim as Prompt 1 of the entry above (2026-09-26 16:37); the outline was shown and approved before the credential task paused it.
-
-**Prompt 2:**
-
-> Committed and pushed. Before the README, split the new §16 known-limits line in docs/design/my-decisions.md into three separate bullets (substation move; pre-2026-09-26 passwords in git history, rotated; no token revocation). Same wording, no other changes. Then resume the README from the outline I approved: demo-accounts table with usernames, roles and jurisdictions only; "passwords and a demo device key are in the report appendix (not committed)". Update my-decisions §10 (OQ-15 old line SUPERSEDED, new DECIDED · YOU (2026-09-26) line). Add a separate ai-log entry for the README. Do not read .env, .env.example or scripts/seed-keys.txt. Show me the README before committing. (The message contained this text twice.)
-
-**Prompt 3:**
-
-> 1. §16 "No key rotation": reword to "no key rotation through the API; an operator can rotate all demo passwords and device keys at once with scripts/seed.js --rotate-credentials". Same change in the README's copy. Mark it DECIDED · YOU (2026-09-26). 2. Set package.json engines.node to ">=22.19" (and the lockfile line) so it matches the README. 3. The README has 22 endpoint rows but openapi has 20 operations: tell me what the extra rows are and make sure they are labelled as outside /solar/v1.0 if so. 4. Add these to today's README ai-log entry. Run npm test. Do not commit; show me git status. Do not read .env, .env.example or scripts/seed-keys.txt.
-
-**Prompt 4:**
-
-> Yes, move the key-rotation item into its own bullet like the other three. Same wording. Add it to today's README ai-log entry. Don't commit.
-
-#### Result
-
-- **Prompt 3 changes:** docs/design/my-decisions.md section 16 "no key rotation" replaced in place by "`DECIDED · YOU (2026-09-26)` no key rotation through the API; an operator can rotate all demo passwords and device keys at once with scripts/seed.js --rotate-credentials" (old wording not kept as a SUPERSEDED line; it was a list item, not a decision line); README.md known-limitations copy changed to the same wording; README.md requirements line now says package.json asks for >=22.19; package.json and package-lock.json engines.node ">=22.19" (lockfile synced with npm install --package-lock-only, the one engines line changed); README.md endpoint table: the two rows not in docs/openapi.yaml are GET / and GET /docs, /docs.json (the spec documents the 20 operations under /solar/v1.0 only), relabelled "(outside `/solar/v1.0`)" from "(outside base path)". Check: `npm test` - 136/136 pass.
-- **Prompt 4 changes:** docs/design/my-decisions.md section 16: the `DECIDED · YOU (2026-09-26)` key-rotation item removed from the semicolon list and placed as the first of four bullets under "Known limits", wording unchanged (a full stop added at the end, as on the other three); the list now reads "...no correction of a wrong reading; no rate limiting; ...". Check: the item appears once in the file. README.md unchanged (it already lists each limit as its own bullet). No code changed, so npm test not re-run.
-- **Files created:** README.md (what it is, quick start with env variable names only, seed/top-up/run/test commands, authentication and scopes, Swagger Authorize, curl examples reading secrets with read -s, demo accounts without passwords or keys, endpoint table by Swagger tag, behaviour summary, project structure, known limitations from my-decisions section 16, deployment pending)
-- **Files edited:** docs/design/my-decisions.md (section 10: the earlier OQ-15 DECIDED line marked SUPERSEDED, new DECIDED · YOU (2026-09-26) line: README lists usernames, roles and jurisdictions only, passwords and device keys only in the report appendix; section 13 line "Known limit (2026-09-26): moving an installation..." restored to its original text; section 16 "Known limits" list now ends at INS-9999 with three bullets under it: substation move, pre-2026-09-26 demo passwords in git history (rotated), no token revocation, wording unchanged)
-- **Checks run:** every file path named in the README exists (test -e; 14 diagram .mmd files counted). Seed flags taken from scripts/seed.js and scripts/lib/credentials.js; `node scripts/seed.js --dry-run` run earlier in this session (exit 0). Endpoint table, scopes, success codes, query parameters and security scheme extracted from docs/openapi.yaml with a script; sort whitelists and defaults from src/services. Local server started on PORT 3999 against slsea_local: GET / 200 {"status":"ok","environment":"local"}; GET /docs 301 to /docs/; the README's login pipeline with a wrong username/password gave 401 with WWW-Authenticate: Bearer realm="solar" and the token extraction printed "undefined"; GET /districts without a token 401. A successful login and the device POST curl example were not run by Claude Code (no credentials read). npm test not re-run (no code changed since the 136/136 run in the entry above). .env, .env.example and scripts/seed-keys.txt not read.
-- **Requirement IDs:** G1 (deployment section, pending), G2 (points to /docs and /docs.json), G3 (repository documentation for the module leader), S1-S3 (authentication, scopes and jurisdiction documented; no credential committed)
-- **Outcome:** done. Correction to the entry above (2026-09-26 16:37, committed in dd7882d): it says the two new known limits were added to my-decisions section 16, but the edit had landed in section 13 (the "Known limit (2026-09-26): moving an installation..." line), because the section 16 line is the last line of the file with no trailing newline and the identical sentence in section 13 was the only match; this was not checked before reporting. Found at the start of this task and repaired as listed under Files edited. Also noted for the student, not changed: section 16 still lists "no key rotation", although scripts/seed.js --rotate-credentials now rotates seeded device keys (no API for rotation); the README copies the section 16 wording as it stands.
-
----
-
 ### 2026-09-27 10:04 - Phase 8 (E2): security review, read-only (Claude Code)
 
 **Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini

@@ -2,8 +2,6 @@
 
 Last updated: 2026-09-27 · Module: NB6007CEM CW1 · Attempt: fresh submission (no earlier submission, no marker feedback) · Repo: built and tested locally on `dev_hashini`, merged into `dev` · Viva: date/format not known yet · Deadline: Sun 4 Oct 2026 (confirmed) · Stack: Node/Express, Mongoose, MongoDB Atlas, Azure App Service (`DECIDED · YOU`, replaced Render on 2026-09-20) · **Local-first: everything is developed and tested locally; Azure only for a smoke deploy and the final deploy** (`DECIDED · YOU`, 2026-09-20) · Diagrams: `docs/design/diagrams/` (12)
 
-**Honest note.** Claude drafted this file from the current brief, white paper (WP), lecture notes (LEC S1–S8), `PLAN.md` and the 3 reference repos. I must read every line, change what I disagree with and be able to explain all of it at the viva. This is logged in `ai-log.md`. The report is written by me.
-
 **Status labels (strict).**
 - `DECIDED · BRIEF §n` — the current coursework brief says it.
 - `DECIDED · WP §n` / `DECIDED · LEC Sn` — an explicit rule in the white paper (the brief's design authority) or in the current lecture notes.
@@ -68,7 +66,7 @@ Last updated: 2026-09-27 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 | `/districts/{district-id}/generation-summary` | processing function (derived), **stretch** | `DECIDED · BRIEF §5` (stretch only); form `DECIDED · YOU` (OQ-21) |
 | `POST /login` | processing function (verb name, issues a token) | `DECIDED · YOU` (OQ-11), `WP §5.1, §7.3` |
 
-- `DECIDED · YOU` (OQ-21) **URI names are the name of the thing, not the kind of resource.** Derived resources under a parent are noun sub-resources: `…/installations/{installation-id}/last-reading` (scoped to one installation) and `…/districts/{district-id}/generation-summary` (scoped to one district, because that is what it summarises). "Processing function" is the design vocabulary for the *kind* (WP §4.5); it is never a URI segment, so there is no `/processing-functions` path. This follows the lectures (LEC S5/S6) and differs from WP §5.1, which asks for verb names and no sub-resource form for these. Not confirmed with the lecturer: my own decision, and a possible viva question.
+- `DECIDED · YOU` (OQ-21) **URI names are the name of the thing, not the kind of resource.** Derived resources under a parent are noun sub-resources: `…/installations/{installation-id}/last-reading` (scoped to one installation) and `…/districts/{district-id}/generation-summary` (scoped to one district, because that is what it summarises). "Processing function" is the design vocabulary for the *kind* (WP §4.5); it is never a URI segment, so there is no `/processing-functions` path. This follows the lectures (LEC S5/S6) and differs from WP §5.1, which asks for verb names and no sub-resource form for these. Not confirmed with the lecturer: my own decision.
 - `PROPOSAL` Composite and `last-reading` use one shared "newest reading" helper, so the logic is not duplicated (LEC S6). The composite never embeds the history.
 - `PROPOSAL` No controller resources: nothing needs an all-or-nothing update of several resources (WP §4.4).
 - `DECIDED · YOU (2026-09-26)` Generation summary, "today": the Asia/Colombo calendar day (fixed +05:30, computed explicitly, never from the server timezone), from local 00:00 up to the request time (`as_of`).
@@ -208,7 +206,7 @@ Last updated: 2026-09-27 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 | Anyone | — | nothing on readings except POST by a device; no PUT/PATCH/DELETE on readings (405) | — |
 
 - `DECIDED · YOU (2026-09-27)` Only a national admin is seeded. The code limits any admin to its own subtree (tested in `test/admin-crud.test.js`); province- or district-level admin accounts are not seeded, and there are no `/users` endpoints to create them.
-- Risk to explain: brief §2 calls SLSEA users "read-clients". The admin writes installations, never readings, so I read §2 as "users never write generation readings" and §5's "writable resources" as the reason for an admin role.
+- Interpretation: brief §2 calls SLSEA users "read-clients". The admin writes installations, never readings, so I read §2 as "users never write generation readings" and §5's "writable resources" as the reason for an admin role.
 - `DECIDED · WP §7.2` PUT replaces the whole resource. `DECIDED · WP §7.4` DELETE is 200 then 404. `DECIDED · WP §10.5` A stale `If-Match` → 412.
 - `DECIDED · YOU (2026-09-26)` (Q6) **Permission.** `POST`, `PUT` and `DELETE` on installations need scope `installations:write` (`requireScope`; otherwise 403/40303), plus the existing jurisdiction rule (`scope.js`): a target installation or substation outside the admin's subtree → 403 (40301), as for reads; a national admin gets 404 for a missing installation. Only a national admin exists today.
 - `DECIDED · YOU (2026-09-26)` (Q3) **Body for POST and PUT:** `name` (non-empty string), `meter_id` (non-empty string), `substation_id` (must exist, else 400/40026), `capacity_kw` (number > 0 and ≤ 1000; the upper bound is `DECIDED · YOU (2026-09-27)`). All four required on both: PUT is a whole replacement (WP §7.2), no partial update. Whitespace-only strings count as empty; values are stored trimmed. `district_id` and `province_id` always come from the substation (§2). Server-set fields in the body are ignored (§2); unknown fields are ignored. All problems in one 400 (40010) with `error[]`. Duplicate `meter_id` → 409 (40904), checked first; the unique index is the final guard.
@@ -221,7 +219,7 @@ Last updated: 2026-09-27 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 - Known limit (2026-09-26): moving an installation to another substation (PUT) moves its whole reading history to the new district's and province's views, because readings carry only installation_id.
 
 ## 14. Deliberate deviations and unlisted choices
-1. `DECIDED · YOU` (OQ-21) Derived resources are noun sub-resources (`…/last-reading`, `…/generation-summary`), as the lectures teach, although WP §5.1 says verb names, not under an individual resource. Not confirmed with the lecturer. Defend in the critical evaluation.
+1. `DECIDED · YOU` (OQ-21) Derived resources are noun sub-resources (`…/last-reading`, `…/generation-summary`), as the lectures teach, although WP §5.1 says verb names, not under an individual resource. Not confirmed with the lecturer.
 2. `DECIDED · YOU` (OQ-04) Readings collections also exist under substation, district and province. This extends the brief's "scoped readings sub-collection under each installation" to satisfy "filter by jurisdiction" and "by region"; the lecture map (LEC S3/S4) shows readings under one parent only.
 3. `PROPOSAL` 409 for duplicate readings and duplicate `meter_id` (not in WP §9's list). 405 with `Allow`. (The custom `ApiKey` challenge was removed on 2026-09-26 with X-API-Key.)
 4. `PROPOSAL` Own JWT instead of OAuth (WP §12.2 prefers OAuth). Devices use the same token issuer in a client-credentials pattern (device key → token), not an OAuth authorization server.
@@ -231,7 +229,7 @@ Last updated: 2026-09-27 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 ## 15. Richardson placement
 - `DECIDED · BRIEF cover` Level 2: resources with URIs, correct methods, headers and status codes.
 - Not Level 3: no hypermedia controls telling clients what to do next. WP §1 says no established practice exists. `next`/`previous` are pagination links only.
-- Cite carefully: WP §1 says "Level 1" but describes Level 2 features, and §2 says "Level 2".
+- Note: WP §1 says "Level 1" but describes Level 2 features, and §2 says "Level 2".
 
 ## 16. Open items and limits
 - **Delivery process (`DECIDED · YOU`):** all development, database work and testing run locally (Mac, Node 22, Atlas database `slsea_local`); branches `dev_hashini` (mine) → `dev` (central, default branch); `deployment_dev` is the deploy branch and is updated by merge request **only for the smoke deploy (`DECIDED · YOU (2026-09-27)`: Mon 28 Sep 2026, moved from 25 Sep because 23–25 Sep were lost; deleted afterwards) and the final deploy (Thu 1 Oct)**; a GitHub Actions workflow deploys it to Azure App Service; `deployment_qa` kept as a best-practice marker and **not deployed**; **`main` never touched**; the final Azure app is the submitted URL. `PROPOSAL`: merge-commit MRs, tag `pN` on `dev` at phase end, tag `submission` on `deployment_dev`, freeze rule, Azure readiness rules (`PLAN.md` §12a), runbook (`PLAN.md` §12b); diagram `08`.

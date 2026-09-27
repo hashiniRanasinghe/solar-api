@@ -1,7 +1,7 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
 > Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy before 1 Oct, final deploy Thu 1 Oct).
-> **Where I am (2026-09-27):** build steps A–D are done (table below); phase tags fixed; Atlas password rotated. Next: Part E (review and freeze), Part H (deployment), Parts F–G (report and viva).
+> **Where I am (2026-09-27):** build steps A–D are done (table below); phase tags fixed; Atlas password rotated; Part E security review, fixes and audit done; production-mode rehearsal passed; deploy workflow (H2) merged into `dev`. Next: code freeze, Part H (deployment), Parts F–G (report and viva).
 > Tags: `[YOU]` my decision · `[PROPOSAL]` a suggestion until I confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper.
 
 ---
@@ -114,18 +114,11 @@ Prompts, checks and outcomes for each step are in `ai-log.md`.
 
 **E1. Security review**
 
-```text
-Review the repo for: auth bypass, missing scope checks, key/password storage, NoSQL injection, input
-validation, CORS, secrets in git history, error leakage, JWT settings. Table: issue | file:line |
-severity | suggested fix. Do not apply fixes. Do not read .env or scripts/seed-keys.txt.
-```
+Security review of the repo by Claude Code (read-only); the prompt, findings and fixes are in `ai-log.md` entries 21 (review) and 22 (fixes).
 
 **E2. Audit against the brief**
 
-```text
-Audit the repo against PLAN.md §2 and §14 and the final rubric. Table: requirement | met? | evidence
-(file, test or endpoint) | gap. End with the top fixes ranked by marks gained. Do not edit files.
-```
+Audit against `PLAN.md` §2, §14 and the final rubric by Claude Code (read-only); the prompt and result are in `ai-log.md` entry 23.
 
 Then: freeze the code, run the production-mode rehearsal (below), tag `p8` on `dev`.
 
@@ -160,7 +153,7 @@ The AI never writes, rewrites or paraphrases my report text.
 
 ---
 
-## Part G — Viva prep
+## Part G — Final checks
 
 **G1. Final checklist**
 - [ ] The submitted Azure URL runs the commit tagged `submission` on `deployment_dev`, works, and `environment` says `dev` (warm it up 2 minutes before)
@@ -170,7 +163,6 @@ The AI never writes, rewrites or paraphrases my report text.
 - [ ] `/docs` loads; demo logins from the report appendix work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
 - [ ] I can explain every file in `src/`, `scripts/`, `test/`
-- [ ] I can answer: why no Device entity · why append-only · why no global `/readings` · why 201 + `Location` · 401 vs 403 · why a device JWT instead of an API key · why composite and `last-reading` both exist · how jurisdiction is enforced · why 403 before 404 · why not Level 3
 
 ---
 
@@ -184,22 +176,14 @@ Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) fi
 
 - [x] Production-mode rehearsal passes (Part E): fresh clone of `dev`, 27 Sep
 - [x] Local suite green (`npm test`): 142 passed, 27 Sep
-- [ ] `package.json` has `start` and `engines`; `package-lock.json` in sync
-- [ ] The deploy workflow (H2) is on `dev`
+- [x] `package.json` has `start` and `engines`; `package-lock.json` in sync (fresh-clone `npm ci` passed in the rehearsal, 27 Sep)
+- [x] The deploy workflow (H2) is on `dev`: merged 27 Sep
 - [x] Atlas storage checked (M0 512 MB): 27 Sep, `sample_mflix` dropped, `slsea_local` 22.28 MB; no trim needed before seeding `slsea_dev`
 - [x] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code); 27 Sep, the seed dry run printed `slsea_dev`
 
 ### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`)
 
-```text
-Task: add ONE GitHub Actions workflow that deploys to Azure App Service. Read CLAUDE.md first.
-File: .github/workflows/deploy-deployment-dev.yml. Trigger: push to branch deployment_dev, plus workflow_dispatch.
-permissions: contents read only. One job on ubuntu-latest: actions/checkout@v4, actions/setup-node@v4 with node 22,
-npm ci --omit=dev, then azure/webapps-deploy@v3 with app-name: ${{ vars.AZURE_WEBAPP_NAME }},
-publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}, package: . (the docs/ folder must be included).
-No secret values anywhere in the file, no tests or lint steps, no other workflows. Do not read or create .env or the publish profile.
-Show the file and a plan first; wait for my OK.
-```
+Written by Claude Code in plan mode on `dev_hashini`; the prompt is quoted verbatim in `ai-log.md` entry 25.
 
 Review, log, commit on `dev_hashini`, pull request into `dev`. Azure's Deployment Center must not commit its own workflow.
 
