@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 136 tests pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Not done yet: Phase 8 hardening and code freeze, the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
+> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 142 tests in 13 suites pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Phase 8 security review, fixes and audit done 27 Sep (commit `477d7d6`). Not done yet: the rest of Phase 8 (explain-back, production-mode rehearsal, code freeze), the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback. Brief §14 ("make good the original submission") does not apply.
 
@@ -184,14 +184,15 @@ src/
   routes/       index.js (mounting order), method-guards.js (405), device-readings.js, installation-writes.js,
                 provinces.js  districts.js  substations.js  installations.js  docs.js
   middleware/   allow-methods (405)  accept-json (406)  require-json (415)  authenticate (401)
-                require-scope (403 40303)  own-installation (403 40302)  private-cache  errorHandler
+                require-scope (403 40303)  own-installation (403 40302)  private-cache  security-headers
+                errorHandler (also 400/413/415 from the body parser)
   controllers/  HTTP in and out; set Location, ETag, Last-Modified
   services/     auth, scope (jurisdiction), list-query, readings, installations, provinces, districts, substations
   repositories/ the only code that queries MongoDB
   models/       Mongoose schemas and indexes
   utils/        errors, pagination, sort, links, time-window, if-match, last-modified, reading-id
 scripts/        seed.js, topup.js, lib/ (readings, credentials)
-test/           12 suites, 136 tests
+test/           13 suites, 142 tests
 docs/           openapi.yaml, design/ (my-decisions.md, data-model.md, diagrams/), evidence/
 ```
 
@@ -207,7 +208,7 @@ All paths are relative to `/solar/v1.0`; `/`, `/docs`, `/docs.json` stay outside
 |---|---|---|---|---|---|
 | 1 | `GET /` | health | none | 200 | — |
 | 2 | `GET /docs` (301 to `/docs/`), `GET /docs.json` | docs from `docs/openapi.yaml` | none | 200 | — |
-| 3 | `POST /login` | processing function `[WP §5.1, §7.3]` | `{username, password}` or `{installation_id, device_key}` | 200 + token | 400 (40001 malformed JSON; 40010 with items 40011/40012 user, 40020/40021 device, 40022 both or neither form), 401 (40103 user, 40106 device), 405, 406, 415; order 405, 406, 415, 400, 401 |
+| 3 | `POST /login` | processing function `[WP §5.1, §7.3]` | `{username, password}` or `{installation_id, device_key}` | 200 + token, `Cache-Control: no-store` | 400 (40001 malformed JSON; 40010 with items 40011/40012 user, 40020/40021 device, 40022 both or neither form), 401 (40103 user, 40106 device), 405, 406, 413 (41301), 415; order 405, 406, 415, 400, 401 |
 | 4 | `GET /provinces`, `/provinces/{province-id}` | collection, atomic | JWT `solar:read` | 200 / 304 | 400, 401, 403, 404 |
 | 5 | `GET /districts`, `/districts/{district-id}` (`?province_id=`) | collection, atomic | JWT `solar:read` | 200 / 304 | 400, 401, 403, 404 |
 | 6 | `GET /substations`, `/substations/{substation-id}` (`?district_id=`, `?province_id=`) | collection, atomic | JWT `solar:read` | 200 / 304 | 400, 401, 403, 404 |
@@ -217,9 +218,9 @@ All paths are relative to `/solar/v1.0`; `/`, `/docs`, `/docs.json` stay outside
 | 10 | `GET /installations/{installation-id}/readings` | **scoped collection**: `from`, `to`, `sort`, `offset`, `limit` | JWT `solar:read` | 200 / 304 | 400, 401, 403, 404 |
 | 10a–c | `GET /substations/{id}/readings`, `/districts/{id}/readings`, `/provinces/{id}/readings` | **scoped collections** (OQ-04), same query | JWT `solar:read` | 200 / 304 | 400, 401, 403, 404 |
 | 11 | `GET /installations/{installation-id}/readings/{reading-id}` | atomic, target of `Location` `[LEC S8]` | JWT `solar:read` | 200 / 304 | 401, 403, 404 |
-| 12 | `POST /installations/{installation-id}/readings` | ingestion `[WP §7.3]` | device JWT `readings:write` | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403 (40303, 40302), 405, 406, 409 (40901 same time, 40903 older, 40902 lower energy), 415; **no 404** (OQ-26) |
-| 13 | `POST /installations` | create; server picks the next `INS-NNNN`, issues the device key once (OQ-28) | JWT admin `installations:write` | **201** + `Location`, `ETag` (as GET), `Last-Modified`, `Cache-Control: no-store`; no `Content-Location` | 400 (40010 + 40023–40027), 401, 403, 405, 406, 409 (40904, 40906), 415 |
-| 14 | `PUT /installations/{installation-id}` | whole-document replace `[WP §7.2]`; never creates | JWT admin | 200 + GET representation, new `ETag`, `Last-Modified` | 400 (40010, 40028), 401, 403, 404, 405, 406, 409, 412 (optional `If-Match`), 415 |
+| 12 | `POST /installations/{installation-id}/readings` | ingestion `[WP §7.3]` | device JWT `readings:write` | **201** + `Location`, `Content-Location`, `ETag`, `Last-Modified`, body | 400, 401, 403 (40303, 40302), 405, 406, 409 (40901 same time, 40903 older, 40902 lower energy), 413, 415; **no 404** (OQ-26) |
+| 13 | `POST /installations` | create; server picks the next `INS-NNNN`, issues the device key once (OQ-28) | JWT admin `installations:write` | **201** + `Location`, `ETag` (as GET), `Last-Modified`, `Cache-Control: no-store`; no `Content-Location` | 400 (40010 + 40023–40027), 401, 403, 405, 406, 409 (40904, 40906), 413, 415 |
+| 14 | `PUT /installations/{installation-id}` | whole-document replace `[WP §7.2]`; never creates | JWT admin | 200 + GET representation, new `ETag`, `Last-Modified` | 400 (40010, 40028), 401, 403, 404, 405, 406, 409, 412 (optional `If-Match`), 413, 415 |
 | 15 | `DELETE /installations/{installation-id}` | delete; refused while readings exist (OQ-13) | JWT admin | 200 + deleted representation, then 404 | 401, 403, 404, 405, 406, 409 (40905), 412 |
 | 16 | `GET /districts/{district-id}/generation-summary` | derived, stretch A8 (OQ-21) | JWT `solar:read` | 200 (never 304: `as_of` changes) | 401, 403, 404 |
 
@@ -227,7 +228,7 @@ All paths are relative to `/solar/v1.0`; `/`, `/docs`, `/docs.json` stay outside
 
 **Deliberately absent (defend at viva):** global `/readings` · `/devices` · PUT/PATCH/DELETE on readings · any PATCH · writes on province/district/substation · `/users` endpoints (users are seeded).
 
-**Global behaviour:** `res.json()` everywhere · 406 on a non-JSON `Accept` · 415 on a non-JSON write body · 400 with per-field `error[]` (422 not used) · 304 on `If-None-Match` (precedence) or `If-Modified-Since` · 412 on a stale `If-Match` · every 401 carries `WWW-Authenticate: Bearer realm="solar"`; a missing scope gives 403 with `error="insufficient_scope"` · one error body, codes = HTTP status × 100 + n · 405 + `Allow` on a known URI with an unsupported method · empty collection 200, missing member 404.
+**Global behaviour:** `res.json()` everywhere · 406 on a non-JSON `Accept` · 415 on a non-JSON write body · while the body is read, before any other check: 400 (40001) malformed JSON, 413 (41301) over 100 KB, 415 (41501) unsupported charset or encoding · `nosniff`, `X-Frame-Options: DENY` and HSTS on every response · 400 with per-field `error[]` (422 not used) · 304 on `If-None-Match` (precedence) or `If-Modified-Since` · 412 on a stale `If-Match` · every 401 carries `WWW-Authenticate: Bearer realm="solar"`; a missing scope gives 403 with `error="insufficient_scope"` · one error body, codes = HTTP status × 100 + n · 405 + `Allow` on a known URI with an unsupported method · empty collection 200, missing member 404.
 
 **Composite vs last-reading:** the composite serves "installation + latest state in one call"; `last-reading` serves reading-only clients. One helper feeds both `[LEC S6]`.
 
@@ -270,8 +271,11 @@ Full detail: `docs/design/data-model.md`. Public ids are string business ids (`P
 | Jurisdiction | National sees all; province/district users see their subtree only; ancestors → 403; scoped users get 403 before 404; collections narrowed to scope (a filter naming another jurisdiction → 200, count 0); on readings routes the check runs on the **path parent** | `services/scope.js` | `[YOU]` (OQ-04, OQ-12) |
 | Users never write readings | User tokens never carry `readings:write` → 403 (40303) | `require-scope` | `[BRIEF §2]` |
 | Passwords / keys | bcrypt; SHA-256 device key hash with a constant-time compare; secrets, hashes and login bodies never logged or returned | services, models `toJSON` | `[PROPOSAL]` |
-| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without `JWT_SECRET`; demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[PROPOSAL]` |
+| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without a `JWT_SECRET` of at least 32 bytes (the value is never printed), and each environment has its own secret (no `iss`/`aud`, 27 Sep); demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[PROPOSAL]` |
 | Injection / input | Every query and body value type-checked; a filter given twice → 400 (no arrays reach the database); range checks on `power_kw`, `voltage`, `energy_kwh`; `limit` 1–100; Express JSON body limit (default 100 kB) | services | `[PROPOSAL]` |
+| Tokens | HS256 pinned; a token whose `exp` is missing or not a number → 401 (40102) (27 Sep) | `services/auth.js` | `[YOU]` |
+| Headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000` on every response; no CSP (it would break Swagger UI); `X-Powered-By` off; `Cache-Control: no-store` on the login token (27 Sep) | `middleware/security-headers.js`, `controllers/auth.js` | `[YOU]` |
+| CORS | Open (`*`): bearer tokens only, no cookies, so no CSRF; the API is meant to be called by dashboards and other clients (27 Sep) | `app.js` | `[YOU]` |
 | Transport | HTTPS via Azure App Service (HTTPS Only on) | deploy | `[LEC S7]` |
 | Error leakage | Central handler; no stack traces | `errorHandler.js` | `[PROPOSAL]` |
 | Honest labelling | Own JWT issued by `/login`, not a full OAuth 2.0 flow | report | `[PROPOSAL]` |
@@ -284,7 +288,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 
 | Level | What | How |
 |---|---|---|
-| Behaviour (automated) | 12 suites, 136 tests: status codes, headers, bodies, scope, errors, spec parity | `npm test` (`TZ=UTC`, one file at a time, app in-process). Read tests use `slsea_local`; `admin-crud` and `device-write` write only to `slsea_test` and empty it |
+| Behaviour (automated) | 13 suites, 142 tests: status codes, headers, bodies, scope, errors, spec parity | `npm test` (`TZ=UTC`, one file at a time, app in-process). Read tests use `slsea_local`; `admin-crud` and `device-write` write only to `slsea_test` and empty it |
 | Seed integrity | Counts, derived ids match their parents, 672 readings per installation, 15-minute boundaries, no energy decrease | printed by `scripts/seed.js` (PASS/FAIL) |
 | Production-mode rehearsal | The app runs from repo contents only, as on Azure | fresh clone, `npm ci --omit=dev`, `TZ=UTC NODE_ENV=production PORT=8080 node --env-file=<git-ignored file> src/server.js`; run again in Phase 8 |
 | Live smoke check (deploys) | The automated suite cannot target a URL (no `BASE_URL`), so the live check is a short curl checklist | `GET /` (200, `environment: dev`), `/docs` loads, login 200, one read 200, 401 without a token, 403 across jurisdictions, 304 with `If-None-Match`, one device POST 201 with a fresh timestamp. Save the `curl -i` output in `docs/evidence/` |
@@ -418,7 +422,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | 6 | Query surface, conditional GET (strong ETag, 304), 406 | done 26 Sep |
 | 7 | Admin CRUD on installations, 405 everywhere, district summary (stretch), OpenAPI at `/docs` | done 26 Sep |
 | 7b | Credential fix: demo passwords generated at seed time, `--rotate-credentials`; README | done 26 Sep |
-| 8 | Hardening: security review (playbook E2), audit against the brief (E3), explain-back, production-mode rehearsal, **code freeze** | next |
+| 8 | Hardening: security review (E1), audit (E2), explain-back, production-mode rehearsal, **code freeze** | next |
 | 4b | **Smoke deploy** (runbook §12b), then delete the Azure resources | Mon 28 Sep (moved from 25 Sep because 23–25 Sep were lost) |
 | 9 | **Final deploy** on Azure: release merge, tag `submission`, seed, live checks, screenshots | Thu 1 Oct |
 | 10 | Report (I write it) and viva prep | 30 Sep – 3 Oct |
@@ -532,7 +536,7 @@ The final rubric `NB6007CEM_Marking_Rubric.pdf` (25 Aug 2026) is authoritative. 
 | API design top level: filtering, sorting, conditional GET, full range of headers | Built |
 | Code: modular structure, short comments, exception handling, no lint errors | Layers and a central error handler built; no linter added |
 | Version control: regular commits, branching and merging | `dev_hashini` → `dev` → `deployment_dev` with merge commits and tags |
-| Functionality: "adequately tested" | 136 automated tests |
+| Functionality: "adequately tested" | 142 automated tests |
 | Architecture: documentation, scalability, reliability, security | Diagrams and decisions; scale and reliability limits stated honestly in the critical evaluation |
 | AI-content threshold 5% | **Outdated.** The current brief says below 15%; write my own prose regardless |
 
@@ -546,6 +550,7 @@ Sources in `docs/design/diagrams/` (Mermaid). Each file starts with `%%` comment
 |---|---|---|
 | `01-context.mmd` | Devices (write), users (read), admin, marker, Azure, Atlas; dashboards out of scope | R1, R4 |
 | `02-resource-model.mmd` | Resources by kind, URI scoping, the four readings parents, what is not built | R1, R2 |
+| `03a-conceptual-model.mmd` | Conceptual model (implementation-independent): entities, key attributes, cardinalities | R1 |
 | `03-er-model.mmd` | Entities, keys, derived ids, cumulative energy, no Device entity | R1 |
 | `04a-auth-device-write.mmd` | Device login and POST readings: 401 vs 403 | R3 |
 | `04b-auth-user-read.mmd` | User login and jurisdiction-scoped read | R3 |

@@ -33,6 +33,8 @@ Formatting note: reformatted for readability on 2026-09-26: each entry has a hea
 | 20 | 2026-09-26 16:42 | README.md; OQ-15 revised; section 16 known limits placed correctly (Claude Code) | Split and reworded the §16 limits; set `engines` to ≥22.19; checked the extra endpoint rows |  |
 | 21 | 2026-09-27 10:04 | Phase 8 (E2): security review, read-only (Claude Code) | Set the ten review areas and the output table; read-only (no fixes, no database writes, no commit); secrets reported by file, commit and type only |  |
 | 22 | 2026-09-27 10:20 | Phase 8 (E1): security fixes from the review (Claude Code) | Decided each fix: 32-byte secret, one secret per environment instead of iss/aud, headers without CSP or helmet, exp required, 413/41301, no-store on login, CORS stays open, chmod 600; parser errors before 405/406/401; checked review item 10 and my local secret myself |  |
+| 23 | 2026-09-27 10:29 | Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code) | Set the four outputs (requirements table, rubric bands, consistency list, fixes ranked by marks per hour); read-only (no fixes, no database writes, no commit); evidence to be checked, not taken from PLAN |  |
+| 24 | 2026-09-27 11:00 | Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code) | Chose the conceptual-model section and diagram 03a, wrote the access-control decision text, listed the consistency fixes; approved the diff with all 5 extras; chose mermaid.parse (option B) for the diagram check |  |
 
 ## Entry format
 
@@ -676,3 +678,56 @@ In-memory SORT: no (no SORT stage in the explain, usedDisk false; one key per in
 - **Note:** my-decisions §8 had no malformed-JSON line (40001 was only in the §12 code list; the rule itself is in CLAUDE.md), so one new §8 line covers malformed JSON, 413 and the parser 415 together.
 - **Requirement IDs:** S1, S2, S4 (token handling: secret length, exp required), V5 (one error schema: 413/415 instead of 500), G1 (HSTS for the HTTPS deployment), A5 (headers)
 - **Outcome:** done. First full run 141/142: the new test built its string-exp token with jwt.sign, which refuses a non-number exp; the test now signs that token by hand with HMAC-SHA256, and the rerun passed 142/142.
+
+### 2026-09-27 10:29 - Phase 8 (E2): audit against the brief and the final rubric, read-only (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1:**
+
+> Task: Phase 8 audit against the brief (playbook E2). READ-ONLY: do not create, edit or delete any file except the ai-log entry at the end; no database writes; do not commit. Do not read .env, any *.env or scripts/seed-keys.txt. Read CLAUDE.md, the brief (refs/course-library/NB6007CEM_Coursework_Brief.pdf, especially §3, §5, §6, §7, App. A), the final rubric (NB6007CEM_Marking_Rubric.pdf, all 8 dimensions), PLAN.md §2 and §14, and docs/design/my-decisions.md first.
+>
+> 1. Requirements table: every requirement in PLAN §2 and every item in brief App. A: ID | requirement | met? (yes / partial / no / pending deploy) | evidence (file:line, test name, or endpoint) | gap. Check the evidence exists; do not trust PLAN's status column.
+> 2. Rubric table: for each of the 8 dimensions, the band the current evidence supports (First / Upper second / ...) quoting the band words it meets, and what is missing for the next band. Say which items only the deployment or the report can provide.
+> 3. Consistency: list any place where README, docs/openapi.yaml, my-decisions.md, PLAN.md, diagrams or ai-log.md contradict the code or each other (status codes, error codes, field names, check order, test counts, dates).
+> 4. End with the top fixes ranked by marks gained per hour of work, marking each as code / docs / deploy / report.
+> Do not apply any fix. Then add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+#### Result
+
+- **Files created:** none in the repository (one read-only count script in the session scratchpad)
+- **Files edited:** ai-log.md (this entry and its Contents row only)
+- **Checks run:** read the brief (all pages), the final rubric (all 8 dimensions), PLAN §2, §6, §7, §9, §10, §14, my-decisions, README, docs/openapi.yaml (parsed: 20 operations and their response codes and headers), diagrams 03 and 04c, data-model.md headings, and every test name. Read-only tests: `TZ=UTC node --test --test-concurrency=1` over all files except admin-crud and device-write (these write to slsea_test, so they were not run) - 90/90 pass; the other 52 tests were last run in entry 22 (142/142). Read-only database query on slsea_local (counts and dates only): 240 installations with readings, 674-676 readings each, 161,762 in total, oldest 2026-09-19T03:00Z, newest 2026-09-26T03:45Z (about 25 hours before the query), 4 users, 0 installations without a device key. Git history: 44 commits over 19-27 Sep. .env, .env.example and scripts/seed-keys.txt not read; nothing written to any database.
+- **Findings, in short:** no code requirement from PLAN §2 or brief App. A is unmet locally; pending: G1 deployment, G2 live Swagger, G3 collaborator confirmation, G4-G6 report, declaration and viva, R1-R6. Rubric gaps named: no deployment yet (Deployment, Functionality, "HTTPS throughout"), no report, no recorded scope-vs-attribute-based access-control trade-off (Security First band), the data model documents are MongoDB-shaped rather than implementation-independent (Architecture First band), local readings end on 26 Sep (top-up needed before marking). Eight documentation inconsistencies listed (PLAN test counts 136/12 suites vs 142/13; PLAN status, §6, §7 and §9 not updated for E1; README 413 and security-header gaps; spec lacks the login no-store header; my-decisions §8 table rows list 405/406 inconsistently; README "one national admin role only" vs §13/§16).
+- **Requirement IDs:** all of PLAN §2 (audited)
+- **Outcome:** done. The write tests (admin-crud, device-write) were not re-run in this task because the prompt forbade database writes.
+
+### 2026-09-27 11:00 - Documentation fixes from the audit: conceptual model, scopes-and-attributes decision, consistency list (Claude Code)
+
+**Tool/model:** Claude Code (Opus 5.5) · **Branch:** dev_hashini
+
+#### Prompts
+
+**Prompt 1** (sent twice; the second copy was identical and came before any OK):
+
+> Task: documentation-only fixes from the audit (entry 23). No code or tests change. Read CLAUDE.md, docs/design/my-decisions.md, docs/design/data-model.md and PLAN.md first. Show the diff before writing; wait for my OK. Do not read .env or scripts/seed-keys.txt. Do not commit.
+>
+> 1. docs/design/data-model.md: add a first section "Conceptual model (implementation-independent)": entities (Province, District, Substation, Installation, Generation reading, User), their attributes in plain terms (no _id, no indexes, no derived ids, no collection names), relationships with cardinalities (1 to many down the chain; a User is linked to 0 or 1 Province or District by jurisdiction), the rules: a reading belongs to exactly one installation and is never changed; meter_id is an attribute of an installation; energy is a running total. Rename the rest as "Physical model (MongoDB)". Add a small Mermaid erDiagram for the conceptual model in a new file docs/design/diagrams/03a-conceptual-model.mmd (entities, key attributes, cardinalities only) and check it parses.
+> 2. docs/design/my-decisions.md §10: add DECIDED · YOU (2026-09-27): "Access control combines scopes and attributes. Scopes (solar:read, readings:write, installations:write) decide what kind of action a token may take; the jurisdiction attributes in the token (jurisdiction_level, jurisdiction_id) are compared with the resource's district_id/province_id to decide where. Trade-off: full attribute-based access control (more attributes such as time, device state or per-installation grants, evaluated by a policy engine) would be finer-grained but harder to test and audit; this API keeps three fixed scopes and one jurisdiction rule in services/scope.js, fully tested. Limit: it cannot express per-installation read grants without new code."
+> 3. Fix the audit's consistency list: PLAN test counts (142 tests, 13 suites) and the status line (Phase 8 security fixes done 27 Sep); PLAN §6 tree (security-headers), §7 (413 on the body operations and in Global behaviour; no-store on /login), §9 (32-byte secret, exp required, security headers, open CORS with the reason); README 413 in the behaviour table, security headers in the structure rows, admin wording as in my-decisions §13; docs/openapi.yaml: Cache-Control: no-store header on the POST /login 200 response; my-decisions §8 table: add 405 and 406 to the POST …/readings row; §12 heading date "Codes in use (2026-09-27)"; PLAN §13 Phase 8 row: "security review (E1), audit (E2)" to match the playbook.
+> Then run node --test test/openapi.test.js (spec changed), add the ai-log entry with its Contents row ("My review" empty) and show git status.
+
+**Prompt 2:**
+
+> OK, apply the diff from your previous message including all 5 extras. Diagram check: B (mermaid.parse only). Record the #21 heading note in entry #24. Then run node --test test/openapi.test.js, add entry #24 with its Contents row ("My review" empty) and show git status. Do not commit.
+
+#### Result
+
+- **Files created:** docs/design/diagrams/03a-conceptual-model.mmd (conceptual erDiagram: six entities, key attributes, 1-to-many chain, User 0 or 1 Province or District; no storage ids, indexes or derived ids)
+- **Files edited:** docs/design/data-model.md (new section 1 "Conceptual model (implementation-independent)" with entities, relationships and cardinalities, and four rules; the rest renamed section 2 "Physical model (MongoDB)" with subsections 2.1-2.5, collection headings one level down, the two "(§5)" references changed to "(§2.5)"), docs/design/my-decisions.md (§8 POST …/readings row gains 405 and 406; §10 new DECIDED · YOU (2026-09-27) line on scopes and attributes, text as in Prompt 1; §12 "Codes in use (2026-09-27)"), PLAN.md (status line: 142 tests in 13 suites, Phase 8 security review, fixes and audit done 27 Sep with commit 477d7d6, the rest of Phase 8 still open; §6 tree: security-headers and the errorHandler body-parser note, 13 suites, 142 tests; §7: no-store and 413 (41301) on /login, 413 on rows 12-14, body-reading errors and security headers in Global behaviour; §9: 32-byte secret and one secret per environment in the Secrets row, new Tokens, Headers and CORS rows; §10 and §17: 142 tests; §13 Phase 8 row "security review (E1), audit (E2)"; §18 new row for 03a), README.md (405/406/413/415 behaviour row; security headers in the src/app.js row; 405 and security headers in the src/middleware/ row; 13 Mermaid sources; admin wording as in my-decisions §13/§16), docs/openapi.yaml (Cache-Control: no-store header on the POST /login 200 response, defined inline). Extras beyond the prompt, approved in Prompt 2: the fourth conceptual rule (district and province follow from the substation), README "13 Mermaid sources" and the PLAN §18 row, the errorHandler note in the PLAN §6 tree, 405 in the README middleware row, commit 477d7d6 in the PLAN status line.
+- **Checks run:** `node --test test/openapi.test.js` - 9/9 pass. Diagram check (option B): mermaid 11.17.2 and jsdom 30.1.1 installed in the session scratchpad only (package.json and package-lock.json unchanged); `mermaid.parse` - 03a-conceptual-model.mmd parses as "er", 03-er-model.mmd (control) parses as "er", and a deliberately broken erDiagram is rejected (negative control). grep: no "136" left in PLAN.md or README.md. The drafts were built on copies in the scratchpad and the diff was shown before any repository file was written. No code or test file changed, so npm test was not run. .env and scripts/seed-keys.txt not read.
+- **Note:** the heading of entry 21 says "Phase 8 (E2): security review", taken from that task's prompt; STUDENT_PLAYBOOK.md names the security review E1 and the audit E2 (as PLAN §13 now does). Entry 21 is not edited (the log is append-only).
+- **Requirement IDs:** M1, M6 (conceptual model before the physical one), S2 (access-control trade-off recorded for the report), G2 (spec: login header), V5 (413 documented consistently)
+- **Outcome:** done.
