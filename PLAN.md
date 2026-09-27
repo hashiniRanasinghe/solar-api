@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status (2026-09-26, rev 13):** Phases 0–7 are built and tested locally: 136 tests pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Not done yet: Phase 8 hardening and code freeze, the smoke deploy, the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
+> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 136 tests pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Not done yet: Phase 8 hardening and code freeze, the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback. Brief §14 ("make good the original submission") does not apply.
 
@@ -332,7 +332,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Where | Branch | Database | Purpose |
 |---|---|---|---|
 | Local (Mac, Node 22) | `dev_hashini` | Atlas `slsea_local` (tests also `slsea_test`) | All development and tests |
-| Azure smoke deploy (date to confirm, before 1 Oct) | `deployment_dev` | `slsea_dev` | Throwaway proof that deployment works; delete the resources afterwards |
+| Azure smoke deploy, Mon 28 Sep | `deployment_dev` | `slsea_dev` | Throwaway proof that deployment works; delete the resources afterwards |
 | Azure final deploy, Thu 1 Oct | `deployment_dev` | `slsea_dev` (top-up) | **The submitted URL**; keep until marking and the viva are done |
 
 **Rules**
@@ -341,12 +341,12 @@ The brief does not require automated tests. They are for my confidence, viva evi
 |---|---|---|
 | `dev_hashini` → `dev` | After a build step or a set of steps | Tests pass, explain-back done, `ai-log.md` entry in the same commit. Merge commit, no squash |
 | Keep in sync | After each merge into `dev` | `git switch dev_hashini && git pull origin dev` |
-| Tag a phase | End of a phase | `pN` on the `dev` tip. **Known mistake:** `p1`, `p2` and `p3` all point to `135e7e8`; pushed tags are never moved, so later tags go on the right commits (fix pending) |
-| Smoke deploy | Before the final deploy | Runbook §12b; delete the Azure resource group afterwards |
+| Tag a phase | End of a phase | `pN` on the `dev` tip. Tags: `p1` = `135e7e8` (phase 1); annotated `p4` = `5f4b246` (phases 2–4) and `p7` = `f77d772` (phases 5–7). `p2` and `p3` (both wrongly on `135e7e8`) were deleted on 27 Sep |
+| Smoke deploy | Mon 28 Sep | Runbook §12b; delete the Azure resource group afterwards |
 | Freeze | End of Phase 8 | Full local suite green, rehearsal passes. Only fixes for real problems after this |
 | Final deploy | Thu 1 Oct | Runbook §12b; tag `submission` on `deployment_dev` |
 | After the final deploy | Until marking and the viva are done | Merge nothing into `dev` or `deployment_dev`; check `dev` = `deployment_dev` |
-| Broken deploy | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag |
+| Broken deploy | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag. Exception (`DECIDED · YOU`, 2026-09-27): `p2` and `p3` were deleted because they were created by mistake on the same commit as `p1` and marked no phase; the rule applies from now on. |
 
 - OpenAPI `servers` is the relative `/solar/v1.0`. `GET /` returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure).
 - **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually), written on `dev_hashini`. Azure's Deployment Center must not commit its own workflow. Authentication method decided at the smoke deploy (OQ-32).
@@ -387,7 +387,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 
 **Step 0: zero-cost validation — done 21 Sep.** India South Central passed validation; Basic B1 about US$13.14/month; Free F1 available; Node 22 LTS on Linux available; basic authentication off by default (`docs/evidence/azure-validation.md`).
 
-**Step 1: smoke deploy (before 1 Oct).**
+**Step 1: smoke deploy (Mon 28 Sep).**
 
 1. Local: the production-mode rehearsal passes; the workflow file has reached `dev`.
 2. Atlas: check storage (M0 512 MB); trim before seeding `slsea_dev` if needed.
@@ -419,7 +419,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | 7 | Admin CRUD on installations, 405 everywhere, district summary (stretch), OpenAPI at `/docs` | done 26 Sep |
 | 7b | Credential fix: demo passwords generated at seed time, `--rotate-credentials`; README | done 26 Sep |
 | 8 | Hardening: security review (playbook E2), audit against the brief (E3), explain-back, production-mode rehearsal, **code freeze** | next |
-| 4b | **Smoke deploy** (runbook §12b), then delete the Azure resources | to do (was 25 Sep; moved because 23–25 Sep were lost) |
+| 4b | **Smoke deploy** (runbook §12b), then delete the Azure resources | Mon 28 Sep (moved from 25 Sep because 23–25 Sep were lost) |
 | 9 | **Final deploy** on Azure: release merge, tag `submission`, seed, live checks, screenshots | Thu 1 Oct |
 | 10 | Report (I write it) and viva prep | 30 Sep – 3 Oct |
 
@@ -427,8 +427,8 @@ The brief does not require automated tests. They are for my confidence, viva evi
 
 | Date | Work |
 |---|---|
-| Sun 27 Sep | Fill my ai-log review lines; rotate the Atlas password (exposed in an earlier ZIP) and update `.env`; fix the phase tags; write the deploy workflow; Phase 8 security review and audit |
-| Mon 28 Sep | Smoke deploy (planned, to confirm) |
+| Sun 27 Sep | Done: Atlas database user password rotated (exposed in an earlier ZIP) and `.env` updated, the app connects; phase tags fixed (`p4`, `p7`). To do: fill my ai-log review lines; write the deploy workflow; Phase 8 security review and audit |
+| Mon 28 Sep | Smoke deploy |
 | Tue 29 – Wed 30 Sep | Phase 8 finish: explain-back, rehearsal, **code freeze**; report drafting starts |
 | Thu 1 Oct | **Final deploy** |
 | Fri 2 Oct | Report final; word count; Turnitin + AI score; contradiction check |
@@ -468,7 +468,7 @@ Never cut: the final deployment, seed at full scale, device auth, jurisdiction s
 
 ## 15. Open questions and decisions
 
-**Still open:** OQ-25 (viva date), OQ-32 (workflow authentication, decided at the smoke deploy). **Built but still `PROPOSAL`** (my yes needed): OQ-08, OQ-20, the tie-break rule, the top-up script, the `capacity_kw` bound of 1000 (my-decisions §16). Everything else is decided; details in `my-decisions.md`.
+**Still open:** OQ-25 (viva date), OQ-32 (workflow authentication, decided at the smoke deploy). OQ-08, OQ-20, the tie-break rule, the top-up script and the `capacity_kw` bound of 1000 were confirmed on 27 Sep (my-decisions §16). Everything else is decided; details in `my-decisions.md`.
 
 | ID | Question → answer | Status |
 |---|---|---|
@@ -479,7 +479,7 @@ Never cut: the final deployment, seed at full scale, device auth, jurisdiction s
 | OQ-05 | Hierarchy top-level with query filters | DECIDED `[YOU]` |
 | OQ-06 | `/substations` | DECIDED `[YOU]` |
 | OQ-07 | String ids; `_id` hidden | DECIDED `[YOU]` |
-| OQ-08 | Composite contents: installation + `last_reading` only | `[PROPOSAL]`, built |
+| OQ-08 | Composite contents: installation + `last_reading` only | DECIDED `[YOU]` (27 Sep), built |
 | OQ-09 | Device-supplied `timestamp`, server `received_at`; duplicate → 409 | DECIDED `[YOU]` (my-decisions §9) |
 | OQ-10 | Missing/invalid token → 401; device token for another installation → 403 | DECIDED `[YOU]` (revised for device JWT) |
 | OQ-11 | `POST /login`, 200 + token | DECIDED `[YOU]` |
@@ -491,7 +491,7 @@ Never cut: the final deployment, seed at full scale, device auth, jurisdiction s
 | OQ-17 | Deadline Sun 4 Oct 2026 | DECIDED `[YOU]` |
 | OQ-18 | The repo started empty (19 Sep) | DECIDED `[YOU]` (historical) |
 | OQ-19 | Mongoose | DECIDED `[YOU]` |
-| OQ-20 | Query names: JSON attribute names + `from`/`to` (UTC with `Z`, inclusive) | `[PROPOSAL]`, built |
+| OQ-20 | Query names: JSON attribute names + `from`/`to` (UTC with `Z`, inclusive) | DECIDED `[YOU]` (27 Sep), built |
 | OQ-21 | Noun sub-resources `last-reading`, `generation-summary` (deviation from WP §5.1) | DECIDED `[YOU]` |
 | OQ-22 | Base path `/solar/v1.0` | DECIDED `[YOU]` |
 | OQ-23 | `sort=(timestamp DESC)`, multi-field | DECIDED `[YOU]` |

@@ -74,7 +74,7 @@ git tag p8 origin/dev
 git push origin p8
 ```
 
-Never move or delete a pushed tag; to redo, tag again (`p8b`). **Known mistake:** `p1`, `p2` and `p3` all point to `135e7e8` (fix pending; see `PLAN.md` §12).
+Never move or delete a pushed tag; to redo, tag again (`p8b`). Exception (`DECIDED · YOU`, 2026-09-27): `p2` and `p3` were deleted because they were created by mistake on the same commit as `p1` and marked no phase; the rule applies from now on. **Tag fix (27 Sep):** `p2` and `p3` (both wrongly on `135e7e8`) were deleted; annotated tags `p4` = `5f4b246` (phases 2–4) and `p7` = `f77d772` (phases 5–7) replace them; `p1` = `135e7e8` unchanged (see `PLAN.md` §12).
 
 **Freeze:** after the final deploy and its live check, tag `submission` on `deployment_dev` and merge nothing more into `deployment_dev` **or** `dev` until marking and the viva are done. Before submitting, check `dev` and `deployment_dev` are identical (GitHub → Compare `dev...deployment_dev`). No squash, no rebase of pushed history, no force-push.
 
@@ -193,7 +193,7 @@ deployment and code. Follow up on weak answers. After 10 questions, give a table
 
 ---
 
-## Part H — Azure deployment (smoke deploy before 1 Oct; final deploy Thu 1 Oct)
+## Part H — Azure deployment (smoke deploy Mon 28 Sep; final deploy Thu 1 Oct)
 
 Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) first.
 
@@ -206,7 +206,6 @@ Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) fi
 - [ ] `package.json` has `start` and `engines`; `package-lock.json` in sync
 - [ ] The deploy workflow (H2) is on `dev`
 - [ ] Atlas storage checked (M0 512 MB; about 220 MB used on 26 Sep); trim before seeding `slsea_dev`
-- [ ] The Atlas database user password was rotated after the ZIP exposure, and `.env` updated
 - [ ] A git-ignored `.env.deploy` exists with the `slsea_dev` connection string (never opened by Claude Code)
 
 ### H2. The deploy workflow (Claude Code, plan mode, branch `dev_hashini`)
