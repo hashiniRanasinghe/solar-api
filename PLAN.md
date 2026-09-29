@@ -196,7 +196,7 @@ test/           13 suites, 142 tests
 docs/           openapi.yaml, design/ (my-decisions.md, data-model.md, diagrams/), evidence/
 ```
 
-One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold the rules (validation, scope, readings, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting checks. Layering is `[PROPOSAL]` (the brief does not require it).
+One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold the rules (validation, scope, readings, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting checks. Layering is `[YOU]` (the brief does not require it).
 
 ---
 
@@ -270,14 +270,14 @@ Full detail: `docs/design/data-model.md`. Public ids are string business ids (`P
 | Roles (OQ-03) | **Device:** POST own readings only. **Reader:** GET inside jurisdiction. **Admin:** GET and POST/PUT/DELETE installations inside its jurisdiction (the seeded admin is national, so all) | `require-scope`, `services/scope.js` | `[YOU]` |
 | Jurisdiction | National sees all; province/district users see their subtree only; ancestors → 403; scoped users get 403 before 404; collections narrowed to scope (a filter naming another jurisdiction → 200, count 0); on readings routes the check runs on the **path parent** | `services/scope.js` | `[YOU]` (OQ-04, OQ-12) |
 | Users never write readings | User tokens never carry `readings:write` → 403 (40303) | `require-scope` | `[BRIEF §2]` |
-| Passwords / keys | bcrypt; SHA-256 device key hash with a constant-time compare; secrets, hashes and login bodies never logged or returned | services, models `toJSON` | `[PROPOSAL]` |
-| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without a `JWT_SECRET` of at least 32 bytes (the value is never printed), and each environment has its own secret (no `iss`/`aud`, 27 Sep); demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[PROPOSAL]` |
-| Injection / input | Every query and body value type-checked; a filter given twice → 400 (no arrays reach the database); range checks on `power_kw`, `voltage`, `energy_kwh`; `limit` 1–100; Express JSON body limit (default 100 kB) | services | `[PROPOSAL]` |
+| Passwords / keys | bcrypt; SHA-256 device key hash with a constant-time compare; secrets, hashes and login bodies never logged or returned | services, models `toJSON` | `[YOU]` |
+| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without a `JWT_SECRET` of at least 32 bytes (the value is never printed), and each environment has its own secret (no `iss`/`aud`, 27 Sep); demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[YOU]` |
+| Injection / input | Every query and body value type-checked; a filter given twice → 400 (no arrays reach the database); range checks on `power_kw`, `voltage`, `energy_kwh`; `limit` 1–100; Express JSON body limit (default 100 kB) | services | `[YOU]` |
 | Tokens | HS256 pinned; a token whose `exp` is missing or not a number → 401 (40102) (27 Sep) | `services/auth.js` | `[YOU]` |
 | Headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000` on every response; no CSP (it would break Swagger UI); `X-Powered-By` off; `Cache-Control: no-store` on the login token (27 Sep) | `middleware/security-headers.js`, `controllers/auth.js` | `[YOU]` |
 | CORS | Open (`*`): bearer tokens only, no cookies, so no CSRF; the API is meant to be called by dashboards and other clients (27 Sep) | `app.js` | `[YOU]` |
 | Transport | HTTPS via Azure App Service (HTTPS Only on) | deploy | `[LEC S7]` |
-| Error leakage | Central handler; no stack traces | `errorHandler.js` | `[PROPOSAL]` |
+| Error leakage | Central handler; no stack traces | `errorHandler.js` | `[YOU]` |
 | Honest labelling | Own JWT issued by `/login`, not a full OAuth 2.0 flow | report | `[PROPOSAL]` |
 
 ---

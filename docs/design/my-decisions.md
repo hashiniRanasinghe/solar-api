@@ -25,7 +25,7 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 - `DECIDED · YOU` The hierarchy is **derived from `substation_id`**: an installation stores only `substation_id` as the source of truth; `district_id` and `province_id` come from the substation → district → province chain. Clients never supply them. This is how the hierarchy cannot become inconsistent.
 - `DECIDED · YOU` How the derived ids are kept: the server sets and **stores** them read-only on the installation (and `province_id` on the substation), so queries and scope checks stay one lookup. A **seed integrity check** proves they match their parents. If a client sends them (for example in a PUT copied from a GET), the server ignores them and recomputes. Rejected: joining up the chain on every request (no stored copy, but slower and awkward for filters).
 - `DECIDED · YOU (2026-09-26)` The rule above is kept for installation writes (Phase 7): server-set fields in a POST or PUT body (`district_id`, `province_id`, `api_key_hash`, `device_key`, `created_at`, `updated_at`, `last_reading`) are ignored and recomputed, so a GET body can be PUT back. One exception: on PUT an `installation_id` that differs from the path id → 400 (40028); on POST an `installation_id` in the body is ignored (the server names installations). This supersedes the "read-only fields give 400" line of my Phase 7 prompt, which was never built. Readings keep their 40019 rule: a different resource, written by a device client.
-- `PROPOSAL` Fields (snake_case):
+- `DECIDED · YOU (2026-09-29)` Fields (snake_case):
 
 | Entity | Fields |
 |---|---|
@@ -36,15 +36,15 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 | Reading | `reading_id`, `installation_id`, `timestamp`, `power_kw`, `energy_kwh`, `voltage`, `received_at` |
 | User | `user_id`, `username`, `password_hash`, `role` (`reader`/`admin`), `jurisdiction_level` (`national`/`province`/`district`), `jurisdiction_id` |
 
-- `PROPOSAL` Extra fields I must justify: `name`, `capacity_kw` (realistic seed and validation), `received_at` (when the server got it, separate from device time), `created_at`/`updated_at` (for `Last-Modified` and `ETag`).
+- `DECIDED · YOU (2026-09-29)` Extra fields I must justify: `name`, `capacity_kw` (realistic seed and validation), `received_at` (when the server got it, separate from device time), `created_at`/`updated_at` (for `Last-Modified` and `ETag`).
 - `DECIDED · BRIEF §4` Seed minimum: 9 provinces, 25 districts, 20+ substations, 200+ installations, 1 week+ of readings per installation, foreign-key consistent, with pagination genuinely needed.
-- `DECIDED · YOU` Seed size: **40 substations, 240 installations, one reading every 15 minutes for 7 days** (about 161,000 readings). `PROPOSAL` Diurnal curve in Asia/Colombo time, stored in UTC.
+- `DECIDED · YOU` Seed size: **40 substations, 240 installations, one reading every 15 minutes for 7 days** (about 161,000 readings). `DECIDED · YOU (2026-09-29)` Diurnal curve in Asia/Colombo time, stored in UTC.
 - `DECIDED · YOU` The seed must contain **recent/current readings** so every endpoint shows working data.
 - `DECIDED · YOU (2026-09-27)` How: the seed window ends at the time the seed is run; a second script tops up each installation from its newest reading to "now" without wiping anything (safe to re-run because of the unique installation+timestamp rule); both are run before submission and before the viva; the README states the "data as of" time. No background job generating fake device data on the host. Readings at night are 0 kW by design, so "current total power" can legitimately be 0 outside daylight.
 
 ## 3. Why no Device entity
 - `DECIDED · BRIEF §3` `meter_id` is an attribute of the installation. One installation has one meter, so a Device entity adds a join and nothing else. The brief calls a needless Device entity a modelling flaw.
-- `PROPOSAL` The device key hash also sits on the installation.
+- `DECIDED · YOU (2026-09-29)` The device key hash also sits on the installation.
 - A Device entity would only earn its place if I had to track meter replacement, calibration or battery history. I don't.
 
 ## 4. Why readings are an append-only time series
@@ -61,14 +61,14 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 | `/installations/{installation-id}` | composite: installation + `last_reading` (or `null`) | composite required `DECIDED · BRIEF §5`; contents `DECIDED · YOU (2026-09-27)` (OQ-08) |
 | `/installations/{installation-id}/readings` | scoped collection (GET, POST) | required `DECIDED · BRIEF §5`; scoping `DECIDED · WP §4.6, §5.6` |
 | `/substations/{substation-id}/readings`, `/districts/{district-id}/readings`, `/provinces/{province-id}/readings` | **scoped collections, GET only** — readings of every installation under that parent | `DECIDED · YOU` (OQ-04); supported by `BRIEF §5` (filter by jurisdiction), `§6` ("by region"), `WP §4.6, §5.6` |
-| `/installations/{installation-id}/readings/{reading-id}` | atomic, only under its installation | `PROPOSAL` — needed so the `Location` of a POST resolves (WP §7.3, LEC S8) |
+| `/installations/{installation-id}/readings/{reading-id}` | atomic, only under its installation | `DECIDED · YOU (2026-09-29)` — needed so the `Location` of a POST resolves (WP §7.3, LEC S8) |
 | `/installations/{installation-id}/last-reading` | processing function (derived: newest reading) | required `DECIDED · BRIEF §5`; noun sub-resource form `DECIDED · YOU` (OQ-21) |
 | `/districts/{district-id}/generation-summary` | processing function (derived), **stretch** | `DECIDED · BRIEF §5` (stretch only); form `DECIDED · YOU` (OQ-21) |
 | `POST /login` | processing function (verb name, issues a token) | `DECIDED · YOU` (OQ-11), `WP §5.1, §7.3` |
 
 - `DECIDED · YOU` (OQ-21) **URI names are the name of the thing, not the kind of resource.** Derived resources under a parent are noun sub-resources: `…/installations/{installation-id}/last-reading` (scoped to one installation) and `…/districts/{district-id}/generation-summary` (scoped to one district, because that is what it summarises). "Processing function" is the design vocabulary for the *kind* (WP §4.5); it is never a URI segment, so there is no `/processing-functions` path. This follows the lectures (LEC S5/S6) and differs from WP §5.1, which asks for verb names and no sub-resource form for these. Not confirmed with the lecturer: my own decision.
-- `PROPOSAL` Composite and `last-reading` use one shared "newest reading" helper, so the logic is not duplicated (LEC S6). The composite never embeds the history.
-- `PROPOSAL` No controller resources: nothing needs an all-or-nothing update of several resources (WP §4.4).
+- `DECIDED · YOU (2026-09-29)` Composite and `last-reading` use one shared "newest reading" helper, so the logic is not duplicated (LEC S6). The composite never embeds the history.
+- `DECIDED · YOU (2026-09-29)` No controller resources: nothing needs an all-or-nothing update of several resources (WP §4.4).
 - `DECIDED · YOU (2026-09-26)` Generation summary, "today": the Asia/Colombo calendar day (fixed +05:30, computed explicitly, never from the server timezone), from local 00:00 up to the request time (`as_of`).
 - `DECIDED · YOU (2026-09-26)` Current power = sum of `power_kw` of each installation's newest reading at or before now. `newest_reading_at` and `oldest_latest_reading_at` (the newest and oldest of those timestamps) let a client see stale meters; no hidden staleness cut-off.
 - `DECIDED · YOU (2026-09-26)` Today's energy = per installation, `energy_kwh` of its last reading today minus that of its first reading today (0 with fewer than two readings today), summed over the district. Valid because `energy_kwh` is cumulative and solar output is zero around midnight, so nothing is lost at the day boundary. kWh and kW rounded to 3 decimals. Considered: newest minus the last reading before local midnight (captures energy when a meter is silent across the morning but counts several silent days as today); rejected in favour of last-minus-first today, which never overcounts. Limitation: a meter silent from midnight until after sunrise undercounts today.
@@ -91,28 +91,28 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
   - `GET /districts/{district-id}/generation-summary` (stretch)
   - `POST /login`
 - `DECIDED · WP §4.5, §7.2` / `LEC S7, S8` No PATCH anywhere (partial updates would use processing functions); no write routes for province, district or substation.
-- `PROPOSAL` No `/users` endpoints; users are seeded.
+- `DECIDED · YOU (2026-09-29)` No `/users` endpoints; users are seeded.
 
 ## 7. Representation
 - `DECIDED · BRIEF §5` JSON for all resources. `DECIDED · YOU` snake_case field names.
-- `DECIDED · WP §10.3` Collections carry `count`, `next`, `previous`. `PROPOSAL` The items key is `data`; `next`/`previous` are relative paths keeping the other parameters and are `null` at the ends. Members are plain objects.
+- `DECIDED · WP §10.3` Collections carry `count`, `next`, `previous`. `DECIDED · YOU (2026-09-29)` The items key is `data`; `next`/`previous` are relative paths keeping the other parameters and are `null` at the ends. Members are plain objects.
 - `DECIDED · LEC S8` Empty collection → 200; missing member → 404.
 - `DECIDED · YOU` (OQ-07) IDs are strings: `PV-01`, `DT-01`, `SS-001`, `INS-0001`, `RD-…`. Mongo `_id` is never shown.
-- `PROPOSAL` Timestamps are ISO 8601 in UTC, ending in `Z`. Units are in field names.
+- `DECIDED · YOU (2026-09-29)` Timestamps are ISO 8601 in UTC, ending in `Z`. Units are in field names.
 
 ## 8. Methods, status codes, headers
 
 | Call | Success | Errors | Basis |
 |---|---|---|---|
 | GET (any) | 200, or 304 with empty body | 400, 401, 403, 404, 406 | `DECIDED · WP §7.1, §9, §10.4` |
-| `POST …/readings` | **201** + `Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405, 406, 409, 413, 415 | 201 + `Location` `DECIDED · BRIEF §5`; headers `DECIDED · BRIEF App. A`; 409 `PROPOSAL` |
+| `POST …/readings` | **201** + `Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405, 406, 409, 413, 415 | 201 + `Location` `DECIDED · BRIEF §5`; headers `DECIDED · BRIEF App. A`; 409 `DECIDED · YOU (2026-09-29)` |
 | `POST /installations` `DECIDED · YOU (2026-09-26)` | **201** + `Location`, strong `ETag` (the one GET returns), `Last-Modified`, `Cache-Control: no-store`, body with `device_key` | 400, 401, 403, 405, 406, 409, 413, 415 | `WP §7.3, §9`; §13 |
 | `PUT /installations/{id}` `DECIDED · YOU (2026-09-26)` | 200 + the GET representation, new `ETag`, `Last-Modified` | 400, 401, 403, 404, 405, 406, 409, 412, 413, 415 | `WP §7.2, §10.5`; §13 |
 | `DELETE /installations/{id}` `DECIDED · YOU (2026-09-26)` | 200 + the deleted representation, then 404 on repeat | 401, 403, 404, 405, 406, 409, 412 | `WP §7.4`; §13 |
 | `POST /login` `DECIDED · YOU (2026-09-26)` | 200 + token, `Cache-Control: no-store` (`DECIDED · YOU (2026-09-27)`) | 400, 401, 405, 406, 413, 415 | check order 405, 406, 415, then 400/401 |
 
 - `DECIDED · YOU (2026-09-26)` `Content-Location` on 201 (WP §7.3 mentions it when the body repeats the resource).
-- `PROPOSAL` Bad input is 400, never 422. DELETE is 200, not 204 (WP §7.4).
+- `DECIDED · YOU (2026-09-29)` Bad input is 400, never 422. DELETE is 200, not 204 (WP §7.4).
 - `DECIDED · WP §10.1` A wrong `Accept` gets 406 even with one media type. `DECIDED · WP §9` Wrong request `Content-Type` → 415. Every 401 carries `WWW-Authenticate`.
 - `DECIDED · YOU (2026-09-26)` 406 (40601, standard error body, sent as JSON) when an `Accept` header is present and does not allow `application/json` (`req.accepts`). No `Accept` or `*/*` is fine. Checked right after 405 and before 415 and 401, on every `/solar/v1.0` route including `/login` and the device POST (diagram 04c).
 - `DECIDED · YOU (2026-09-26)` Idempotency of ingest: a retry with the same installation + timestamp gets 409 (40901), not a second row. The unique `(installation_id, timestamp)` index is the final guard (duplicate key error 11000), so two concurrent requests cannot both succeed. 409 is standard HTTP but not in WP §9's list.
@@ -160,8 +160,8 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 - `DECIDED · YOU (2026-09-27)` A token whose `exp` is missing or not a number → 401 (40102). `jwt.verify` alone accepts a token without `exp`; every token this API issues has one (1 hour).
 
 ## 11. Query surface
-- `DECIDED · WP §10.3` `offset` + `limit`; the response has `count` (total matching), `next`, `previous`. `PROPOSAL` (built in D6, 2026-09-26) defaults `offset=0`, `limit=20`; `limit` must be 1–100; bad values → 400 with per-field `error[]`. An `offset` past the end → 200 with empty `data` and the full `count`. A filter given twice → 400 (keeps an array out of the database query). Unrecognised query parameters are ignored.
-- `DECIDED · YOU` (OQ-23) Sort syntax `sort=(timestamp DESC)`; several fields `sort=(a ASC, b DESC)`. `DECIDED · BRIEF §5` sort by timestamp asc/desc. `PROPOSAL` whitelist: readings → `timestamp`; installations → `installation_id`, `name`, `capacity_kw`. Default: readings newest first, others by id. Unknown field → 400.
+- `DECIDED · WP §10.3` `offset` + `limit`; the response has `count` (total matching), `next`, `previous`. `DECIDED · YOU (2026-09-29)` (built in D6, 2026-09-26) defaults `offset=0`, `limit=20`; `limit` must be 1–100; bad values → 400 with per-field `error[]`. An `offset` past the end → 200 with empty `data` and the full `count`. A filter given twice → 400 (keeps an array out of the database query). Unrecognised query parameters are ignored.
+- `DECIDED · YOU` (OQ-23) Sort syntax `sort=(timestamp DESC)`; several fields `sort=(a ASC, b DESC)`. `DECIDED · BRIEF §5` sort by timestamp asc/desc. `DECIDED · YOU (2026-09-29)` whitelist: readings → `timestamp`; installations → `installation_id`, `name`, `capacity_kw`. Default: readings newest first, others by id. Unknown field → 400.
 - `DECIDED · YOU (2026-09-26)` Hierarchy sort whitelists (as built): provinces → `province_id`, `name`; districts → `district_id`, `name`; substations → `substation_id`, `name`. Default and final tie-break: the collection's id, ascending. Same syntax and 40005 rule as above.
 - `DECIDED · YOU (2026-09-27)` Ties are broken by `installation_id` (always appended after the requested sort). Many installations share the same 15-minute timestamp, so without a tie-break the pages of a jurisdiction history could repeat or skip rows.
 - `DECIDED · BRIEF §5` Filter by time window. `DECIDED · YOU (2026-09-27)` (OQ-20) parameters `from` and `to`, ISO 8601 UTC ending in `Z`, both inclusive, on every readings collection.
@@ -189,10 +189,10 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 
 ## 12. Error contract
 - `DECIDED · WP §11` `code` (integer) and `message` are required. `DECIDED · BRIEF §5` One consistent schema with a code, a message and supporting detail across the API.
-- `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields).
+- `DECIDED · YOU (2026-09-29)` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields).
 - `DECIDED · YOU (2026-09-29)` Integer codes = HTTP status × 100 + a number (for example 40001). Reason: WP §11 only requires an integer, product-specific code; the S7 lecture demo uses status × 1000 + n.
 - Codes in use (2026-09-27): 40001 malformed JSON · 40002 invalid query parameters · 40003 offset · 40004 limit · 40005 sort · 40006 filter given twice · 40007 `from` not a valid UTC timestamp · 40008 `to` not a valid UTC timestamp · 40009 `from` later than `to` (40003–40009 as per-field items in `error[]`) · 40010 invalid request body · 40011 `username` missing or not a non-empty string · 40012 `password` missing or not a non-empty string (40011–40012 as per-field items in `error[]`) · 40013 `timestamp` missing or not an ISO 8601 UTC timestamp · 40014 `timestamp` not on a 15-minute boundary · 40016 `power_kw` not a number from 0 to `capacity_kw` · 40017 `energy_kwh` not a number ≥ 0 · 40018 `voltage` not a number from 0 to 300 · 40019 read-only field sent (40013–40019 as per-field items in `error[]`) · 40020 `installation_id` missing or not a non-empty string · 40021 `device_key` missing or not a non-empty string · 40022 login body has both credential forms or neither (40020–40022 as per-field items in `error[]`, added 2026-09-26) · 40023 `name` missing or not a non-empty string · 40024 `meter_id` missing or not a non-empty string · 40025 `substation_id` missing or not a non-empty string · 40026 `substation_id` does not name an existing substation · 40027 `capacity_kw` not a number greater than 0 and at most 1000 · 40028 `installation_id` in a PUT body differs from the path (40023–40028 as per-field items in `error[]`, added 2026-09-26) · 40101 authentication required (no bearer token) · 40102 invalid or expired token · 40103 invalid username or password · 40104 API key required (retired 2026-09-26, X-API-Key removed) · 40105 API key not accepted (retired 2026-09-26, X-API-Key removed) · 40106 invalid device credentials (added 2026-09-26) · 40301 outside your jurisdiction · 40302 not your installation · 40303 insufficient scope (added 2026-09-26) · 40401 route not found · 40402 resource not found · 40403 no reading yet (installation exists) · 40501 method not allowed · 40601 not acceptable (Accept does not allow application/json) · 40901 duplicate reading · 40902 `energy_kwh` lower than the latest reading · 40903 reading older than the latest reading · 40904 duplicate `meter_id` · 40905 installation has readings (DELETE refused) · 40906 no installation id could be assigned (3 duplicate-key retries, or past INS-9999) · 41201 precondition failed (`If-Match` does not match) (40904–41201 added 2026-09-26) · 41301 payload too large (body over 100 KB, added 2026-09-27) · 41501 unsupported media type · 50001 unexpected error.
-- `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
+- `DECIDED · YOU (2026-09-29)` Unknown routes and 5xx use the same body; no stack traces.
 - `DECIDED · YOU (2026-09-26)` `WWW-Authenticate` is `Bearer realm="solar"` on every 401, for users and devices; `error="invalid_token"` when a token was sent and rejected. A 403 for a missing scope carries `error="insufficient_scope", scope="…"`.
 
 ## 13. Writable resources, roles and authorization
@@ -222,8 +222,8 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 ## 14. Deliberate deviations and unlisted choices
 1. `DECIDED · YOU` (OQ-21) Derived resources are noun sub-resources (`…/last-reading`, `…/generation-summary`), as the lectures teach, although WP §5.1 says verb names, not under an individual resource. Not confirmed with the lecturer.
 2. `DECIDED · YOU` (OQ-04) Readings collections also exist under substation, district and province. This extends the brief's "scoped readings sub-collection under each installation" to satisfy "filter by jurisdiction" and "by region"; the lecture map (LEC S3/S4) shows readings under one parent only.
-3. `PROPOSAL` 409 for duplicate readings and duplicate `meter_id` (not in WP §9's list). 405 with `Allow`. (The custom `ApiKey` challenge was removed on 2026-09-26 with X-API-Key.)
-4. `PROPOSAL` Own JWT instead of OAuth (WP §12.2 prefers OAuth). Devices use the same token issuer in a client-credentials pattern (device key → token), not an OAuth authorization server.
+3. `DECIDED · YOU (2026-09-29)` 409 for duplicate readings and duplicate `meter_id` (not in WP §9's list). 405 with `Allow`. (The custom `ApiKey` challenge was removed on 2026-09-26 with X-API-Key.)
+4. `DECIDED · YOU (2026-09-29)` Own JWT instead of OAuth (WP §12.2 prefers OAuth). Devices use the same token issuer in a client-credentials pattern (device key → token), not an OAuth authorization server.
 5. Not built: `301` for old versions (only v1.0 exists), projection, `300` negotiation.
 6. Where LEC and WP disagree I followed WP: error body (WP §11 over the LEC S8 sketch) and verb names for `/login`. For the single reading I followed LEC S8 + WP §7.3 over LEC S3, because a `Location` must be retrievable.
 
@@ -255,11 +255,33 @@ Last updated: 2026-09-29 · Module: NB6007CEM CW1 · Attempt: fresh submission (
 
 Lines replaced by a later decision, moved here word for word from their sections on 2026-09-26 so the sections above show only what is in force. The replacing decision is in the section named.
 
+### From §2 Entities and hierarchy
+- SUPERSEDED 2026-09-29 (promoted, §2) `PROPOSAL` Fields (snake_case):
+- SUPERSEDED 2026-09-29 (promoted, §2) `PROPOSAL` Extra fields I must justify: `name`, `capacity_kw` (realistic seed and validation), `received_at` (when the server got it, separate from device time), `created_at`/`updated_at` (for `Last-Modified` and `ETag`).
+- SUPERSEDED 2026-09-29 (promoted, §2) `DECIDED · YOU` Seed size: **40 substations, 240 installations, one reading every 15 minutes for 7 days** (about 161,000 readings). `PROPOSAL` Diurnal curve in Asia/Colombo time, stored in UTC.
+
+### From §3 Why no Device entity
+- SUPERSEDED 2026-09-29 (promoted, §3) `PROPOSAL` The device key hash also sits on the installation.
+
+### From §5 Resource types
+- SUPERSEDED 2026-09-29 (promoted, §5) | `/installations/{installation-id}/readings/{reading-id}` | atomic, only under its installation | `PROPOSAL` — needed so the `Location` of a POST resolves (WP §7.3, LEC S8) |
+- SUPERSEDED 2026-09-29 (promoted, §5) `PROPOSAL` Composite and `last-reading` use one shared "newest reading" helper, so the logic is not duplicated (LEC S6). The composite never embeds the history.
+- SUPERSEDED 2026-09-29 (promoted, §5) `PROPOSAL` No controller resources: nothing needs an all-or-nothing update of several resources (WP §4.4).
+
+### From §6 URIs, base path, naming, scoping
+- SUPERSEDED 2026-09-29 (promoted, §6) `PROPOSAL` No `/users` endpoints; users are seeded.
+
+### From §7 Representation
+- SUPERSEDED 2026-09-29 (promoted, §7) `DECIDED · WP §10.3` Collections carry `count`, `next`, `previous`. `PROPOSAL` The items key is `data`; `next`/`previous` are relative paths keeping the other parameters and are `null` at the ends. Members are plain objects.
+- SUPERSEDED 2026-09-29 (promoted, §7) `PROPOSAL` Timestamps are ISO 8601 in UTC, ending in `Z`. Units are in field names.
+
 ### From §8 Methods, status codes, headers
 - SUPERSEDED 2026-09-26 (Phase 7, rows below) `POST /installations` — success: 201 + same headers; errors: 400, 401, 403, 409, 415; basis: `DECIDED · YOU` (OQ-03); 409 `PROPOSAL`
 - SUPERSEDED 2026-09-26 (Phase 7, rows below) `PUT /installations/{id}` — success: 200 (whole replacement); errors: 400, 401, 403, 404, 412, 415; basis: whole replacement `DECIDED · WP §7.2`; 412 on stale `If-Match` `DECIDED · WP §10.5`
 - SUPERSEDED 2026-09-26 (Phase 7, rows below) `DELETE /installations/{id}` — success: 200, then 404 on repeat; errors: 401, 403, 404; basis: `DECIDED · WP §7.4`
 - SUPERSEDED 2026-09-26 (415 added, row below) `POST /login` — success: 200 + token; errors: 400, 401; basis: `DECIDED · YOU`
+- SUPERSEDED 2026-09-29 (promoted, §8) | `POST …/readings` | **201** + `Location`, `ETag`, `Last-Modified`, body | 400, 401, 403, 405, 406, 409, 413, 415 | 201 + `Location` `DECIDED · BRIEF §5`; headers `DECIDED · BRIEF App. A`; 409 `PROPOSAL` |
+- SUPERSEDED 2026-09-29 (promoted, §8) `PROPOSAL` Bad input is 400, never 422. DELETE is 200, not 204 (WP §7.4).
 
 ### From §9 Write path: device auth and ingest
 - SUPERSEDED 2026-09-26 (final rubric: JWT on the write path; see below) `DECIDED · YOU` (OQ-10) Missing or unknown/invalid API key → **401**. A valid key used on a different installation → **403**. Matches WP §9.
@@ -276,10 +298,14 @@ Lines replaced by a later decision, moved here word for word from their sections
 
 ### From §11 Query surface
 - SUPERSEDED 2026-09-27 (OQ-20 decided, §11) `DECIDED · BRIEF §5` Filter by time window. `PROPOSAL` (OQ-20) parameters `from` and `to`, ISO 8601, both inclusive, on every readings collection.
+- SUPERSEDED 2026-09-29 (promoted, §11) `DECIDED · WP §10.3` `offset` + `limit`; the response has `count` (total matching), `next`, `previous`. `PROPOSAL` (built in D6, 2026-09-26) defaults `offset=0`, `limit=20`; `limit` must be 1–100; bad values → 400 with per-field `error[]`. An `offset` past the end → 200 with empty `data` and the full `count`. A filter given twice → 400 (keeps an array out of the database query). Unrecognised query parameters are ignored.
+- SUPERSEDED 2026-09-29 (promoted, §11) `DECIDED · YOU` (OQ-23) Sort syntax `sort=(timestamp DESC)`; several fields `sort=(a ASC, b DESC)`. `DECIDED · BRIEF §5` sort by timestamp asc/desc. `PROPOSAL` whitelist: readings → `timestamp`; installations → `installation_id`, `name`, `capacity_kw`. Default: readings newest first, others by id. Unknown field → 400.
 
 ### From §12 Error contract
 - SUPERSEDED 2026-09-29 (code format decided, §12; detail fields kept as `PROPOSAL`) `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields). Integer codes = HTTP status × 100 + a number (for example 40001).
 - SUPERSEDED 2026-09-26 (final rubric: JWT on the write path; see below) `DECIDED · YOU (2026-09-26)` `WWW-Authenticate` is `Bearer realm="solar"` for users and a custom `ApiKey realm="solar"` for devices (WP requires the header, not a scheme name).
+- SUPERSEDED 2026-09-29 (promoted, §12) `PROPOSAL` Detail via `description`, `moreInfo` (a docs URL) and `error[]` with `{code, message}` per field (WP §11 fields).
+- SUPERSEDED 2026-09-29 (promoted, §12) `PROPOSAL` Unknown routes and 5xx use the same body; no stack traces.
 
 ### From §13 Writable resources, roles and authorization
 - SUPERSEDED 2026-09-26 (final rubric: JWT on the write path; see below) Device — credential: `X-API-Key`; allowed: `POST /installations/{own-id}/readings` only; refused with: another installation → 403; no or unknown key → 401; any other route → 401 (not a valid credential there)
@@ -289,6 +315,10 @@ Lines replaced by a later decision, moved here word for word from their sections
 - SUPERSEDED 2026-09-26 (decided below: 409 while readings exist) `PROPOSAL` (OQ-13) Deleting an installation keeps its readings in the database (history is evidence, LEC S8), but the API can no longer reach them. State the trade-off in the report.
 - SUPERSEDED 2026-09-26 (decided below) **`OPEN`** (OQ-28) How a newly created installation receives a device key. Default idea: return the plain key once in the 201 body (differs from what GET returns). Otherwise only seeded installations can ever have a working device.
 - SUPERSEDED 2026-09-27 (reworded, §13) `DECIDED · YOU` The admin is one national-level role. Province- or district-level admins are not built (limitation).
+
+### From §14 Deliberate deviations and unlisted choices
+- SUPERSEDED 2026-09-29 (promoted, §14) 3. `PROPOSAL` 409 for duplicate readings and duplicate `meter_id` (not in WP §9's list). 405 with `Allow`. (The custom `ApiKey` challenge was removed on 2026-09-26 with X-API-Key.)
+- SUPERSEDED 2026-09-29 (promoted, §14) 4. `PROPOSAL` Own JWT instead of OAuth (WP §12.2 prefers OAuth). Devices use the same token issuer in a client-credentials pattern (device key → token), not an OAuth authorization server.
 
 ### From §16 Open items and limits
 - SUPERSEDED 2026-09-26 (closed, §13) OQ-28: how a new installation gets a device key.
