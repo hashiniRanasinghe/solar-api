@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.env
+atlas-credentials*
+*.PublishSettings
+publish-profile*
+refs/
+*.zip
+__MACOSX/
+.DS_Store
+seed-keys.txt

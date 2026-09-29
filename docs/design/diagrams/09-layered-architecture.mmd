@@ -1,0 +1,29 @@
+%% 09-layered-architecture.mmd - Internal layers and middleware (matches src/ as built)
+%% Basis: BRIEF §8 (architecture section); PLAN §6. Layering is a PROPOSAL (the brief does not require it).
+%% Request validation (400) lives in the services; conditional GET uses Express's strong ETag and freshness check (304); If-Match (412) is in utils.
+flowchart LR
+  REQ["HTTP request"] --> APP["app.js<br/>JSON body parser, CORS,<br/>GET /, /docs, /docs.json"]
+  APP --> ROUTES["routes/<br/>URI + method wiring<br/>under /solar/v1.0"]
+  subgraph MW["middleware/"]
+    AM["allow-methods<br/>405 + Allow"]
+    AJ["accept-json<br/>406"]
+    RJ["require-json<br/>415 (POST, PUT only)"]
+    AU["authenticate<br/>bearer JWT, users and devices<br/>401"]
+    RS["require-scope<br/>solar:read, readings:write,<br/>installations:write - 403"]
+    OI["own-installation<br/>device path only - 403"]
+    PC["private-cache<br/>Cache-Control, Vary"]
+    ERR["errorHandler<br/>one error body"]
+  end
+  ROUTES --> AM --> AJ --> RJ --> AU
+  AU -- "reads" --> PC --> RS
+  AU -- "writes" --> RS
+  RS -- "device POST" --> OI
+  RS --> CTRL
+  OI --> CTRL
+  CTRL["controllers/<br/>HTTP to service call and back<br/>headers: Location, ETag, Last-Modified"] --> SVC["services/<br/>validation (400), scope rules (403/404),<br/>readings rules (409), summary"]
+  SVC --> REPO["repositories/<br/>only code that touches MongoDB"]
+  REPO --> DB[("MongoDB Atlas")]
+  CTRL -.-> ERR
+  SVC -.-> ERR
+  UTIL["utils/<br/>errors, pagination, sort, links,<br/>time-window, if-match, last-modified, reading-id"] -.-> SVC
+  MODELS["models/<br/>Mongoose schemas and indexes"] -.-> REPO

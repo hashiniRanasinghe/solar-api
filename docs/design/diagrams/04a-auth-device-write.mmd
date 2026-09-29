@@ -1,0 +1,28 @@
+%% 04a-auth-device-write.mmd - Authentication and authorization: device write path
+%% Basis: BRIEF §2, §5 (device authenticates as its installation); WP §9 (401 / 403), §12.1 (simple credentials only to obtain a token), §12.2 (bearer token with scopes); LEC S7, S8
+%% Decisions: my-decisions §9 (device JWT, client-credentials pattern; OQ-10, OQ-26).
+sequenceDiagram
+  autonumber
+  participant D as Device
+  participant A as API
+  participant DB as MongoDB
+  D->>A: POST /solar/v1.0/login with installation_id and device_key
+  A->>DB: read api_key_hash of that installation_id
+  A->>A: SHA-256 of device_key, constant-time compare (unknown id: dummy hash)
+  alt unknown installation or wrong key
+    A-->>D: 401 (40106), same body for both + WWW-Authenticate Bearer realm solar
+  else accepted
+    A-->>D: 200 + JWT (sub installation_id, role device, scope readings:write, 1 hour)
+  end
+  D->>A: POST /solar/v1.0/installations/{installation-id}/readings with Authorization Bearer JWT
+  alt token missing, invalid or expired (X-API-Key alone counts as missing)
+    A-->>D: 401 (40101 / 40102) + WWW-Authenticate Bearer realm solar
+  else token lacks scope readings:write (reader or admin token)
+    A-->>D: 403 (40303) + WWW-Authenticate error insufficient_scope
+  else token sub is not the path installation, or the path id does not exist
+    A-->>D: 403 (40302)
+  else own installation
+    A->>A: continue to validation and insert (diagram 05)
+  end
+  Note over D,A: installation_id is taken from the path only, never from the body
+  Note over D,A: The key, its hash and the login body are never logged

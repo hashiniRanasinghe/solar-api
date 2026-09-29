@@ -1,0 +1,50 @@
+%% 05-flow-ingest-reading.mmd - Request/response flow: device pushes a reading
+%% Basis: BRIEF §5 (ingestion, correct method, 201 + where it now lives); WP §7.3, §9; LEC S7, S8
+%% Decisions: my-decisions §4, §8, §9.
+%% DECIDED: OQ-26 (no 404; unknown installation -> 403) and OQ-27 (older -> 409 40903, lower energy_kwh -> 409 40902). Device JWT. Check order: 405, 406, 415, 401, 403 scope, 403 not own, 400, 409.
+%% No timestamp tolerance / future-time rule is applied (my-decisions §9).
+sequenceDiagram
+  autonumber
+  participant D as Device
+  participant M as Middleware
+  participant S as Service
+  participant DB as MongoDB
+  D->>M: POST /solar/v1.0/installations/INS-0001/readings, Authorization: Bearer device JWT, JSON body
+  alt method is PUT, PATCH or DELETE (readings are append-only)
+    M-->>D: 405 (40501) + Allow: GET, POST
+  else Accept present and does not allow application/json
+    M-->>D: 406 (40601)
+  else Content-Type is not JSON
+    M-->>D: 415 (41501)
+  else no token, or token invalid or expired
+    M-->>D: 401 (40101 / 40102) + WWW-Authenticate: Bearer realm="solar"
+  else token lacks scope readings:write
+    M-->>D: 403 (40303) + WWW-Authenticate: insufficient_scope
+  else token belongs to another installation (or the path id does not exist)
+    M-->>D: 403 (40302)
+  else body invalid (missing or non-numeric field, bad timestamp, off a 15-minute boundary, out of range, read-only field sent)
+    M->>S: validate body against the installation's capacity_kw
+    S-->>D: 400 (40010) + error[] per field
+  else valid
+    M->>S: create reading for the installation in the PATH
+    S->>DB: find newest reading of the installation
+    alt same timestamp already stored
+      S-->>D: 409 (40901)
+    else older than the newest reading
+      S-->>D: 409 (40903)
+    else energy_kwh lower than the newest reading
+      S-->>D: 409 (40902)
+    else
+    S->>DB: insert reading (unique on installation_id + timestamp)
+    alt duplicate key (a concurrent request stored it first)
+      DB-->>S: duplicate key (11000)
+      S-->>D: 409 (40901)
+    else inserted
+      DB-->>S: stored reading (reading_id, received_at set by server)
+      S-->>D: 201 Created + Location + Content-Location + ETag + Last-Modified + reading JSON
+    end
+    end
+  end
+  Note over D,DB: No 404 on this route: an unknown installation gives 403, so ids are not revealed (OQ-26, DECIDED)
+  Note over D,DB: energy_kwh is cumulative: a value lower than the newest reading is refused (OQ-27, DECIDED). Known limit: two concurrent requests with different timestamps can both pass these checks
+  Note over D,DB: The Location URI must resolve with GET /installations/{id}/readings/{reading-id} by a user with a JWT

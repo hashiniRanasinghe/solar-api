@@ -1,0 +1,33 @@
+%% 04b-auth-user-read.mmd - Authentication and authorization: user login and jurisdiction-scoped read
+%% Basis: BRIEF §2, §5 (jurisdiction-scoped reads); WP §12.2 (bearer token with scopes), §9; LEC S7 (403 for another jurisdiction)
+%% Decisions: my-decisions §10 (JWT + POST /login, scopes, collection narrowing, 403 before 404 for scoped users, ancestors 403). Own JWT, NOT a full OAuth flow.
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant A as API
+  participant DB as MongoDB
+  U->>A: POST /solar/v1.0/login with username and password (devices use installation_id and device_key, diagram 04a)
+  A->>DB: find user and compare bcrypt hash
+  alt credentials not accepted
+    A-->>U: 401 (40103) + WWW-Authenticate Bearer realm solar + error body
+  else accepted
+    A-->>U: 200 + signed JWT (scope, jurisdiction_level, jurisdiction_id, 1 hour)
+  end
+  U->>A: GET /solar/v1.0/installations/{installation-id} with Authorization Bearer JWT
+  alt token missing, invalid or expired
+    A-->>U: 401 (40101 / 40102) + WWW-Authenticate
+  else token lacks scope solar:read (for example a device token)
+    A-->>U: 403 (40303) + WWW-Authenticate error insufficient_scope
+  else token valid
+    A->>DB: load installation inside the token jurisdiction (its stored district and province ids, national: no limit)
+    alt found
+      A-->>U: 200 or 304
+    else not found, province or district user
+      A-->>U: 403 (40301), whether or not the id exists (403 before 404)
+    else not found, national user
+      A-->>U: 404 (40402)
+    end
+  end
+  Note over U,A: Collections are narrowed to the caller scope. An explicit filter naming another jurisdiction gives 200 with count 0, not 403
+  Note over U,A: Readings under a substation, district or province: the scope check runs on the PATH PARENT (OQ-04). A parent above the user (a district user's own province) gives 403
+  Note over U,A: User tokens never carry readings:write, so POST readings gives 403 (40303). Scope installations:write (admin) is only for installation POST, PUT, DELETE

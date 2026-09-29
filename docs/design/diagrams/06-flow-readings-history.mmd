@@ -1,0 +1,36 @@
+%% 06-flow-readings-history.mmd - Request/response flow: readings history (four parents), paginated, filtered, sorted, conditional
+%% Basis: BRIEF §5, §6 (analytical view: pagination, filtering by jurisdiction and time window, sorting, conditional GET); WP §4.6, §5.6, §5.7, §10.2-10.4
+%% Decisions: my-decisions §10, §11. OQ-04: jurisdiction = path parent, everything else = query. Sort syntax OQ-23. Strong content ETag, no Last-Modified on collections (OQ-29).
+%% Scoped users get 403 before 404 (they cannot tell whether an id exists); national users get 404. The parent check runs before the query check (403/404 before 400).
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant M as Middleware
+  participant S as Service
+  participant DB as MongoDB
+  U->>M: GET readings under ONE parent, with from, to, sort, offset, limit
+  Note over U,M: parent = /installations/{id}, /substations/{id}, /districts/{id} or /provinces/{id}, then /readings
+  M->>M: authenticate + scope solar:read (diagram 04b)
+  M->>S: list readings under this parent
+  S->>DB: find the parent inside the caller's jurisdiction
+  alt not found, province or district user
+    S-->>U: 403 (40301), whether or not the parent exists
+  else not found, national user
+    S-->>U: 404 (40402)
+  else found
+    alt from, to, sort, offset or limit invalid
+      S-->>U: 400 (40002) + error[] per field
+    else valid
+      S->>DB: installation ids under the parent (derived ids on installations, or the one installation)
+      S->>DB: readings for those ids inside the time window, sorted by the requested field then installation_id, skip offset, limit
+      DB-->>S: one page + total count
+      S-->>M: count, data, next and previous links
+      M->>M: strong ETag from the body (no Last-Modified on collections)
+      alt If-None-Match matches the ETag
+        M-->>U: 304 Not Modified, empty body
+      else changed or no validator sent
+        M-->>U: 200 + ETag + Cache-Control private, no-cache + Vary Authorization + {count, next, previous, data}
+      end
+    end
+  end
+  Note over U,DB: Only GET exists on the substation, district and province readings. POST readings is only under an installation (diagram 05)
