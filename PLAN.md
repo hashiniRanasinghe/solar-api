@@ -308,7 +308,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | `ai-log.md` | Every AI prompt (chat + Claude Code); source of the AI-disclosure appendix |
 | `docs/evidence/` | Azure validation, curl transcripts, screenshots |
 
-**Report evidence checklist (evidence only — I write all prose):** Swagger screenshots and `curl -i` output are captured on the deployed HTTPS URL (`https://<app-name>.azurewebsites.net`), not on localhost.
+**Report evidence checklist (evidence only — I write all prose):** Swagger screenshots and `curl -i` output are captured on the deployed HTTPS URL (https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net, Swagger UI at https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs), not on localhost.
 
 | Section | Evidence to have ready |
 |---|---|

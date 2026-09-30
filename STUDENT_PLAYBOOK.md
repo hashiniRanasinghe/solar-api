@@ -160,7 +160,7 @@ The AI never writes, rewrites or paraphrases my report text.
 - [ ] The Azure app `solar-api-dev-hr` and its plan are still running, scaled to Basic B1 (no smoke-deploy resources exist: the 29 Sep app is kept)
 - [ ] `slsea_dev` was topped up shortly before submission and before the viva
 - [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev`
-- [ ] `/docs` loads; demo logins from the report appendix work
+- [ ] `/docs` loads (https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs); demo logins from the report appendix work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
 - [ ] I can explain every file in `src/`, `scripts/`, `test/`
 
@@ -216,7 +216,7 @@ Release PR #8 `dev` → `deployment_dev`; Actions run #1 green in 34 s (commit `
 # GitHub → Actions: wait for green; Azure → Log stream: look for "Connected to database: slsea_dev"
 node --env-file=.env.deploy scripts/seed.js --dry-run     # check it prints slsea_dev
 node --env-file=.env.deploy scripts/seed.js               # new passwords and keys go to scripts/seed-keys.txt
-curl -i https://<app-name>.azurewebsites.net/
+curl -i https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/
 ```
 
 Copy the real hostname from the portal. Then run the **live smoke checklist** in `PLAN.md` §10 (the automated suite runs in-process and cannot target a URL). Save the `curl -i` output in `docs/evidence/live/`.
@@ -257,7 +257,7 @@ Check the Azure CLI docs for current option names before relying on this.
 Secrets are typed with `read -s`, never on the command line. Full examples in `README.md`.
 
 ```bash
-BASE=http://localhost:3000/solar/v1.0        # after a deploy: https://<app-name>.azurewebsites.net/solar/v1.0
+BASE=http://localhost:3000/solar/v1.0        # live: https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/solar/v1.0
 curl -i $BASE/installations                                   # 401 (no token)
 
 read -r -p 'username: ' U; read -rs -p 'password: ' P; echo

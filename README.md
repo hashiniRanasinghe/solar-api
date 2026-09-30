@@ -6,7 +6,8 @@ Backend REST API for the Sri Lanka Sustainable Energy Authority (NB6007CEM CW1).
 |---|---|
 | Base path | `/solar/v1.0` (`/`, `/docs`, `/docs.json` sit outside it) |
 | Maturity | Richardson Level 2 (resources, HTTP methods, headers and status codes; no hypermedia controls) |
-| Live URL | https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net (Swagger UI at `/docs`) |
+| Live URL | https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net |
+| Live Swagger UI | https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs |
 | Data as of | `slsea_dev` seeded 29 Sep 2026 (7 days ending at seed time); topped up before submission |
 | API docs | Swagger UI at `/docs`, OpenAPI 3.0.3 spec as JSON at `/docs.json` (source: `docs/openapi.yaml`) |
 | Stack | Node 22, Express 5, Mongoose, MongoDB Atlas |
@@ -194,6 +195,6 @@ From `docs/design/my-decisions.md` §16:
 
 ## Deployment
 
-**Status: live since 29 Sep 2026** at https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net (web app `solar-api-dev-hr`, India South Central; Free F1 now, scaled to Basic B1 before submission; final release Thu 1 Oct). Azure App Service (Linux, Node 22 LTS, HTTPS Only), deployed by one GitHub Actions workflow on push to `deployment_dev` using a publish profile stored as a GitHub secret, database `slsea_dev`. Deploy record: `docs/evidence/azure-deploy-2026-09-29.md`. App settings (names only): `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV`, `APP_ENV`, `SCM_DO_BUILD_DURING_DEPLOYMENT=false` (the workflow already runs `npm ci`, so Azure must not build again); Azure sets `PORT`. Start: `npm ci --omit=dev && npm start`. The `docs/` folder must be in the deploy package (the spec is read at start-up).
+**Status: live since 29 Sep 2026** at https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net (Swagger UI: https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs; web app `solar-api-dev-hr`, India South Central; Free F1 now, scaled to Basic B1 before submission; final release Thu 1 Oct). Azure App Service (Linux, Node 22 LTS, HTTPS Only), deployed by one GitHub Actions workflow on push to `deployment_dev` using a publish profile stored as a GitHub secret, database `slsea_dev`. Deploy record: `docs/evidence/azure-deploy-2026-09-29.md`. App settings (names only): `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV`, `APP_ENV`, `SCM_DO_BUILD_DURING_DEPLOYMENT=false` (the workflow already runs `npm ci`, so Azure must not build again); Azure sets `PORT`. Start: `npm ci --omit=dev && npm start`. The `docs/` folder must be in the deploy package (the spec is read at start-up).
 
 Branches: `dev_hashini` (work) → merge request → `dev` (default branch) → release merge request → `deployment_dev` (deploys).
