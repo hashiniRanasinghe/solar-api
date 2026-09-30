@@ -1,7 +1,7 @@
 # STUDENT_PLAYBOOK.md — practical workflow (Mac · VS Code · Claude Code · Git)
 
-> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, used only at the smoke deploy and the final deploy). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure is used twice (smoke deploy before 1 Oct, final deploy Thu 1 Oct).
-> **Where I am (2026-09-27):** build steps A–D are done (table below); phase tags fixed; Atlas password rotated; Part E security review, fixes and audit done; production-mode rehearsal passed; deploy workflow (H2) merged into `dev`. Next: code freeze, Part H (deployment), Parts F–G (report and viva).
+> Companion to `PLAN.md`. If they disagree, `PLAN.md` wins. **One step = one commit on `dev_hashini` = one `ai-log.md` entry.** Branches: `dev_hashini` (mine) → `dev` (central) → `deployment_dev` (deploy branch, updated only by release merges: 29 Sep and the final release Thu 1 Oct). `deployment_qa` is a marker, never deployed. **`main` is never used.** **Local-first:** everything is developed and tested on the Mac; Azure hosts one app, `solar-api-dev-hr`, deployed 29 Sep and kept as the submitted app (the Mon 28 Sep smoke deploy did not happen).
+> **Where I am (2026-09-29):** build steps A–D are done (table below); phase tags fixed; Atlas password rotated; Part E security review, fixes and audit done; production-mode rehearsal passed; deploy workflow (H2) merged into `dev`; **deployed 29 Sep** (H3–H4 done, `docs/evidence/azure-deploy-2026-09-29.md`). Code freeze done 27 Sep (tag `p8` on `dev`, `050be73`). Next: explain-back, scale F1 → B1 and the final release (H6), Parts F–G (report and viva).
 > Tags: `[YOU]` my decision · `[PROPOSAL]` a suggestion until I confirm it in `docs/design/my-decisions.md` · `[WP §n]` white paper.
 
 ---
@@ -19,7 +19,7 @@
 | Never keep credential files in the repo folder, and never paste a password, key, token or connection string into a chat or a prompt | A password was exposed this way once. Rotate anything exposed |
 | Never share a ZIP that contains `.env` or `scripts/seed-keys.txt`, and never upload one to a chat | The Atlas password had to be rotated after that happened |
 | Close `scripts/seed-keys.txt` in VS Code before prompting | An open selection is sent with the prompt |
-| Local-first: no Azure resources during development except the planned smoke deploy and the final deploy | Limits Azure credit use (`PLAN.md` §12a) |
+| Local-first: no Azure resources during development except the one deployed app (29 Sep, kept as the submitted app) | Limits Azure credit use (`PLAN.md` §12a) |
 | Brief > white paper > lecture notes > `PLAN.md` | If a prompt result contradicts them, the prompt result is wrong |
 
 ---
@@ -59,7 +59,7 @@ Done when: [check].
 
 ```text
 dev_hashini  →(pull request after each step)→  dev            everything runs locally against slsea_local
-dev          →(release pull request)→  deployment_dev  →  GitHub Actions  →  Azure    ONLY at the smoke and final deploys (Part H)
+dev          →(release pull request)→  deployment_dev  →  GitHub Actions  →  Azure    ONLY at releases (29 Sep, final 1 Oct; Part H)
 deployment_qa   kept as a best-practice marker, never deployed
 main            never used
 ```
@@ -157,16 +157,16 @@ The AI never writes, rewrites or paraphrases my report text.
 
 **G1. Final checklist**
 - [ ] The submitted Azure URL runs the commit tagged `submission` on `deployment_dev`, works, and `environment` says `dev` (warm it up 2 minutes before)
-- [ ] The final Azure app and plan are still running; the smoke-deploy resources are deleted
+- [ ] The Azure app `solar-api-dev-hr` and its plan are still running, scaled to Basic B1 (no smoke-deploy resources exist: the 29 Sep app is kept)
 - [ ] `slsea_dev` was topped up shortly before submission and before the viva
 - [ ] Nothing merged into `dev` or `deployment_dev` after the `submission` tag, and `dev` = `deployment_dev`
-- [ ] `/docs` loads; demo logins from the report appendix work
+- [ ] `/docs` loads (https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs); demo logins from the report appendix work
 - [ ] Lecturer is a collaborator; `git log` shows incremental history
 - [ ] I can explain every file in `src/`, `scripts/`, `test/`
 
 ---
 
-## Part H — Azure deployment (smoke deploy Mon 28 Sep; final deploy Thu 1 Oct)
+## Part H — Azure deployment (deployed Tue 29 Sep; final release Thu 1 Oct)
 
 Azure is used only here. Read `PLAN.md` §12a (readiness) and §12b (runbook) first.
 
@@ -187,12 +187,14 @@ Written by Claude Code in plan mode on `dev_hashini`; the prompt is quoted verba
 
 Review, log, commit on `dev_hashini`, pull request into `dev`. Azure's Deployment Center must not commit its own workflow.
 
-### H3. Create the web app (Azure portal, ~20 min)
+### H3. Create the web app (Azure portal, ~20 min) — done 29 Sep
+
+Created as `solar-api-dev-hr` (Free F1, Linux, Node 22 LTS, India South Central, resource group `rg-solar-api-dev`; HTTPS Only on; basic authentication on; Application Insights off). App settings, the GitHub secret and variable are set; the downloaded publish profile was deleted. Details: `docs/evidence/azure-deploy-2026-09-29.md`.
 
 ```text
 Create a resource → Web App: Azure for Students, new resource group, name solar-api-dev (suffix if taken),
 Publish: Code, Runtime: Node 22 LTS, OS: Linux, Region: India South Central.
-Smoke deploy: Free (F1) first; if blocked, Basic B1. Final: Basic B1.
+Plan: Free (F1) (created 29 Sep); scale up to Basic B1 before submission (H6).
 Deployment tab: continuous deployment OFF.   Basic authentication: Enable (for the publish-profile method).
 After creation:
 Settings → Environment variables: MONGODB_URI (…/slsea_dev), JWT_SECRET (a NEW value: openssl rand -hex 32), NODE_ENV=production, APP_ENV=dev,
@@ -205,26 +207,28 @@ GitHub repo → Settings → Secrets and variables → Actions:
 Cost Management + Billing → Budgets: create a budget alert (for example US$20)
 ```
 
-### H4. Release, seed, verify
+### H4. Release, seed, verify — done 29 Sep
+
+Release PR #8 `dev` → `deployment_dev`; Actions run #1 green in 34 s (commit `c30ad47`). `slsea_dev` seeded: 9/25/40/240, 4 users, 161,280 readings, both integrity checks PASS. Live checks: `GET /` 200 `environment: dev`; http → 301 → https; HSTS, nosniff, X-Frame-Options present; login right password 200, wrong password 401.
 
 ```bash
 # GitHub: pull request  base: deployment_dev  ←  compare: dev  → "Create a merge commit" → merge
 # GitHub → Actions: wait for green; Azure → Log stream: look for "Connected to database: slsea_dev"
 node --env-file=.env.deploy scripts/seed.js --dry-run     # check it prints slsea_dev
 node --env-file=.env.deploy scripts/seed.js               # new passwords and keys go to scripts/seed-keys.txt
-curl -i https://<app-name>.azurewebsites.net/
+curl -i https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/
 ```
 
-Copy the real hostname from the portal. Then run the **live smoke checklist** in `PLAN.md` §10 (the automated suite runs in-process and cannot target a URL). Save the `curl -i` output in `docs/evidence/`.
+Copy the real hostname from the portal. Then run the **live smoke checklist** in `PLAN.md` §10 (the automated suite runs in-process and cannot target a URL). Save the `curl -i` output in `docs/evidence/live/`.
 
-### H5. Smoke deploy: record and delete
+### H5. Record — done 29 Sep; no delete
 
-1. Write findings (region, authentication method, timings, problems) to `docs/evidence/` (OQ-32).
-2. **Delete the resource group** (app and plan). Remove the GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE`. Check Cost Management shows nothing running.
+1. Findings written to `docs/evidence/azure-deploy-2026-09-29.md`; OQ-32 closed (publish profile works).
+2. **No delete** (`DECIDED · YOU`, 29 Sep): the app is kept as the submitted app, so the resource group and the GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE` stay.
 
-### H6. Final deploy (Thu 1 Oct)
+### H6. Final release (Thu 1 Oct), same app
 
-Repeat H3–H4 with Basic B1. After the release merge, tag `submission` on `deployment_dev`:
+No new app (no delete-and-recreate). **Before submission, scale the plan F1 → Basic B1** (Azure portal → the app → Scale up) and turn Always On on. Then the release merge `dev` → `deployment_dev` (as H4) and wait for a green Actions run. After the release merge, tag `submission` on `deployment_dev`:
 
 ```bash
 git fetch origin
@@ -232,7 +236,7 @@ git tag submission origin/deployment_dev
 git push origin submission
 ```
 
-Top up the seed (`node --env-file=.env.deploy scripts/topup.js`), take the report screenshots and `curl -i` output on the deployed HTTPS URL, not localhost (values and tokens hidden), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
+Top up the seed (`node --env-file=.env.deploy scripts/topup.js`), take the report screenshots and `curl -i` output on the deployed HTTPS URL, not localhost (values and tokens hidden; saved in `docs/evidence/live/`), confirm the budget alert, and **keep the app and plan running** until marking and the viva are done. Then delete the resource group and reset the publish profile.
 
 ### H7. Fallback if the workflow cannot authenticate
 
@@ -253,7 +257,7 @@ Check the Azure CLI docs for current option names before relying on this.
 Secrets are typed with `read -s`, never on the command line. Full examples in `README.md`.
 
 ```bash
-BASE=http://localhost:3000/solar/v1.0        # after a deploy: https://<app-name>.azurewebsites.net/solar/v1.0
+BASE=http://localhost:3000/solar/v1.0        # live: https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/solar/v1.0
 curl -i $BASE/installations                                   # 401 (no token)
 
 read -r -p 'username: ' U; read -rs -p 'password: ' P; echo

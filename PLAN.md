@@ -1,6 +1,6 @@
 # PLAN.md — NB6007CEM Coursework 1 (SLSEA Solar Generation API)
 
-> **Status (2026-09-27, rev 14):** Phases 0–7 are built and tested locally: 142 tests in 13 suites pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Phase 8 security review, fixes and audit done 27 Sep (commit `477d7d6`); production-mode rehearsal passed 27 Sep; deploy workflow merged into `dev` 27 Sep. Not done yet: the rest of Phase 8 (explain-back, code freeze), the smoke deploy (Mon 28 Sep), the final deploy (1 Oct), the report and the viva. Development is **local-first**: Azure is used only for a short smoke deploy (deleted afterwards) and the final deploy.
+> **Status (2026-09-29, rev 15):** Phases 0–7 are built and tested locally: 142 tests in 13 suites pass (`npm test`), merged into `dev` (merge commit `f77d772`). Stretch A8 (district generation summary) is built. Phase 8 security review, fixes and audit done 27 Sep (commit `477d7d6`); production-mode rehearsal passed 27 Sep; deploy workflow merged into `dev` 27 Sep. **Deployed 29 Sep** to Azure web app `solar-api-dev-hr` (Free F1) by release PR #8 and Actions run #1 (commit `c30ad47`); `slsea_dev` seeded; live checks passed (`docs/evidence/azure-deploy-2026-09-29.md`). The Mon 28 Sep smoke deploy did not happen; this app is kept as the submitted app. Code freeze done 27 Sep (tag `p8` on `dev`, `050be73`). Not done yet: the rest of Phase 8 (explain-back), scale F1 → B1, the final release (1 Oct), the report and the viva. Development is **local-first**: Azure hosts only the one deployed app.
 > **Truth order:** brief PDF → module white paper (REST API Design Guidelines, WSO2-based) → lecture notes S1–S8 → this file. A higher source always wins over this file.
 > **Attempt status `[YOU]`:** fresh submission — no earlier submission and no marker feedback. Brief §14 ("make good the original submission") does not apply.
 
@@ -37,8 +37,8 @@ Where a lecture note and the white paper disagree, the white paper is the design
 
 | Hard gate `[BRIEF §12]` | Status |
 |---|---|
-| Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] final deploy 1 Oct |
-| Live OpenAPI/Swagger from the deployment (`/docs`) | local done (`docs/openapi.yaml`, `test/openapi.test.js`); live pending the deploy |
+| Public HTTPS API on Azure App Service, seeded, operational at submission time | [ ] deployed 29 Sep; must be operational at submission time |
+| Live OpenAPI/Swagger from the deployment (`/docs`) | local done (`docs/openapi.yaml`, `test/openapi.test.js`); live `/docs` screenshot in `docs/evidence/live/swagger/` (29 Sep) |
 | Repo shared with the module leader as collaborator; incremental commits | [ ] `nirangadh` accepted the invitation 27 Sep |
 | Report 2250–2750 words with the six required sections | [ ] |
 | Signed declaration + AI-disclosure appendix (from `ai-log.md`) | [ ] |
@@ -54,7 +54,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 
 | ID | Requirement | Source | Rubric area | Status · evidence |
 |---|---|---|---|---|
-| G1 | Public HTTPS API on Azure App Service, populated with seed data and operational at submission time (one GitHub Actions workflow) | §7.1, §12, §13 | Deployment | [ ] |
+| G1 | Public HTTPS API on Azure App Service, populated with seed data and operational at submission time (one GitHub Actions workflow) | §7.1, §12, §13 | Deployment | [ ] deployed 29 Sep · `docs/evidence/azure-deploy-2026-09-29.md` |
 | G2 | Live OpenAPI (Swagger) surface served from the deployment | §7.2 | Deployment / API design | done (local) · `test/openapi.test.js` |
 | G3 | Git repo shared with the module leader; incremental commit history | §7.3, §12, §13 | Deployment | history yes; collaborator accepted 27 Sep |
 | G4 | Report 2250–2750 words, 6 identifiable sections | §8, §12 | Report | [ ] |
@@ -115,7 +115,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | `POST /login` issues tokens (processing function, 200 + token) | `[YOU]` `[WP §5.1, §7.3]` (OQ-11) |
 | Sort syntax `sort=(timestamp DESC)` / `sort=(a ASC, b DESC)` | `[YOU]` `[WP §10.2]` (OQ-23) |
 | Stack: Node ≥ 22.19, Express 5, Mongoose 8, MongoDB Atlas M0, Azure App Service (Linux, Node 22 LTS), Swagger UI | `[YOU]` |
-| **Local-first:** all development and tests on the Mac against Atlas `slsea_local`; Azure only for the smoke deploy and the final deploy | `[YOU]` (2026-09-20) |
+| **Local-first:** all development and tests on the Mac against Atlas `slsea_local`; Azure hosts only the deployed app (`solar-api-dev-hr`, deployed 29 Sep, kept as the submitted app) | `[YOU]` (2026-09-20, 2026-09-29) |
 | Branches `dev_hashini` → `dev` (default) → `deployment_dev` (deploy branch); `deployment_qa` a marker, never deployed; `main` never touched | `[YOU]` (OQ-30) |
 | Deployment by **one GitHub Actions workflow** on push to `deployment_dev`; deployed database `slsea_dev` | `[YOU]` (OQ-31, OQ-35) |
 | Deadline **Sun 4 Oct 2026** | `[YOU]` (OQ-17) |
@@ -164,7 +164,7 @@ Report prose is **my own**. Turnitin similarity < 15% and AI score < 15% are scr
 | Database | MongoDB Atlas M0, Mongoose 8 (OQ-19) | Persistence needed because POST readings must survive restarts |
 | Auth | `jsonwebtoken` (HS256, 1 hour), `bcryptjs` for passwords, SHA-256 + `timingSafeEqual` for device keys | Random high-entropy device keys do not need bcrypt |
 | Docs | `swagger-ui-express` + `yaml`; hand-written `docs/openapi.yaml` (OpenAPI 3.0.3), single source | Swagger UI assets from the package (no CDN); `swagger-ui-dist` telemetry off |
-| Hosting | Azure App Service, Linux, Node 22 LTS, India South Central (OQ-33); smoke deploy Free F1 first (else B1), final Basic B1; paid from the Azure for Students credit, no card | Deployed by one GitHub Actions workflow (OQ-31); authentication method decided at the smoke deploy (OQ-32) |
+| Hosting | Azure App Service, Linux, Node 22 LTS, India South Central (OQ-33); web app `solar-api-dev-hr` on Free F1 since 29 Sep, scaled to Basic B1 before submission; paid from the Azure for Students credit, no card | Deployed by one GitHub Actions workflow (OQ-31) with the publish profile (OQ-32, closed 29 Sep) |
 | Tests | Node built-in `node --test`; the app runs in-process (no `BASE_URL`); `TZ=UTC`, one file at a time | Read tests use `slsea_local`; write tests use `slsea_test` and empty it |
 | Dev reload | `node --watch` | |
 | Not used | TypeScript, Docker, GraphQL, Redis, rate limiting, lint/test pipelines | Keep the pipeline minimal |
@@ -196,7 +196,7 @@ test/           13 suites, 142 tests
 docs/           openapi.yaml, design/ (my-decisions.md, data-model.md, diagrams/), evidence/
 ```
 
-One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold the rules (validation, scope, readings, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting checks. Layering is `[PROPOSAL]` (the brief does not require it).
+One line per layer: routes wire URI + method to middleware and controller · controllers translate HTTP to a service call and back · services hold the rules (validation, scope, readings, summary) · repositories are the only code that talks to MongoDB · middleware handles cross-cutting checks. Layering is `[YOU]` (the brief does not require it).
 
 ---
 
@@ -270,14 +270,14 @@ Full detail: `docs/design/data-model.md`. Public ids are string business ids (`P
 | Roles (OQ-03) | **Device:** POST own readings only. **Reader:** GET inside jurisdiction. **Admin:** GET and POST/PUT/DELETE installations inside its jurisdiction (the seeded admin is national, so all) | `require-scope`, `services/scope.js` | `[YOU]` |
 | Jurisdiction | National sees all; province/district users see their subtree only; ancestors → 403; scoped users get 403 before 404; collections narrowed to scope (a filter naming another jurisdiction → 200, count 0); on readings routes the check runs on the **path parent** | `services/scope.js` | `[YOU]` (OQ-04, OQ-12) |
 | Users never write readings | User tokens never carry `readings:write` → 403 (40303) | `require-scope` | `[BRIEF §2]` |
-| Passwords / keys | bcrypt; SHA-256 device key hash with a constant-time compare; secrets, hashes and login bodies never logged or returned | services, models `toJSON` | `[PROPOSAL]` |
-| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without a `JWT_SECRET` of at least 32 bytes (the value is never printed), and each environment has its own secret (no `iss`/`aud`, 27 Sep); demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[PROPOSAL]` |
-| Injection / input | Every query and body value type-checked; a filter given twice → 400 (no arrays reach the database); range checks on `power_kw`, `voltage`, `energy_kwh`; `limit` 1–100; Express JSON body limit (default 100 kB) | services | `[PROPOSAL]` |
+| Passwords / keys | bcrypt; SHA-256 device key hash with a constant-time compare; secrets, hashes and login bodies never logged or returned | services, models `toJSON` | `[YOU]` |
+| Secrets | `.env` git-ignored; `.env.example` committed; no hard-coded fallback secrets; the server refuses to start without a `JWT_SECRET` of at least 32 bytes (the value is never printed), and each environment has its own secret (no `iss`/`aud`, 27 Sep); demo passwords generated at seed time (never committed since 26 Sep) | config, seed | `[YOU]` |
+| Injection / input | Every query and body value type-checked; a filter given twice → 400 (no arrays reach the database); range checks on `power_kw`, `voltage`, `energy_kwh`; `limit` 1–100; Express JSON body limit (default 100 kB) | services | `[YOU]` |
 | Tokens | HS256 pinned; a token whose `exp` is missing or not a number → 401 (40102) (27 Sep) | `services/auth.js` | `[YOU]` |
 | Headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000` on every response; no CSP (it would break Swagger UI); `X-Powered-By` off; `Cache-Control: no-store` on the login token (27 Sep) | `middleware/security-headers.js`, `controllers/auth.js` | `[YOU]` |
 | CORS | Open (`*`): bearer tokens only, no cookies, so no CSRF; the API is meant to be called by dashboards and other clients (27 Sep) | `app.js` | `[YOU]` |
 | Transport | HTTPS via Azure App Service (HTTPS Only on) | deploy | `[LEC S7]` |
-| Error leakage | Central handler; no stack traces | `errorHandler.js` | `[PROPOSAL]` |
+| Error leakage | Central handler; no stack traces | `errorHandler.js` | `[YOU]` |
 | Honest labelling | Own JWT issued by `/login`, not a full OAuth 2.0 flow | report | `[PROPOSAL]` |
 
 ---
@@ -291,8 +291,8 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Behaviour (automated) | 13 suites, 142 tests: status codes, headers, bodies, scope, errors, spec parity | `npm test` (`TZ=UTC`, one file at a time, app in-process). Read tests use `slsea_local`; `admin-crud` and `device-write` write only to `slsea_test` and empty it |
 | Seed integrity | Counts, derived ids match their parents, 672 readings per installation, 15-minute boundaries, no energy decrease | printed by `scripts/seed.js` (PASS/FAIL) |
 | Production-mode rehearsal | The app runs from repo contents only, as on Azure | fresh clone, `npm ci --omit=dev`, `TZ=UTC NODE_ENV=production PORT=8080 node --env-file=<git-ignored file> src/server.js`; run again in Phase 8 |
-| Live smoke check (deploys) | The automated suite cannot target a URL (no `BASE_URL`), so the live check is a short curl checklist | `GET /` (200, `environment: dev`), `/docs` loads, login 200, one read 200, 401 without a token, 403 across jurisdictions, 304 with `If-None-Match`, one device POST 201 with a fresh timestamp. Save the `curl -i` output in `docs/evidence/` |
-| Manual evidence | `curl -i` outputs and Swagger screenshots for the report | Captured on the deployed HTTPS URL, not on localhost; saved in `docs/evidence/` (crop tokens; no `localhost` in the report) |
+| Live smoke check (deploys) | The automated suite cannot target a URL (no `BASE_URL`), so the live check is a short curl checklist | `GET /` (200, `environment: dev`), `/docs` loads, login 200, one read 200, 401 without a token, 403 across jurisdictions, 304 with `If-None-Match`, one device POST 201 with a fresh timestamp. Save the `curl -i` output in `docs/evidence/live/` |
+| Manual evidence | `curl -i` outputs and Swagger screenshots for the report | Captured on the deployed HTTPS URL, not on localhost; saved in `docs/evidence/live/` (crop tokens; no `localhost` in the report) |
 
 ---
 
@@ -308,14 +308,14 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | `ai-log.md` | Every AI prompt (chat + Claude Code); source of the AI-disclosure appendix |
 | `docs/evidence/` | Azure validation, curl transcripts, screenshots |
 
-**Report evidence checklist (evidence only — I write all prose):** Swagger screenshots and `curl -i` output are captured on the deployed HTTPS URL (`https://<app-name>.azurewebsites.net`), not on localhost.
+**Report evidence checklist (evidence only — I write all prose):** Swagger screenshots and `curl -i` output are captured on the deployed HTTPS URL (https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net, Swagger UI at https://solar-api-dev-hr-e0ctb9b8eqd7bqa4.indiasouthcentral-01.azurewebsites.net/docs), not on localhost.
 
 | Section | Evidence to have ready |
 |---|---|
 | R1 Architecture & data model | ER diagram (03); entity table; sample installation JSON with `meter_id` and no `last_*` fields; reading count (time series); layer diagram (09) |
 | R2 API design | Resource map (02) with resource types; §5.1/§5.6 check per URI; method table (safe/idempotent); `curl -i` for 200/201/304/400/404/405/406/409/412/415; pagination, filter, sort, conditional GET examples; error-body sample; request pipeline (04c) |
 | R3 Security | Write-read split (01, 10); 401/403 matrix transcripts; district user denied on another district; key hashing and device-JWT flow (04a); user flow (04b) |
-| R4 Deployment | Live URL; Azure app and plan settings (names only); the workflow file and a green Actions run; Atlas databases; `/docs` screenshot; seed counts; smoke-deploy findings; `git log --oneline --graph`; deployment diagram (08); cost note |
+| R4 Deployment | Live URL; Azure app and plan settings (names only); the workflow file and a green Actions run; Atlas databases; `/docs` screenshot; seed counts; deploy findings (`docs/evidence/azure-deploy-2026-09-29.md`); `git log --oneline --graph`; deployment diagram (08); cost note |
 | R5 Richardson | Level 0/1/2 evidence; why not Level 3 (no hypermedia controls; pagination links are not HATEOAS); cite WP §1 carefully |
 | R6 Critical evaluation | Test results; known limits (my-decisions §16); "what I would change" |
 | Outside word count | Signed declaration; AI-disclosure appendix from `ai-log.md`; diagrams, tables, code listings, references `[BRIEF §8]` |
@@ -324,20 +324,19 @@ The brief does not require automated tests. They are for my confidence, viva evi
 
 ## 12. Git, branching and environments (local-first)
 
-**Approach `[YOU]`:** develop, run and test everything locally. Azure is used only for a short **smoke deploy** (deleted afterwards) and the **final deploy** (Thu 1 Oct). Azure requirements are respected during development (§12a). `main` is never used.
+**Approach `[YOU]`:** develop, run and test everything locally. Azure hosts one app, `solar-api-dev-hr`, **deployed 29 Sep** (the Mon 28 Sep smoke deploy did not happen) and **kept as the submitted app** (`DECIDED · YOU`, 29 Sep: no delete-and-recreate; scale F1 → B1 before submission); the **final release** goes to the same app (Thu 1 Oct). Azure requirements are respected during development (§12a). `main` is never used.
 
 | Branch | Role | Deployed? |
 |---|---|---|
 | `dev_hashini` | My working branch; all commits (Claude Code works here under my review) | No; runs locally against `slsea_local` |
 | `dev` | Central branch and GitHub default; receives work only by merge (pull request or merge commit) | No |
-| `deployment_dev` | Deploy branch; updated from `dev` only at the smoke deploy and the final deploy; a push triggers the workflow; tag `submission` lives here | Only then |
+| `deployment_dev` | Deploy branch; updated from `dev` only by release merges (first release 29 Sep, PR #8; final release Thu 1 Oct); a push triggers the workflow; tag `submission` lives here | Only then |
 | `deployment_qa` | Marker of a QA stage; never deployed | No |
 
 | Where | Branch | Database | Purpose |
 |---|---|---|---|
 | Local (Mac, Node 22) | `dev_hashini` | Atlas `slsea_local` (tests also `slsea_test`) | All development and tests |
-| Azure smoke deploy, Mon 28 Sep | `deployment_dev` | `slsea_dev` | Throwaway proof that deployment works; delete the resources afterwards |
-| Azure final deploy, Thu 1 Oct | `deployment_dev` | `slsea_dev` (top-up) | **The submitted URL**; keep until marking and the viva are done |
+| Azure `solar-api-dev-hr`, deployed Tue 29 Sep | `deployment_dev` | `slsea_dev` (seeded 29 Sep; top-up before submission) | **The submitted URL**; F1 now, B1 before submission; final release Thu 1 Oct; keep until marking and the viva are done |
 
 **Rules**
 
@@ -345,16 +344,16 @@ The brief does not require automated tests. They are for my confidence, viva evi
 |---|---|---|
 | `dev_hashini` → `dev` | After a build step or a set of steps | Tests pass, explain-back done, `ai-log.md` entry in the same commit. Merge commit, no squash |
 | Keep in sync | After each merge into `dev` | `git switch dev_hashini && git pull origin dev` |
-| Tag a phase | End of a phase | `pN` on the `dev` tip. Tags: `p1` = `135e7e8` (phase 1); annotated `p4` = `5f4b246` (phases 2–4) and `p7` = `f77d772` (phases 5–7). `p2` and `p3` (both wrongly on `135e7e8`) were deleted on 27 Sep |
-| Smoke deploy | Mon 28 Sep | Runbook §12b; delete the Azure resource group afterwards |
+| Tag a phase | End of a phase | `pN` on the `dev` tip. Tags: `p1` = `135e7e8` (phase 1); annotated `p4` = `5f4b246` (phases 2–4), `p7` = `f77d772` (phases 5–7) and `p8` = `050be73` (phase 8, code freeze, 27 Sep). `p2` and `p3` (both wrongly on `135e7e8`) were deleted on 27 Sep |
+| First deploy | Tue 29 Sep (the Mon 28 Sep smoke deploy did not happen) | Runbook §12b step 1; done; the app is kept (no delete) |
 | Freeze | End of Phase 8 | Full local suite green, rehearsal passes. Only fixes for real problems after this |
-| Final deploy | Thu 1 Oct | Runbook §12b; tag `submission` on `deployment_dev` |
+| Final release | Thu 1 Oct | Runbook §12b step 2 (same app, scaled to B1 before submission); tag `submission` on `deployment_dev` |
 | After the final deploy | Until marking and the viva are done | Merge nothing into `dev` or `deployment_dev`; check `dev` = `deployment_dev` |
 | Broken deploy | — | Fix on `dev_hashini` → `dev`, release again, tag `pNb`. Never move or delete a pushed tag. Exception (`DECIDED · YOU`, 2026-09-27): `p2` and `p3` were deleted because they were created by mistake on the same commit as `p1` and marked no phase; the rule applies from now on. |
 
 - OpenAPI `servers` is the relative `/solar/v1.0`. `GET /` returns `environment` (`APP_ENV`: `local` on the Mac, `dev` on Azure).
-- **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually), written on `dev_hashini`. Azure's Deployment Center must not commit its own workflow. Authentication method decided at the smoke deploy (OQ-32).
-- Cost guard: read the estimated price, set a budget alert, delete the smoke resource group at once, delete the final plan only after marking and the viva. Never upgrade to Pay-As-You-Go, never attach a card.
+- **One GitHub Actions workflow** (`.github/workflows/deploy-deployment-dev.yml`), triggered only by pushes to `deployment_dev` (and manually), written on `dev_hashini`. Azure's Deployment Center must not commit its own workflow. Authentication: publish profile (OQ-32, closed 29 Sep: it works).
+- Cost guard: read the estimated price, set a budget alert, delete the plan only after marking and the viva. Never upgrade to Pay-As-You-Go, never attach a card.
 
 | Other rule | Detail |
 |---|---|
@@ -391,7 +390,7 @@ The brief does not require automated tests. They are for my confidence, viva evi
 
 **Step 0: zero-cost validation — done 21 Sep.** India South Central passed validation; Basic B1 about US$13.14/month; Free F1 available; Node 22 LTS on Linux available; basic authentication off by default (`docs/evidence/azure-validation.md`).
 
-**Step 1: smoke deploy (Mon 28 Sep).**
+**Step 1: first deploy — done Tue 29 Sep** (the Mon 28 Sep smoke deploy did not happen). Findings: `docs/evidence/azure-deploy-2026-09-29.md`. Web app `solar-api-dev-hr`, Free F1, resource group `rg-solar-api-dev`; release PR #8, Actions run #1 green in 34 s (commit `c30ad47`); `slsea_dev` seeded (9/25/40/240, 4 users, 161,280 readings, both integrity checks PASS); live checks passed. `DECIDED · YOU (2026-09-29)`: this app is kept as the submitted app, so step 9 is not done.
 
 1. Local: the production-mode rehearsal passes; the workflow file has reached `dev`.
 2. Atlas: storage checked 27 Sep (M0 512 MB; `sample_mflix` dropped, `slsea_local` 22.28 MB); no trim needed before seeding `slsea_dev`.
@@ -401,9 +400,9 @@ The brief does not require automated tests. They are for my confidence, viva evi
 6. Seed `slsea_dev` from the Mac with a git-ignored env file: `node --env-file=.env.deploy scripts/seed.js` (it prints the database name first; new passwords and keys go to `scripts/seed-keys.txt`).
 7. Live smoke checklist (§10). Save the `curl -i` output.
 8. Write findings (region, authentication method, timings, problems) to `docs/evidence/`.
-9. **Delete the resource group**, remove the secret, and check Cost Management shows nothing running.
+9. ~~Delete the resource group, remove the secret~~ — not done: the app is kept as the submitted app (`DECIDED · YOU`, 29 Sep).
 
-**Step 2: final deploy (Thu 1 Oct).** Repeat steps 2–8 with Basic B1; tag `submission` on `deployment_dev` after the release merge; top up the seed; take the report screenshots (values hidden); set a budget alert; **keep everything running** until marking and the viva are done.
+**Step 2: final release (Thu 1 Oct), same app.** No new app. Before submission scale the plan F1 → Basic B1 and turn Always On on; release merge `dev` → `deployment_dev`; tag `submission` on `deployment_dev`; top up the seed; re-run the live checklist (§10); take the report screenshots on the live URL (values hidden) into `docs/evidence/live/`; set a budget alert; **keep everything running** until marking and the viva are done.
 
 **Fallback.** If neither publish profile nor OIDC works in the university tenant: `az webapp deploy` with a ZIP of the `deployment_dev` tip, or the VS Code Azure extension. If Azure is blocked altogether, the app is portable to another host.
 
@@ -422,9 +421,9 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | 6 | Query surface, conditional GET (strong ETag, 304), 406 | done 26 Sep |
 | 7 | Admin CRUD on installations, 405 everywhere, district summary (stretch), OpenAPI at `/docs` | done 26 Sep |
 | 7b | Credential fix: demo passwords generated at seed time, `--rotate-credentials`; README | done 26 Sep |
-| 8 | Hardening: security review (E1), audit (E2), explain-back, production-mode rehearsal, **code freeze** | next |
-| 4b | **Smoke deploy** (runbook §12b), then delete the Azure resources | Mon 28 Sep (moved from 25 Sep because 23–25 Sep were lost) |
-| 9 | **Final deploy** on Azure: release merge, tag `submission`, seed, live checks, screenshots | Thu 1 Oct |
+| 8 | Hardening: security review (E1), audit (E2), explain-back, production-mode rehearsal, **code freeze** | code freeze done 27 Sep (tag `p8` = `050be73`); explain-back next |
+| 4b | **First deploy** (runbook §12b step 1): `solar-api-dev-hr`, seed, live checks; the app is kept | done 29 Sep (the Mon 28 Sep smoke deploy did not happen) |
+| 9 | **Final release** to the same app: scale F1 → B1, release merge, tag `submission`, top-up, live checks, screenshots | Thu 1 Oct |
 | 10 | Report (I write it) and final checks | 30 Sep – 3 Oct |
 
 **Remaining timeline** (deadline **Sun 4 Oct 2026**; LMS time of day to note):
@@ -432,9 +431,10 @@ The brief does not require automated tests. They are for my confidence, viva evi
 | Date | Work |
 |---|---|
 | Sun 27 Sep | Done: Atlas database user password rotated (exposed in an earlier ZIP) and `.env` updated, the app connects; phase tags fixed (`p4`, `p7`); Phase 8 security review, fixes and audit done; production-mode rehearsal passed; deploy workflow merged into `dev`. To do: fill my ai-log review lines |
-| Mon 28 Sep | Smoke deploy |
-| Tue 29 – Wed 30 Sep | Phase 8 finish: explain-back, rehearsal, **code freeze**; report drafting starts |
-| Thu 1 Oct | **Final deploy** |
+| Mon 28 Sep | Smoke deploy did not happen |
+| Tue 29 Sep | Done: deployed to Azure (`solar-api-dev-hr`, F1), `slsea_dev` seeded, live checks passed, OQ-32 closed |
+| Tue 29 – Wed 30 Sep | Phase 8 finish: explain-back; report drafting starts |
+| Thu 1 Oct | **Final release** to the same app; scale F1 → B1 before submission |
 | Fri 2 Oct | Report final; word count; Turnitin + AI score; contradiction check |
 | Sat 3 Oct | Live re-check, declaration signed, submit (buffer day) |
 | Sun 4 Oct | Deadline |
@@ -472,7 +472,7 @@ Never cut: the final deployment, seed at full scale, device auth, jurisdiction s
 
 ## 15. Open questions and decisions
 
-**Still open:** OQ-25 (viva date), OQ-32 (workflow authentication, decided at the smoke deploy). OQ-08, OQ-20, the tie-break rule, the top-up script and the `capacity_kw` bound of 1000 were confirmed on 27 Sep (my-decisions §16). Everything else is decided; details in `my-decisions.md`.
+**Still open:** OQ-25 (viva date). OQ-32 was closed on 29 Sep (publish profile works). OQ-08, OQ-20, the tie-break rule, the top-up script and the `capacity_kw` bound of 1000 were confirmed on 27 Sep (my-decisions §16). Everything else is decided; details in `my-decisions.md`.
 
 | ID | Question → answer | Status |
 |---|---|---|
@@ -507,18 +507,18 @@ Never cut: the final deployment, seed at full scale, device auth, jurisdiction s
 | OQ-29 | Strong content-based ETag | DECIDED `[YOU]` |
 | OQ-30 | Branch model (§12) | DECIDED `[YOU]` |
 | OQ-31 | Azure App Service instead of Render; one GitHub Actions workflow | DECIDED `[YOU]` |
-| OQ-32 | Workflow authentication: publish profile, OIDC or CLI ZIP fallback | **OPEN** until the smoke deploy |
+| OQ-32 | Workflow authentication: publish profile, OIDC or CLI ZIP fallback → publish profile (Actions run #1 green, 29 Sep) | DECIDED (29 Sep) |
 | OQ-33 | Region India South Central; B1 about US$13.14/month | DECIDED (21 Sep) |
 | OQ-34 | Express 5 | DECIDED `[YOU]` (21 Sep) |
 | OQ-35 | `slsea_local` locally, `slsea_dev` deployed | DECIDED `[YOU]` |
 
-**Assumptions:** Azure provides HTTPS (HTTPS Only on) · the smoke and final deploys are the only Azure spend · Atlas Network Access allows Azure (`0.0.0.0/0`) · `mongodb+srv://` URI · the student subscription may restrict regions and quotas · timestamps UTC.
+**Assumptions:** Azure provides HTTPS (HTTPS Only on) · the one deployed app (`solar-api-dev-hr`) is the only Azure spend · Atlas Network Access allows Azure (`0.0.0.0/0`) · `mongodb+srv://` URI · the student subscription may restrict regions and quotas · timestamps UTC.
 
 ---
 
 ## 16. Working rules
 
-- Small diffs; commit on `dev_hashini`; merge into `dev`; release to `deployment_dev` only for the smoke and final deploys. Never touch `main`.
+- Small diffs; commit on `dev_hashini`; merge into `dev`; release to `deployment_dev` only by release merges (29 Sep, final 1 Oct). Never touch `main`.
 - Log every AI prompt in `ai-log.md` (chat prompts count).
 - I write all report text; the AI only flags missing evidence, contradictions with the code and rubric gaps.
 - Never copy code from the classmate repos.
@@ -558,7 +558,7 @@ Sources in `docs/design/diagrams/` (Mermaid). Each file starts with `%%` comment
 | `05-flow-ingest-reading.mmd` | Device pushes a reading: 405/406/415/401/403/400/409/201 | R2 |
 | `06-flow-readings-history.mmd` | Readings under a parent: 403/404/400/304/200 | R2 |
 | `07-flow-operational-reads.mmd` | Composite, `last-reading`, generation summary | R2 |
-| `08-deployment.mmd` | Local-first setup, workflow, smoke and final deploys, Atlas databases, cost guard | R4 |
+| `08-deployment.mmd` | Local-first setup, workflow, the one Azure app (`solar-api-dev-hr`, deployed 29 Sep, kept; F1 → B1 before submission), Atlas databases, cost guard | R4 |
 | `09-layered-architecture.mmd` | Routes → middleware → controllers → services → repositories | R1 |
 | `10-roles-and-permissions.mmd` | Device / reader / admin: allowed and refused | R3 |
 

@@ -48,10 +48,10 @@
 
 ## Git and environment
 - Work ONLY on branch dev_hashini. Never commit, merge, rebase or push on dev or deployment_dev; I open the merge requests (pull requests).
-- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR at the smoke deploy (before 1 Oct) and at the final deploy (1 Oct). Azure deploys from it through a GitHub Actions workflow.
+- Flow: dev_hashini -> MR -> dev. deployment_dev is updated only by a release MR: the first deploy (29 Sep, PR #8) and the final release (1 Oct). Azure deploys from it through a GitHub Actions workflow.
 - NEVER create, use, merge into or touch main. deployment_qa is a marker branch, never deployed and never used: do not touch it.
 - Never force-push, squash or rewrite pushed history.
-- No deployment during development. Planned: a short throwaway smoke deploy (deleted afterwards) and the final deployment, both Azure App Service via GitHub Actions on push to deployment_dev, database slsea_dev (the final one is the submitted URL). No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
+- No deployment during development. One Azure app, solar-api-dev-hr (Azure App Service), deployed 29 Sep by the GitHub Actions workflow on push to deployment_dev, database slsea_dev; the planned smoke deploy did not happen. It is kept as the submitted app (no delete-and-recreate): Free F1 now, scaled to Basic B1 before submission; the final release (1 Oct) goes to the same app. No QA service or database. My local .env uses database slsea_local. GET / also returns environment from APP_ENV.
 - Do not create or edit .github/workflows, Azure or deployment files, and never handle publish profiles or deployment credentials, unless I ask for that specific task.
 
 ## AI log (ai-log.md)
